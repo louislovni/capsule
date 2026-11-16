@@ -19,7 +19,7 @@ struct LibraryView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Aucun jeu pour l'instant")
                                 .font(.headline)
-                            Text("Touche + pour importer tes ROM (.gba, .gb, .gbc) et tes sauvegardes .sav si tu en as. Tu peux aussi les déposer dans le dossier Capsule > ROMs de l'app Fichiers.")
+                            Text("Touche + pour importer tes ROM (.gba, .gb, .gbc, .nds) et tes sauvegardes .sav si tu en as. Tu peux aussi les déposer dans le dossier Capsule > ROMs de l'app Fichiers.")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }

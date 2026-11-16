@@ -19,7 +19,30 @@ final class PadView: UIView {
     private struct PadButton {
         let key: UInt32
         let view: UILabel
+        /// The small shortcut pills (DS only).
+        var isShortcut = false
     }
+
+    /// On a DS game, the face buttons are the game's own and PokeDaisy's tools move
+    /// to a row of shortcuts: its DS core opens the companion on L2, the quick
+    /// menu on SELECT + L2, steps the screen layouts on R2 and floats the touch
+    /// screen in on SELECT + R2.
+    var isDS = false {
+        didSet {
+            guard isDS != oldValue else { return }
+            for item in buttons where item.isShortcut {
+                item.view.isHidden = !isDS
+            }
+            setNeedsLayout()
+        }
+    }
+
+    private static let shortcuts: [(String, UInt32)] = [
+        ("COMPAGNON", PadKey.l2),
+        ("MENU", PadKey.select | PadKey.l2),
+        ("ÉCRANS", PadKey.r2),
+        ("TACTILE", PadKey.select | PadKey.r2),
+    ]
 
     private var buttons: [PadButton] = []
     private let dpad = UIView()
@@ -74,6 +97,25 @@ final class PadView: UIView {
             addSubview(label)
             buttons.append(PadButton(key: key, view: label))
         }
+        for (title, key) in Self.shortcuts {
+            let label = UILabel()
+            label.text = title
+            label.textAlignment = .center
+            label.textColor = UIColor(white: 1.0, alpha: 0.85)
+            label.font = .systemFont(ofSize: 10, weight: .semibold)
+            label.backgroundColor = buttonColor
+            label.layer.masksToBounds = true
+            label.isUserInteractionEnabled = false
+            label.isAccessibilityElement = true
+            label.accessibilityTraits = .button
+            label.isHidden = true
+            addSubview(label)
+            buttons.append(PadButton(key: key, view: label, isShortcut: true))
+        }
+    }
+
+    private func shortcut(_ title: String) -> UILabel? {
+        buttons.first { $0.isShortcut && $0.view.text == title }?.view
     }
 
     private func button(_ key: UInt32) -> UILabel? {
@@ -90,6 +132,19 @@ final class PadView: UIView {
         let top: CGFloat = 12
         button(PadKey.l)?.frame = CGRect(x: 16, y: top, width: shoulder.width, height: shoulder.height)
         button(PadKey.r)?.frame = CGRect(x: width - 16 - shoulder.width, y: top, width: shoulder.width, height: shoulder.height)
+
+        // DS: the shortcut row sits between L and R.
+        if isDS {
+            let count = CGFloat(Self.shortcuts.count)
+            let left = 16 + shoulder.width + 8
+            let available = width - 2 * left
+            let spacing: CGFloat = 6
+            let pillWidth = max((available - spacing * (count - 1)) / count, 40)
+            for (index, item) in Self.shortcuts.enumerated() {
+                shortcut(item.0)?.frame = CGRect(x: left + CGFloat(index) * (pillWidth + spacing), y: top + 4,
+                                                 width: pillWidth, height: shoulder.height - 8)
+            }
+        }
 
         let pill = CGSize(width: 76, height: 30)
         let bottom = height - pill.height - 18
@@ -183,7 +238,8 @@ final class PadView: UIView {
         }
         currentKeys = keys
         for item in buttons {
-            item.view.backgroundColor = keys & item.key != 0 ? pressedColor : buttonColor
+            let down = item.isShortcut ? keys & item.key == item.key : keys & item.key != 0
+            item.view.backgroundColor = down ? pressedColor : buttonColor
         }
         let horizontal = keys & (PadKey.left | PadKey.right) != 0
         let vertical = keys & (PadKey.up | PadKey.down) != 0
@@ -201,18 +257,21 @@ final class PadView: UIView {
 
 struct PadRepresentable: UIViewRepresentable {
     var showsShoulders = true
+    var isDS = false
     let onKeys: (UInt32) -> Void
 
     func makeUIView(context: Context) -> PadView {
         let view = PadView()
         view.onKeys = onKeys
         view.showsShoulders = showsShoulders
+        view.isDS = isDS
         return view
     }
 
     func updateUIView(_ uiView: PadView, context: Context) {
         uiView.onKeys = onKeys
         uiView.showsShoulders = showsShoulders
+        uiView.isDS = isDS
     }
 
     static func dismantleUIView(_ uiView: PadView, coordinator: ()) {

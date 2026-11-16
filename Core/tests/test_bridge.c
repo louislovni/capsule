@@ -109,7 +109,7 @@ int main(void) {
 	write_gba_rom(rom);
 	write_gb_rom(gb);
 
-	CHECK(lr_create("/nonexistent/file.gba", sav, data, "auto") == NULL);
+	CHECK(lr_create(GBC_CORE, "/nonexistent/file.gba", sav, data, "auto") == NULL);
 
 	/* A battery save that exists is loaded and left alone while nothing changes. */
 	enum { SAVE_SIZE = 0x20000 };
@@ -121,13 +121,13 @@ int main(void) {
 	fwrite(pattern, 1, SAVE_SIZE, f);
 	fclose(f);
 
-	LRCore* core = lr_create(rom, sav, data, "auto");
+	LRCore* core = lr_create(GBC_CORE, rom, sav, data, "auto");
 	CHECK(core != NULL);
 	if (!core) {
 		printf("bridge test: %d failures\n", failures + 1);
 		return 1;
 	}
-	CHECK(lr_create(rom, sav, data, "auto") == NULL); /* one core at a time */
+	CHECK(lr_create(GBC_CORE, rom, sav, data, "auto") == NULL); /* one core at a time */
 	CHECK(lr_audio_rate(core) >= 8000 && lr_frame_rate(core) > 50 && lr_frame_rate(core) < 70);
 	for (int i = 0; i < 30; ++i) {
 		lr_run_frame(core, false);
@@ -173,7 +173,7 @@ int main(void) {
 	}
 
 	/* Game Boy Color, no save file: none is written for a save the game never touched. */
-	core = lr_create(gb, gbsav, data, "auto");
+	core = lr_create(GBC_CORE, gb, gbsav, data, "auto");
 	CHECK(core != NULL);
 	if (core) {
 		for (int i = 0; i < 10; ++i) {
@@ -185,6 +185,43 @@ int main(void) {
 		lr_destroy(core);
 	}
 	CHECK(access(gbsav, F_OK) != 0);
+
+	/* Nintendo DS, on the DS core, with PokeDaisy's diagnostic cartridge. */
+	char nds[256], ndssav[256], command[768];
+	snprintf(nds, sizeof(nds), "%s/diagnostic.nds", dir);
+	snprintf(ndssav, sizeof(ndssav), "%s/diagnostic.sav", dir);
+	snprintf(command, sizeof(command), "python3 '%s' '%s' > /dev/null", DS_DIAGNOSTIC_SCRIPT, nds);
+	CHECK(system(command) == 0);
+	CHECK(lr_create("/nonexistent/core.so", nds, ndssav, data, "auto") == NULL);
+	core = lr_create(DS_CORE, nds, ndssav, data, "auto");
+	CHECK(core != NULL);
+	if (core) {
+		for (int i = 0; i < 120; ++i) {
+			lr_run_frame(core, false);
+		}
+		printf("ds frame %ux%u, %u Hz, %.2f fps\n", lr_video_width(core), lr_video_height(core), lr_audio_rate(core),
+		       lr_frame_rate(core));
+		CHECK(lr_video_width(core) >= 256 && lr_video_height(core) >= 192);
+		CHECK(drain(core) > 0);
+		lr_set_pointer(core, true, 0, 16000);
+		lr_set_keys(core, LR_KEY_A);
+		lr_run_frame(core, false);
+		lr_set_pointer(core, false, 0, 0);
+		lr_set_keys(core, 0);
+		CHECK(lr_save_state(core, state));
+		lr_run_frame(core, false);
+		CHECK(lr_load_state(core, state));
+		lr_destroy(core);
+	}
+
+	/* Back to the Game Boy core after the DS one: each keeps its own library. */
+	core = lr_create(GBC_CORE, rom, sav, data, "auto");
+	CHECK(core != NULL);
+	if (core) {
+		lr_run_frame(core, false);
+		CHECK(lr_video_width(core) >= 240);
+		lr_destroy(core);
+	}
 
 	free(back);
 	free(pattern);

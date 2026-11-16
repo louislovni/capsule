@@ -3,6 +3,7 @@
 
 #include "libretro.h"
 
+#include <dlfcn.h>
 #include <stdarg.h>
 #include <stdatomic.h>
 #include <stdio.h>
@@ -12,8 +13,8 @@
 
 #define RING_FRAMES 16384 /* power of two */
 #define RING_MASK (RING_FRAMES - 1)
-#define MAX_WIDTH 1024
-#define MAX_HEIGHT 1024
+#define MAX_WIDTH 2048
+#define MAX_HEIGHT 2048
 
 struct LRCore {
 	uint8_t* rom;
@@ -40,6 +41,100 @@ struct LRCore {
 	atomic_size_t ringRead;
 	atomic_bool ringFlush;
 };
+
+/* The core's entry points, looked up by name: each core is its own dynamic
+ * library (the two share hundreds of internal names, so they can't be linked
+ * into one binary). */
+typedef struct {
+	void (*set_environment)(retro_environment_t);
+	void (*set_video_refresh)(retro_video_refresh_t);
+	void (*set_audio_sample)(retro_audio_sample_t);
+	void (*set_audio_sample_batch)(retro_audio_sample_batch_t);
+	void (*set_input_poll)(retro_input_poll_t);
+	void (*set_input_state)(retro_input_state_t);
+	void (*init)(void);
+	void (*deinit)(void);
+	bool (*load_game)(const struct retro_game_info*);
+	void (*unload_game)(void);
+	void (*run)(void);
+	void (*reset)(void);
+	void (*get_system_av_info)(struct retro_system_av_info*);
+	void (*set_controller_port_device)(unsigned, unsigned);
+	void* (*get_memory_data)(unsigned);
+	size_t (*get_memory_size)(unsigned);
+	size_t (*serialize_size)(void);
+	bool (*serialize)(void*, size_t);
+	bool (*unserialize)(const void*, size_t);
+} RetroAPI;
+
+static RetroAPI api;
+
+/* Libraries stay loaded once opened: a core is not written to be unloaded. */
+#define MAX_LIBRARIES 4
+static struct {
+	char* path;
+	void* handle;
+} sLibraries[MAX_LIBRARIES];
+
+static void* open_library(const char* path) {
+	for (int i = 0; i < MAX_LIBRARIES; ++i) {
+		if (sLibraries[i].path && strcmp(sLibraries[i].path, path) == 0) {
+			return sLibraries[i].handle;
+		}
+	}
+	void* handle = dlopen(path, RTLD_NOW | RTLD_LOCAL);
+	if (!handle) {
+		fprintf(stderr, "lr_bridge: %s\n", dlerror());
+		return NULL;
+	}
+	for (int i = 0; i < MAX_LIBRARIES; ++i) {
+		if (!sLibraries[i].path) {
+			size_t length = strlen(path) + 1;
+			sLibraries[i].path = malloc(length);
+			if (sLibraries[i].path) {
+				memcpy(sLibraries[i].path, path, length);
+				sLibraries[i].handle = handle;
+			}
+			break;
+		}
+	}
+	return handle;
+}
+
+static bool load_api(const char* corePath) {
+	void* h = open_library(corePath);
+	if (!h) {
+		return false;
+	}
+	RetroAPI loaded;
+#define LOOKUP(name) \
+	if (!(*(void**) &loaded.name = dlsym(h, "retro_" #name))) { \
+		fprintf(stderr, "lr_bridge: retro_%s missing\n", #name); \
+		return false; \
+	}
+	LOOKUP(set_environment)
+	LOOKUP(set_video_refresh)
+	LOOKUP(set_audio_sample)
+	LOOKUP(set_audio_sample_batch)
+	LOOKUP(set_input_poll)
+	LOOKUP(set_input_state)
+	LOOKUP(init)
+	LOOKUP(deinit)
+	LOOKUP(load_game)
+	LOOKUP(unload_game)
+	LOOKUP(run)
+	LOOKUP(reset)
+	LOOKUP(get_system_av_info)
+	LOOKUP(set_controller_port_device)
+	LOOKUP(get_memory_data)
+	LOOKUP(get_memory_size)
+	LOOKUP(serialize_size)
+	LOOKUP(serialize)
+	LOOKUP(unserialize)
+#undef LOOKUP
+	api = loaded;
+	return true;
+}
 
 /* libretro hands callbacks no context: one core per process. */
 static LRCore* sCore;
@@ -274,8 +369,9 @@ static void free_core(LRCore* core) {
 	free(core);
 }
 
-LRCore* lr_create(const char* romPath, const char* savePath, const char* dataDir, const char* panel) {
-	if (sCore || !romPath) {
+LRCore* lr_create(const char* corePath, const char* romPath, const char* savePath, const char* dataDir,
+                  const char* panel) {
+	if (sCore || !romPath || !corePath || !load_api(corePath)) {
 		return NULL;
 	}
 	LRCore* core = calloc(1, sizeof(*core));
@@ -297,34 +393,34 @@ LRCore* lr_create(const char* romPath, const char* savePath, const char* dataDir
 	}
 
 	sCore = core;
-	retro_set_environment(environment);
-	retro_set_video_refresh(video_refresh);
-	retro_set_audio_sample(audio_sample);
-	retro_set_audio_sample_batch(audio_batch);
-	retro_set_input_poll(input_poll);
-	retro_set_input_state(input_state);
-	retro_init();
+	api.set_environment(environment);
+	api.set_video_refresh(video_refresh);
+	api.set_audio_sample(audio_sample);
+	api.set_audio_sample_batch(audio_batch);
+	api.set_input_poll(input_poll);
+	api.set_input_state(input_state);
+	api.init();
 
 	struct retro_game_info info = { romPath, core->rom, core->romSize, NULL };
-	if (!retro_load_game(&info)) {
-		retro_deinit();
+	if (!api.load_game(&info)) {
+		api.deinit();
 		sCore = NULL;
 		free_core(core);
 		return NULL;
 	}
-	retro_set_controller_port_device(0, RETRO_DEVICE_JOYPAD);
+	api.set_controller_port_device(0, RETRO_DEVICE_JOYPAD);
 
 	struct retro_system_av_info av;
 	memset(&av, 0, sizeof(av));
-	retro_get_system_av_info(&av);
+	api.get_system_av_info(&av);
 	core->audioRate = av.timing.sample_rate > 0 ? (unsigned) (av.timing.sample_rate + 0.5) : 32768;
 	core->fps = av.timing.fps > 0 ? av.timing.fps : 59.7275;
 	core->width = av.geometry.base_width;
 	core->height = av.geometry.base_height;
 
 	/* The battery save goes into the core's memory now, before the first frame. */
-	uint8_t* sram = retro_get_memory_data(RETRO_MEMORY_SAVE_RAM);
-	size_t sramSize = retro_get_memory_size(RETRO_MEMORY_SAVE_RAM);
+	uint8_t* sram = api.get_memory_data(RETRO_MEMORY_SAVE_RAM);
+	size_t sramSize = api.get_memory_size(RETRO_MEMORY_SAVE_RAM);
 	if (sram && sramSize) {
 		size_t fileSize = 0;
 		uint8_t* saved = read_file(core->savePath, &fileSize, 0x200000);
@@ -342,15 +438,15 @@ void lr_destroy(LRCore* core) {
 		return;
 	}
 	lr_flush_save(core);
-	retro_unload_game();
-	retro_deinit();
+	api.unload_game();
+	api.deinit();
 	sCore = NULL;
 	free_core(core);
 }
 
 void lr_reset(LRCore* core) {
 	if (core && core == sCore) {
-		retro_reset();
+		api.reset();
 		atomic_store(&core->ringFlush, true);
 	}
 }
@@ -360,7 +456,7 @@ void lr_run_frame(LRCore* core, bool discardAudio) {
 		return;
 	}
 	core->discardAudio = discardAudio;
-	retro_run();
+	api.run();
 	core->discardAudio = false;
 }
 
@@ -447,8 +543,8 @@ bool lr_flush_save(LRCore* core) {
 	if (!core || core != sCore || !core->savePath) {
 		return false;
 	}
-	uint8_t* sram = retro_get_memory_data(RETRO_MEMORY_SAVE_RAM);
-	size_t size = retro_get_memory_size(RETRO_MEMORY_SAVE_RAM);
+	uint8_t* sram = api.get_memory_data(RETRO_MEMORY_SAVE_RAM);
+	size_t size = api.get_memory_size(RETRO_MEMORY_SAVE_RAM);
 	if (!sram || size == 0) {
 		return true; /* the cartridge has no battery save */
 	}
@@ -481,9 +577,9 @@ bool lr_save_state(LRCore* core, const char* path) {
 	if (!core || core != sCore || !path) {
 		return false;
 	}
-	size_t size = retro_serialize_size();
+	size_t size = api.serialize_size();
 	uint8_t* data = size ? malloc(size) : NULL;
-	bool ok = data && retro_serialize(data, size) && write_file_atomically(path, data, size);
+	bool ok = data && api.serialize(data, size) && write_file_atomically(path, data, size);
 	free(data);
 	return ok;
 }
@@ -494,19 +590,19 @@ bool lr_load_state(LRCore* core, const char* path) {
 	}
 	/* The battery save in memory must survive a state load, or the PC
 	 * would go back to what it held when the state was made. */
-	uint8_t* sram = retro_get_memory_data(RETRO_MEMORY_SAVE_RAM);
-	size_t sramSize = retro_get_memory_size(RETRO_MEMORY_SAVE_RAM);
+	uint8_t* sram = api.get_memory_data(RETRO_MEMORY_SAVE_RAM);
+	size_t sramSize = api.get_memory_size(RETRO_MEMORY_SAVE_RAM);
 	uint8_t* keep = sram && sramSize ? malloc(sramSize) : NULL;
 	if (keep) {
 		memcpy(keep, sram, sramSize);
 	}
 	size_t size = 0;
 	uint8_t* data = read_file(path, &size, 0x4000000);
-	bool ok = data && retro_unserialize(data, size);
+	bool ok = data && api.unserialize(data, size);
 	free(data);
 	if (keep) {
-		uint8_t* now = retro_get_memory_data(RETRO_MEMORY_SAVE_RAM);
-		if (now && retro_get_memory_size(RETRO_MEMORY_SAVE_RAM) == sramSize) {
+		uint8_t* now = api.get_memory_data(RETRO_MEMORY_SAVE_RAM);
+		if (now && api.get_memory_size(RETRO_MEMORY_SAVE_RAM) == sramSize) {
 			memcpy(now, keep, sramSize);
 		}
 		free(keep);

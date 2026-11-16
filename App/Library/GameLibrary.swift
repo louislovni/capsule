@@ -25,7 +25,7 @@ final class GameLibrary: ObservableObject {
         var skipped: [String] = []
     }
 
-    /// Copies picked files into the library: .gba, .gb, .gbc go to ROMs, .sav to Saves.
+    /// Copies picked files into the library: .gba, .gb, .gbc, .nds go to ROMs, .sav to Saves.
     /// Existing files are never overwritten. Bank exports (.json) are handed back
     /// to the caller, which merges them.
     func importFiles(_ urls: [URL]) -> ImportResult {
@@ -40,7 +40,7 @@ final class GameLibrary: ObservableObject {
             }
             let name = url.lastPathComponent
             switch url.pathExtension.lowercased() {
-            case "gba", "gb", "gbc":
+            case "gba", "gb", "gbc", "nds":
                 let destination = Storage.roms.appendingPathComponent(name)
                 if manager.fileExists(atPath: destination.path) {
                     result.skipped.append("\(name) (déjà présent)")

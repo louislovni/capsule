@@ -36,18 +36,29 @@ struct Game: Identifiable, Hashable {
 
     var hasSave: Bool { FileManager.default.fileExists(atPath: saveURL.path) }
 
-    static let romExtensions: Set<String> = ["gba", "gb", "gbc"]
+    static let romExtensions: Set<String> = ["gba", "gb", "gbc", "nds"]
 
     var platformLabel: String {
         switch romURL.pathExtension.lowercased() {
         case "gb": return "Game Boy"
         case "gbc": return "Game Boy Color"
+        case "nds": return "Nintendo DS"
         default: return "GBA"
         }
     }
 
-    /// The Pokémon bank works with the GBA games and the Game Boy ones (generations 1 and 2).
-    var supportsPokemonTools: Bool { Self.romExtensions.contains(romURL.pathExtension.lowercased()) }
+    var isDS: Bool { romURL.pathExtension.lowercased() == "nds" }
+
+    /// The Pokémon bank knows generations 1 to 3 (Game Boy and GBA games), not the DS ones yet.
+    var supportsPokemonTools: Bool { !isDS && Self.romExtensions.contains(romURL.pathExtension.lowercased()) }
+
+    /// PokeDaisy's core for this game: a framework inside the app.
+    var coreURL: URL? {
+        let name = isDS ? "pokedaisy_ds" : "pokedaisy_gbc"
+        return Bundle.main.privateFrameworksURL?
+            .appendingPathComponent("\(name).framework", isDirectory: true)
+            .appendingPathComponent(name)
+    }
 
     /// Remembers when Pokémon were last moved between this game's save and the bank,
     /// so that loading an older save state can be flagged.

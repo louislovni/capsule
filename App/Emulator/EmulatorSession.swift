@@ -17,6 +17,8 @@ enum PadKey {
     static let x: UInt32 = 1 << 9
     static let l: UInt32 = 1 << 10
     static let r: UInt32 = 1 << 11
+    static let l2: UInt32 = 1 << 12
+    static let r2: UInt32 = 1 << 13
 }
 
 /// Owns the PokeDaisy core and the thread that runs it.
@@ -70,7 +72,8 @@ final class EmulatorSession: ObservableObject {
         guard thread == nil, !loadFailed else { return }
         Storage.prepare()
         try? FileManager.default.createDirectory(at: Self.dataDirectory, withIntermediateDirectories: true)
-        guard let created = lr_create(game.romURL.path, game.saveURL.path, Self.dataDirectory.path, Self.panel) else {
+        guard let coreURL = game.coreURL,
+              let created = lr_create(coreURL.path, game.romURL.path, game.saveURL.path, Self.dataDirectory.path, Self.panel) else {
             loadFailed = true
             return
         }

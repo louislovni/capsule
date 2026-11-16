@@ -8,13 +8,17 @@ EXPAND et ses autres outils. Capsule fournit l'enveloppe iOS (image, son, bouton
 sauvegardes, états, vitesse) et la **banque** : déposer les Pokémon du PC d'une partie et les
 retirer dans une autre de la même génération, avec une fiche détaillée.
 
-Game Boy Advance, Game Boy et Game Boy Color. Aucun jeu n'est fourni : il faut tes propres ROM.
+Game Boy Advance, Game Boy, Game Boy Color et Nintendo DS. Aucun jeu n'est fourni : il faut tes
+propres ROM.
 Capsule n'est ni fait ni approuvé par les auteurs de PokeDaisy.
 
 ## Commandes
 
-- **X** ouvre le compagnon de PokeDaisy, **Y** son menu rapide. Les deux se règlent dans le
-  compagnon (SETTINGS).
+- **GBA / Game Boy** : **X** ouvre le compagnon de PokeDaisy, **Y** son menu rapide.
+- **DS** : A, B, X, Y sont ceux du jeu. La rangée entre L et R donne COMPAGNON, MENU (menu
+  rapide), ÉCRANS (passe d'une disposition à l'autre : un seul écran, côte à côte...) et TACTILE
+  (fait apparaître l'écran tactile). Le cœur DS tourne sans JIT (iOS l'interdit) : il lui faut un
+  iPhone récent.
 - **Toucher l'image** agit sur le compagnon et le HUD.
 - La barre du haut : pause, vitesse ×1 / ×2 / ×4, états de sauvegarde, redémarrage.
 
@@ -25,7 +29,10 @@ Capsule n'est ni fait ni approuvé par les auteurs de PokeDaisy.
   ta propre copie de tes `.sav`.
 - **Hôte du cœur PokeDaisy** : testé sous Linux sur des ROM de test (image, son, états, sauvegarde) ;
   le compagnon lui-même n'a pas encore tourné sur iPhone avec un vrai jeu.
-- **DS** : pas encore.
+- **DS** : le cœur DS de PokeDaisy (DSperate) passe ses propres tests sans JIT et tourne dans l'hôte
+  sous Linux. Son compagnon reconnaît Platine (US rév. 1), HeartGold / SoulSilver (US) et
+  Noir / Blanc 1 et 2 (US / Europe) en anglais ; les autres versions se jouent sans compagnon.
+  La banque ne gère pas encore la DS.
 
 ## Obtenir l'IPA sans Mac
 

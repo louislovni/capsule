@@ -17,6 +17,10 @@ PokeDaisy  -  https://pokedaisy.com  -  https://github.com/lidor30/pokedaisy
   PokeDaisy's gamedata by tools/gen_profiles.py.
   Capsule is not made or endorsed by PokeDaisy's authors.
 
+DSperate  -  https://github.com/lidor30/pokedaisy (third_party/dsperate-lr)
+  The Nintendo DS emulator inside PokeDaisy's DS core (pokedaisy_ds_libretro),
+  built without its JIT. GNU GPL v3. Fetched by PokeDaisy's build.
+
 mGBA  -  https://mgba.io  -  https://github.com/mgba-emu/mgba
   The emulator inside PokeDaisy's core. Copyright (c) Jeffrey Pfau and
   contributors. Mozilla Public License 2.0. Fetched by PokeDaisy's build.

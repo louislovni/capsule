@@ -24,7 +24,7 @@ struct GameView: View {
                 ScreenRepresentable(session: session)
                     .aspectRatio(session.screenAspect, contentMode: .fit)
                     .overlay(alignment: .bottom) { noticeBanner }
-                PadRepresentable(onKeys: { [weak session] keys in
+                PadRepresentable(isDS: session.game.isDS, onKeys: { [weak session] keys in
                     session?.setKeys(keys)
                 })
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -157,7 +157,7 @@ struct GameView: View {
                 .font(.largeTitle)
             Text("Ce fichier n'a pas pu être lancé")
                 .font(.headline)
-            Text("Vérifie qu'il s'agit bien d'une ROM Game Boy Advance (.gba), Game Boy (.gb) ou Game Boy Color (.gbc), non compressée.")
+            Text("Vérifie qu'il s'agit bien d'une ROM Game Boy Advance (.gba), Game Boy (.gb), Game Boy Color (.gbc) ou Nintendo DS (.nds), non compressée.")
                 .font(.subheadline)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)

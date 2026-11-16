@@ -1,4 +1,4 @@
-/* lr_bridge: the app's host for the PokeDaisy libretro core.
+/* lr_bridge: the app's host for PokeDaisy's libretro cores.
  *
  * PokeDaisy (https://github.com/lidor30/pokedaisy) builds its companion, HUD,
  * quick menu and EXPAND into its libretro core, over mGBA. This bridge owns
@@ -46,11 +46,13 @@ enum {
 
 typedef struct LRCore LRCore;
 
-/* Loads a ROM. savePath: the battery save, read now and written by
+/* Loads a ROM on the core at corePath (a dynamic library: PokeDaisy's GB / GBA
+ * core or its DS core). savePath: the battery save, read now and written by
  * lr_flush_save. dataDir: where the core keeps its own files (companion
  * settings). panel: the screen size hint for the core ("auto", "720x720"...).
- * Returns NULL when the core refuses the file. */
-LRCore* lr_create(const char* romPath, const char* savePath, const char* dataDir, const char* panel);
+ * Returns NULL when the core can't be loaded or refuses the file. */
+LRCore* lr_create(const char* corePath, const char* romPath, const char* savePath, const char* dataDir,
+                  const char* panel);
 /* Writes the battery save and unloads. */
 void lr_destroy(LRCore* core);
 

@@ -53,6 +53,10 @@ jobs:
         run: |
           APP="build/xcode/Build/Products/Release-iphoneos/CapsuleGBA.app"
           test -d "$APP"
+          # PokeDaisy's cores: frameworks the app opens by path.
+          mkdir -p "$APP/Frameworks"
+          cp -R build/frameworks/*.framework "$APP/Frameworks/"
+          ls "$APP/Frameworks"
           rm -rf build/ipa && mkdir -p build/ipa/Payload
           cp -R "$APP" build/ipa/Payload/
           (cd build/ipa && zip -qry ../Capsule.ipa Payload)
