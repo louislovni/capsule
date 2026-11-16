@@ -69,6 +69,20 @@ typedef struct {
 
 static RetroAPI api;
 
+static char sError[512];
+
+static void set_error(const char* format, ...) {
+	va_list args;
+	va_start(args, format);
+	vsnprintf(sError, sizeof(sError), format, args);
+	va_end(args);
+	fprintf(stderr, "lr_bridge: %s\n", sError);
+}
+
+const char* lr_last_error(void) {
+	return sError;
+}
+
 /* Libraries stay loaded once opened: a core is not written to be unloaded. */
 #define MAX_LIBRARIES 4
 static struct {
@@ -82,9 +96,16 @@ static void* open_library(const char* path) {
 			return sLibraries[i].handle;
 		}
 	}
+	FILE* probe = fopen(path, "rb");
+	if (!probe) {
+		set_error("core not found: %s", path);
+		return NULL;
+	}
+	fclose(probe);
 	void* handle = dlopen(path, RTLD_NOW | RTLD_LOCAL);
 	if (!handle) {
-		fprintf(stderr, "lr_bridge: %s\n", dlerror());
+		const char* why = dlerror();
+		set_error("dlopen failed: %s", why ? why : "unknown");
 		return NULL;
 	}
 	for (int i = 0; i < MAX_LIBRARIES; ++i) {
@@ -109,7 +130,7 @@ static bool load_api(const char* corePath) {
 	RetroAPI loaded;
 #define LOOKUP(name) \
 	if (!(*(void**) &loaded.name = dlsym(h, "retro_" #name))) { \
-		fprintf(stderr, "lr_bridge: retro_%s missing\n", #name); \
+		set_error("retro_%s missing from the core", #name); \
 		return false; \
 	}
 	LOOKUP(set_environment)
@@ -371,7 +392,15 @@ static void free_core(LRCore* core) {
 
 LRCore* lr_create(const char* corePath, const char* romPath, const char* savePath, const char* dataDir,
                   const char* panel) {
-	if (sCore || !romPath || !corePath || !load_api(corePath)) {
+	sError[0] = '\0';
+	if (sCore) {
+		set_error("a game is already running");
+		return NULL;
+	}
+	if (!romPath || !corePath || !load_api(corePath)) {
+		if (!sError[0]) {
+			set_error("no core or ROM given");
+		}
 		return NULL;
 	}
 	LRCore* core = calloc(1, sizeof(*core));
@@ -385,6 +414,7 @@ LRCore* lr_create(const char* corePath, const char* romPath, const char* savePat
 	core->panel = copy_string(panel);
 	core->rgba = calloc((size_t) MAX_WIDTH * MAX_HEIGHT, 4);
 	if (!core->rom || !core->rgba || !core->dataDir) {
+		set_error(core->rom ? "out of memory" : "could not read the ROM file (%s)", romPath);
 		free_core(core);
 		return NULL;
 	}
@@ -403,6 +433,7 @@ LRCore* lr_create(const char* corePath, const char* romPath, const char* savePat
 
 	struct retro_game_info info = { romPath, core->rom, core->romSize, NULL };
 	if (!api.load_game(&info)) {
+		set_error("the core refused the ROM (%zu bytes)", core->romSize);
 		api.deinit();
 		sCore = NULL;
 		free_core(core);

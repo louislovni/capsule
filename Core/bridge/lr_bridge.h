@@ -53,6 +53,9 @@ typedef struct LRCore LRCore;
  * Returns NULL when the core can't be loaded or refuses the file. */
 LRCore* lr_create(const char* corePath, const char* romPath, const char* savePath, const char* dataDir,
                   const char* panel);
+/* Why the last lr_create failed, in plain words (empty when it didn't). */
+const char* lr_last_error(void);
+
 /* Writes the battery save and unloads. */
 void lr_destroy(LRCore* core);
 

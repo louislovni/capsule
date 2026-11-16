@@ -57,6 +57,13 @@ jobs:
           mkdir -p "$APP/Frameworks"
           cp -R build/frameworks/*.framework "$APP/Frameworks/"
           ls "$APP/Frameworks"
+          for f in "$APP"/Frameworks/*.framework; do
+            n="$(basename "$f" .framework)"
+            echo "== $n"
+            otool -L "$f/$n"
+            otool -l "$f/$n" | grep -A4 LC_BUILD_VERSION | head -5
+            file "$f/$n"
+          done
           rm -rf build/ipa && mkdir -p build/ipa/Payload
           cp -R "$APP" build/ipa/Payload/
           (cd build/ipa && zip -qry ../Capsule.ipa Payload)

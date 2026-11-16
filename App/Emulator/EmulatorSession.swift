@@ -33,6 +33,8 @@ final class EmulatorSession: ObservableObject {
     @Published private(set) var speed = 1
     @Published private(set) var isPaused = false
     @Published private(set) var loadFailed = false
+    /// The technical reason a game could not start, shown under the message.
+    @Published private(set) var loadError = ""
     /// Width / height of the frame the core draws (it changes with EXPAND and the companion).
     @Published private(set) var screenAspect: CGFloat = 1.5
     @Published var notice: String?
@@ -72,8 +74,13 @@ final class EmulatorSession: ObservableObject {
         guard thread == nil, !loadFailed else { return }
         Storage.prepare()
         try? FileManager.default.createDirectory(at: Self.dataDirectory, withIntermediateDirectories: true)
-        guard let coreURL = game.coreURL,
-              let created = lr_create(coreURL.path, game.romURL.path, game.saveURL.path, Self.dataDirectory.path, Self.panel) else {
+        guard let coreURL = game.coreURL else {
+            loadError = "Frameworks folder missing from the app"
+            loadFailed = true
+            return
+        }
+        guard let created = lr_create(coreURL.path, game.romURL.path, game.saveURL.path, Self.dataDirectory.path, Self.panel) else {
+            loadError = String(cString: lr_last_error())
             loadFailed = true
             return
         }

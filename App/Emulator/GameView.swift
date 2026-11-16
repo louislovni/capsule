@@ -161,6 +161,14 @@ struct GameView: View {
                 .font(.subheadline)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
+            if !session.loadError.isEmpty {
+                Text(session.loadError)
+                    .font(.caption.monospaced())
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+                    .padding(.top, 8)
+            }
         }
         .foregroundStyle(.white)
         .padding(32)
