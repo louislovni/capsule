@@ -21,6 +21,8 @@ Capsule n'est ni fait ni approuvé par les auteurs de PokeDaisy.
   iPhone récent.
 - **Toucher l'image** agit sur le compagnon et le HUD.
 - La barre du haut : pause, vitesse ×1 / ×2 / ×4, états de sauvegarde, redémarrage.
+- **Tourne le téléphone** pour jouer en plein écran : l'image prend toute la hauteur et les boutons
+  se posent dessus, en transparence ; toucher l'image hors des boutons agit toujours sur le jeu.
 
 ## État du projet
 

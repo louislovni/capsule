@@ -16,18 +16,11 @@ struct GameView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            toolbar
-            if session.loadFailed {
-                loadFailure
+        GeometryReader { geometry in
+            if geometry.size.width > geometry.size.height {
+                landscapeLayout
             } else {
-                ScreenRepresentable(session: session)
-                    .aspectRatio(session.screenAspect, contentMode: .fit)
-                    .overlay(alignment: .bottom) { noticeBanner }
-                PadRepresentable(isDS: session.game.isDS, onKeys: { [weak session] keys in
-                    session?.setKeys(keys)
-                })
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                portraitLayout
             }
         }
         .background(Color.black.ignoresSafeArea())
@@ -67,6 +60,55 @@ struct GameView: View {
                 }
             }
         )
+    }
+
+    // MARK: - Layouts
+
+    /// Upright: the picture across the width, the controller below it.
+    private var portraitLayout: some View {
+        VStack(spacing: 0) {
+            toolbar
+            if session.loadFailed {
+                loadFailure
+            } else {
+                screen
+                pad
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+    }
+
+    /// Sideways: the picture as large as the screen allows, the controls over it.
+    private var landscapeLayout: some View {
+        ZStack {
+            if session.loadFailed {
+                loadFailure
+            } else {
+                screen
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .ignoresSafeArea()
+                pad
+                    .ignoresSafeArea(edges: .vertical)
+            }
+            VStack {
+                toolbar
+                    .background(Color.black.opacity(0.35), in: Capsule())
+                    .fixedSize()
+                Spacer()
+            }
+        }
+    }
+
+    private var screen: some View {
+        ScreenRepresentable(session: session)
+            .aspectRatio(session.screenAspect, contentMode: .fit)
+            .overlay(alignment: .bottom) { noticeBanner }
+    }
+
+    private var pad: some View {
+        PadRepresentable(isDS: session.game.isDS, onKeys: { [weak session] keys in
+            session?.setKeys(keys)
+        })
     }
 
     // MARK: - Pieces

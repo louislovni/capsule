@@ -24,10 +24,14 @@ git -C "$SRC" submodule update -q --init --depth 1 third_party/mgba
 git -C "$SRC" submodule update -q --init --recursive --depth 1 third_party/dsperate-lr
 
 # Start from PokeDaisy's files as published, then make the two changes below.
-git -C "$SRC" checkout -q -- libretro/CMakeLists.txt linux/libretro-ds/CMakeLists.txt
+git -C "$SRC" checkout -q -- libretro/CMakeLists.txt linux/libretro-ds/CMakeLists.txt \
+	linux/dsperate/companion.h linux/dsperate/companion.cpp linux/libretro-ds/pd_ds_libretro.cpp
 git -C "$SRC/third_party/mgba" checkout -q -- CMakeLists.txt
 git -C "$SRC/third_party/dsperate-lr/DSperate" checkout -q -- \
 	src/core/crypto/aes.c src/core/cheat/analog_db.cpp src/core/io/dsi_font.cpp
+# 0. French DS carts in the DS companion (patches/pokedaisy-french-ds.patch): the
+#    addresses PokeDaisy's Android app uses for them, picked by the cart's header.
+git -C "$SRC" apply "$ROOT/patches/pokedaisy-french-ds.patch"
 # 1. Their link options are GNU ld's (version scripts): Apple's linker has none of them.
 perl -pi -e 's/^(target_link_options\(pokedaisy_\w+_libretro PRIVATE -Wl,--.*\))$/if(NOT APPLE)\n  $1\nendif()/' \
 	"$SRC/libretro/CMakeLists.txt" "$SRC/linux/libretro-ds/CMakeLists.txt"

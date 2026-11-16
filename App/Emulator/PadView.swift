@@ -133,21 +133,25 @@ final class PadView: UIView {
         button(PadKey.l)?.frame = CGRect(x: 16, y: top, width: shoulder.width, height: shoulder.height)
         button(PadKey.r)?.frame = CGRect(x: width - 16 - shoulder.width, y: top, width: shoulder.width, height: shoulder.height)
 
-        // DS: the shortcut row sits between L and R.
-        if isDS {
-            let count = CGFloat(Self.shortcuts.count)
-            let left = 16 + shoulder.width + 8
-            let available = width - 2 * left
-            let spacing: CGFloat = 6
-            let pillWidth = max((available - spacing * (count - 1)) / count, 40)
-            for (index, item) in Self.shortcuts.enumerated() {
-                shortcut(item.0)?.frame = CGRect(x: left + CGFloat(index) * (pillWidth + spacing), y: top + 4,
-                                                 width: pillWidth, height: shoulder.height - 8)
-            }
-        }
-
         let pill = CGSize(width: 76, height: 30)
         let bottom = height - pill.height - 18
+        // Held sideways the pad lies over the game: the top centre is left to the toolbar.
+        let landscape = width > height
+
+        // DS: the shortcut row sits between L and R (above START / SELECT when sideways).
+        if isDS {
+            let count = CGFloat(Self.shortcuts.count)
+            let spacing: CGFloat = 6
+            let rowHeight = shoulder.height - 8
+            let available = landscape ? min(width * 0.5, 380) : width - 2 * (16 + shoulder.width + 8)
+            let left = (width - available) / 2
+            let y = landscape ? bottom - rowHeight - 10 : top + 4
+            let pillWidth = max((available - spacing * (count - 1)) / count, 40)
+            for (index, item) in Self.shortcuts.enumerated() {
+                shortcut(item.0)?.frame = CGRect(x: left + CGFloat(index) * (pillWidth + spacing), y: y,
+                                                 width: pillWidth, height: rowHeight)
+            }
+        }
         button(PadKey.select)?.frame = CGRect(x: width / 2 - pill.width - 10, y: bottom, width: pill.width, height: pill.height)
         button(PadKey.start)?.frame = CGRect(x: width / 2 + 10, y: bottom, width: pill.width, height: pill.height)
 
@@ -182,6 +186,15 @@ final class PadView: UIView {
     }
 
     // MARK: - Touches
+
+    /// Only the controls take touches: everywhere else they reach the game underneath
+    /// (its touch screen, PokeDaisy's companion and HUD), which matters when the pad lies over it.
+    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        if dpad.frame.insetBy(dx: -18, dy: -18).contains(point) {
+            return true
+        }
+        return buttons.contains { !$0.view.isHidden && $0.view.frame.insetBy(dx: -12, dy: -12).contains(point) }
+    }
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         activeTouches.formUnion(touches)
