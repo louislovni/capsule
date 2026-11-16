@@ -44,6 +44,8 @@ static void write_test_rom(const char* path) {
 		0xE3A04402, /* mov  r4, #0x02000000 */
 		0xE3A050AB, /* mov  r5, #0xAB */
 		0xE5C45010, /* strb r5, [r4, #0x10] */
+		0xE3A05C42, /* mov  r5, #0x4200     ; SOUNDBIAS: resolution 1 (65536 Hz), like Pokemon */
+		0xE1C058B8, /* strh r5, [r0, #0x88] */
 		0xE5906130, /* ldr  r6, [r0, #0x130] ; KEYINPUT */
 		0xE5846030, /* str  r6, [r4, #0x30] */
 		0xEAFFFFFC, /* b    back to the ldr */
@@ -90,12 +92,15 @@ int main(void) {
 	CHECK(emu_revision(emu) == 3);
 	size_t romSize = 0;
 	CHECK(emu_rom_data(emu, &romSize) != NULL && romSize == 0x200);
-	CHECK(emu_audio_rate(emu) >= 8000 && emu_audio_rate(emu) <= 192000);
+	CHECK(emu_audio_rate(emu) == 48000);
+	CHECK(emu_native_audio_rate(emu) == 32768);
 
 	for (int i = 0; i < 10; ++i) {
 		emu_run_frame(emu, false);
 	}
-	const uint8_t* px = emu_video_buffer(emu);
+	printf("native rate after the game set SOUNDBIAS: %u Hz\n", emu_native_audio_rate(emu));
+	CHECK(emu_native_audio_rate(emu) == 65536);
+		const uint8_t* px = emu_video_buffer(emu);
 	printf("pixel0 = %02X %02X %02X %02X, pixel1 = %02X %02X %02X\n", px[0], px[1], px[2], px[3], px[4], px[5], px[6]);
 	CHECK(px[0] >= 0xF8 && px[1] == 0 && px[2] == 0); /* red first: R, G, B order */
 	CHECK(px[4] == 0 && px[5] == 0 && px[6] == 0);

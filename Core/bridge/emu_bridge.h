@@ -49,7 +49,10 @@ void emu_set_keys(EmuCore* emu, uint32_t keys);
 /* 240x160 pixels, 4 bytes each in memory order R, G, B, unused. */
 const uint8_t* emu_video_buffer(const EmuCore* emu);
 
+/* Rate of the audio handed out by emu_audio_read. Fixed: the bridge resamples. */
 unsigned emu_audio_rate(const EmuCore* emu);
+/* The rate the emulated GBA currently produces (changes with the game). */
+unsigned emu_native_audio_rate(EmuCore* emu);
 /* Copies up to `frames` interleaved stereo frames; returns how many were copied.
  * Safe to call from the audio thread while the emulation thread runs. */
 size_t emu_audio_read(EmuCore* emu, int16_t* out, size_t frames);

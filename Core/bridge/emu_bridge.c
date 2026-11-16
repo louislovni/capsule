@@ -10,6 +10,7 @@
 #include <mgba/core/serialize.h>
 #include <mgba/gba/core.h>
 #include <mgba-util/audio-buffer.h>
+#include <mgba-util/audio-resampler.h>
 #include <mgba-util/vfs.h>
 
 #include <fcntl.h>
@@ -18,18 +19,27 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* About 0.37 s of stereo audio at 32768 Hz. Must be a power of two. */
+/* The GBA's own sample rate changes while a game runs (32768 to 262144 Hz,
+ * set by the game through SOUNDBIAS; Pokemon switches to 65536 Hz once its
+ * sound engine starts). Everything is resampled to this fixed rate, so the
+ * app never has to follow those changes. */
+#define OUTPUT_RATE 48000
+/* About 0.34 s of stereo audio at 48 kHz. Must be a power of two. */
 #define RING_FRAMES 16384
 #define RING_MASK (RING_FRAMES - 1)
 #define AUDIO_CHUNK 2048
+/* Room for one video frame of samples at the highest GBA rate (about 4400). */
+#define CORE_AUDIO_FRAMES 8192
 
 struct EmuCore {
 	struct mCore* core;
 	uint8_t* rom;
 	size_t romSize;
 	mColor* video;
-	unsigned audioRate;
 	atomic_uint keys;
+	struct mAudioResampler resampler;
+	struct mAudioBuffer resampled;
+	bool audioReady;
 
 	/* Single producer (emulation thread), single consumer (audio thread). */
 	int16_t ring[RING_FRAMES * 2];
@@ -123,7 +133,7 @@ EmuCore* emu_create(const char* romPath, const char* savePath) {
 	mCoreLoadForeignConfig(core, &core->config);
 
 	core->setVideoBuffer(core, emu->video, EMU_VIDEO_WIDTH);
-	core->setAudioBufferSize(core, AUDIO_CHUNK);
+	core->setAudioBufferSize(core, CORE_AUDIO_FRAMES);
 
 	if (!core->loadROM(core, romFile)) {
 		romFile->close(romFile);
@@ -137,7 +147,11 @@ EmuCore* emu_create(const char* romPath, const char* savePath) {
 		}
 	}
 	core->reset(core);
-	emu->audioRate = core->audioSampleRate(core);
+
+	mAudioBufferInit(&emu->resampled, CORE_AUDIO_FRAMES, 2);
+	mAudioResamplerInit(&emu->resampler, mINTERPOLATOR_SINC);
+	mAudioResamplerSetDestination(&emu->resampler, &emu->resampled, OUTPUT_RATE);
+	emu->audioReady = true;
 	return emu;
 }
 
@@ -150,6 +164,10 @@ void emu_destroy(EmuCore* emu) {
 		core->unloadROM(core); /* flushes and closes the battery save */
 		mCoreConfigDeinit(&core->config);
 		core->deinit(core);
+	}
+	if (emu->audioReady) {
+		mAudioResamplerDeinit(&emu->resampler);
+		mAudioBufferDeinit(&emu->resampled);
 	}
 	free(emu->video);
 	free(emu->rom);
@@ -164,7 +182,12 @@ void emu_reset(EmuCore* emu) {
 }
 
 static void pump_audio(EmuCore* emu, bool discard) {
-	struct mAudioBuffer* buffer = emu->core->getAudioBuffer(emu->core);
+	struct mCore* core = emu->core;
+	/* Read the rate every frame: the game may have just changed it. */
+	mAudioResamplerSetSource(&emu->resampler, core->getAudioBuffer(core), core->audioSampleRate(core), true);
+	mAudioResamplerProcess(&emu->resampler);
+
+	struct mAudioBuffer* buffer = &emu->resampled;
 	size_t available;
 	while ((available = mAudioBufferAvailable(buffer)) > 0) {
 		if (available > AUDIO_CHUNK) {
@@ -213,7 +236,12 @@ const uint8_t* emu_video_buffer(const EmuCore* emu) {
 }
 
 unsigned emu_audio_rate(const EmuCore* emu) {
-	return emu && emu->audioRate ? emu->audioRate : 32768;
+	(void) emu;
+	return OUTPUT_RATE;
+}
+
+unsigned emu_native_audio_rate(EmuCore* emu) {
+	return emu && emu->core ? emu->core->audioSampleRate(emu->core) : 0;
 }
 
 size_t emu_audio_read(EmuCore* emu, int16_t* out, size_t frames) {
