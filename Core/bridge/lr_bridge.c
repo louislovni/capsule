@@ -22,6 +22,7 @@ struct LRCore {
 	char* savePath;
 	char* dataDir;
 	char* panel;
+	bool variablesChanged; /* the panel changed: the core reads its options again */
 	uint8_t* lastSave; /* what the battery save file holds */
 	size_t lastSaveSize;
 
@@ -163,7 +164,7 @@ static bool load_api(const char* corePath) {
 static LRCore* sCore;
 
 static void core_log(enum retro_log_level level, const char* fmt, ...) {
-	if (level < RETRO_LOG_WARN) {
+	if (level < RETRO_LOG_INFO) {
 		return;
 	}
 	va_list args;
@@ -208,7 +209,10 @@ static bool environment(unsigned cmd, void* data) {
 		return false;
 	}
 	case RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE:
-		*(bool*) data = false;
+		*(bool*) data = core && core->variablesChanged;
+		if (core) {
+			core->variablesChanged = false;
+		}
 		return true;
 	case RETRO_ENVIRONMENT_SET_GEOMETRY:
 	case RETRO_ENVIRONMENT_SET_SYSTEM_AV_INFO:
@@ -390,6 +394,19 @@ static void free_core(LRCore* core) {
 	free(core->lastSave);
 	free(core->rgba);
 	free(core);
+}
+
+void lr_set_panel(LRCore* core, const char* panel) {
+	if (!core || !panel || (core->panel && strcmp(core->panel, panel) == 0)) {
+		return;
+	}
+	char* copy = copy_string(panel);
+	if (!copy) {
+		return;
+	}
+	free(core->panel);
+	core->panel = copy;
+	core->variablesChanged = true;
 }
 
 LRCore* lr_create(const char* corePath, const char* romPath, const char* savePath, const char* dataDir,

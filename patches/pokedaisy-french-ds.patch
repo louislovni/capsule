@@ -121,10 +121,10 @@ index 38cba3a..012243b 100644
  // is the same ROM as, so every digest check downstream sees one id per game.
  const char* ds_canonical_sha1(const char* sha1);
 diff --git a/linux/libretro-ds/pd_ds_libretro.cpp b/linux/libretro-ds/pd_ds_libretro.cpp
-index 83555ce..e092aa0 100644
+index 83555ce..1ca5ffe 100644
 --- a/linux/libretro-ds/pd_ds_libretro.cpp
 +++ b/linux/libretro-ds/pd_ds_libretro.cpp
-@@ -999,6 +999,17 @@ RETRO_API bool retro_load_game(const retro_game_info* info){
+@@ -999,6 +999,19 @@ RETRO_API bool retro_load_game(const retro_game_info* info){
      pd_ds::companionGame=ds_companion_game(hex);
      pd_ds::soulSilver=!std::strcmp(hex,pd_ds_data::soulSilverSha1);
      pd_ds::battleStyle=ds_battle_style(hex);
@@ -133,10 +133,12 @@ index 83555ce..e092aa0 100644
 +    const DsGame byHeader=ds_select_cart(reinterpret_cast<const char*>(rom.data()+12),rom[30],&frenchSilver);
 +    if(pd_ds::companionGame==DsGame::Unsupported&&byHeader!=DsGame::Unsupported){
 +      pd_ds::companionGame=byHeader;pd_ds::soulSilver=frenchSilver;
-+      // The battle strip, by family; Platinum's needs its US cart's panel art, so it stays off there.
++      // The battle strip, by family. Platinum's copies the cart's own command art when it matches the US layout and
++      // draws its plates otherwise: either way the commands stay on the one screen.
 +      pd_ds::battleStyle=byHeader==DsGame::Johto?ds_battle_style(frenchSilver?pd_ds_data::soulSilverSha1:pd_ds_data::heartGoldSha1):
 +        byHeader==DsGame::Black||byHeader==DsGame::White?ds_battle_style(pd_ds_data::blackSha1):
-+        byHeader==DsGame::Black2||byHeader==DsGame::White2?ds_battle_style(pd_ds_data::black2Sha1):nullptr;
++        byHeader==DsGame::Black2||byHeader==DsGame::White2?ds_battle_style(pd_ds_data::black2Sha1):
++        &ds_platinum_battle_style;
 +      pd_ds::game=pk_nds_field_game(reinterpret_cast<const char*>(rom.data()+12),rom[30]);
 +    }
      ds_battle_set_base_pp({});

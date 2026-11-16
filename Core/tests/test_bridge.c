@@ -4,6 +4,7 @@
 #include "lr_bridge.h"
 
 #include <stdio.h>
+#include <sys/stat.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -221,6 +222,35 @@ int main(void) {
 		lr_run_frame(core, false);
 		CHECK(lr_video_width(core) >= 240);
 		lr_destroy(core);
+	}
+
+	/* EXPAND on a phone panel, then the phone turned: the canvas follows. */
+	{
+		char dir[1024], ini[1100];
+		snprintf(dir, sizeof dir, "%s/pokedaisy", data);
+		mkdir(dir, 0755);
+		snprintf(ini, sizeof ini, "%s/settings.ini", dir);
+		FILE* f = fopen(ini, "w");
+		CHECK(f != NULL);
+		if (f) {
+			fputs("aspect=1\n", f);
+			fclose(f);
+		}
+		core = lr_create(GBC_CORE, rom, sav, data, "2556x1179");
+		CHECK(core != NULL);
+		if (core) {
+			for (int i = 0; i < 5; ++i) lr_run_frame(core, false);
+			unsigned w = lr_video_width(core), h = lr_video_height(core);
+			printf("landscape panel frame %ux%u\n", w, h);
+			CHECK(w * 100 / h > 200); /* about the phone's 2.17:1 */
+			lr_set_panel(core, "1179x884");
+			for (int i = 0; i < 5; ++i) lr_run_frame(core, false);
+			w = lr_video_width(core), h = lr_video_height(core);
+			printf("portrait panel frame %ux%u\n", w, h);
+			CHECK(w * 100 / h > 125 && w * 100 / h < 140); /* about 4:3 */
+			lr_destroy(core);
+		}
+		remove(ini);
 	}
 
 	free(back);

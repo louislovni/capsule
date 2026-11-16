@@ -53,6 +53,9 @@ typedef struct LRCore LRCore;
  * Returns NULL when the core can't be loaded or refuses the file. */
 LRCore* lr_create(const char* corePath, const char* romPath, const char* savePath, const char* dataDir,
                   const char* panel);
+/* A new screen size hint (the phone turned). Call from the thread that runs the
+ * frames; a GBA game's canvas follows it within a frame or two. */
+void lr_set_panel(LRCore* core, const char* panel);
 /* Why the last lr_create failed, in plain words (empty when it didn't). */
 const char* lr_last_error(void);
 

@@ -24,7 +24,7 @@ git -C "$SRC" submodule update -q --init --depth 1 third_party/mgba
 git -C "$SRC" submodule update -q --init --recursive --depth 1 third_party/dsperate-lr
 
 # Start from PokeDaisy's files as published, then make the two changes below.
-git -C "$SRC" checkout -q -- libretro/CMakeLists.txt linux/libretro-ds/CMakeLists.txt \
+git -C "$SRC" checkout -q -- libretro/CMakeLists.txt libretro/pd_libretro.c linux/libretro-ds/CMakeLists.txt \
 	linux/dsperate/companion.h linux/dsperate/companion.cpp linux/libretro-ds/pd_ds_libretro.cpp
 git -C "$SRC/third_party/mgba" checkout -q -- CMakeLists.txt
 git -C "$SRC/third_party/dsperate-lr/DSperate" checkout -q -- \
@@ -32,6 +32,9 @@ git -C "$SRC/third_party/dsperate-lr/DSperate" checkout -q -- \
 # 0. French DS carts in the DS companion (patches/pokedaisy-french-ds.patch): the
 #    addresses PokeDaisy's Android app uses for them, picked by the cart's header.
 git -C "$SRC" apply "$ROOT/patches/pokedaisy-french-ds.patch"
+#    And the GBA canvas follows the phone's orientation (patches/pokedaisy-panel.patch):
+#    the core reads its panel option again when the app turns the phone.
+git -C "$SRC" apply "$ROOT/patches/pokedaisy-panel.patch"
 # 1. Their link options are GNU ld's (version scripts): Apple's linker has none of them.
 perl -pi -e 's/^(target_link_options\(pokedaisy_\w+_libretro PRIVATE -Wl,--.*\))$/if(NOT APPLE)\n  $1\nendif()/' \
 	"$SRC/libretro/CMakeLists.txt" "$SRC/linux/libretro-ds/CMakeLists.txt"

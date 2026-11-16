@@ -8,6 +8,8 @@ struct GameView: View {
 
     @State private var staleStateSlot: Int?
     @State private var userPaused = false
+    /// Sideways forced by the plein écran button (works with the rotation lock on).
+    @State private var forcedLandscape = false
 
     private static let stateSlots = [1, 2, 3]
 
@@ -17,18 +19,27 @@ struct GameView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            if geometry.size.width > geometry.size.height {
-                landscapeLayout
-            } else {
-                portraitLayout
+            let isLandscape = geometry.size.width > geometry.size.height
+            Group {
+                if isLandscape {
+                    landscapeLayout
+                } else {
+                    portraitLayout
+                }
             }
+            .onAppear { session.start(landscape: isLandscape) }
+            .onChange(of: isLandscape) { session.setLandscape($0) }
         }
         .background(Color.black.ignoresSafeArea())
         .preferredColorScheme(.dark)
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
-        .onAppear { session.start() }
-        .onDisappear { session.stop() }
+        .onDisappear {
+            session.stop()
+            if forcedLandscape {
+                Orientation.force(landscape: false)
+            }
+        }
         .onChange(of: scenePhase) { phase in
             if phase == .active {
                 session.setPaused(userPaused)
@@ -125,6 +136,15 @@ struct GameView: View {
             Spacer()
 
             Button {
+                forcedLandscape.toggle()
+                Orientation.force(landscape: forcedLandscape)
+            } label: {
+                Label(forcedLandscape ? "Quitter le plein écran" : "Plein écran",
+                      systemImage: forcedLandscape ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                    .labelStyle(.iconOnly)
+            }
+
+            Button {
                 userPaused.toggle()
                 session.setPaused(userPaused)
             } label: {
@@ -144,6 +164,11 @@ struct GameView: View {
 
 
             Menu {
+                if let info = session.companionInfo {
+                    Section("PokeDaisy") {
+                        Text(info)
+                    }
+                }
                 Section("Enregistrer un état") {
                     ForEach(Self.stateSlots, id: \.self) { slot in
                         Button("Emplacement \(slot)") {
@@ -181,11 +206,15 @@ struct GameView: View {
                 .font(.footnote.weight(.medium))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .background(.black.opacity(0.7), in: Capsule())
+                .background(.black.opacity(0.7), in: RoundedRectangle(cornerRadius: 12))
                 .foregroundStyle(.white)
                 .padding(.bottom, 8)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 12)
                 .task(id: notice) {
-                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                    // Long messages (PokeDaisy's verdict on the ROM) stay long enough to be read.
+                    let seconds: UInt64 = notice.count > 60 ? 8 : 2
+                    try? await Task.sleep(nanoseconds: seconds * 1_000_000_000)
                     if session.notice == notice {
                         session.notice = nil
                     }

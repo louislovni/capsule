@@ -21,8 +21,16 @@ Capsule n'est ni fait ni approuvé par les auteurs de PokeDaisy.
   iPhone récent.
 - **Toucher l'image** agit sur le compagnon et le HUD.
 - La barre du haut : pause, vitesse ×1 / ×2 / ×4, états de sauvegarde, redémarrage.
-- **Tourne le téléphone** pour jouer en plein écran : l'image prend toute la hauteur et les boutons
+- **Tourne le téléphone**, ou touche le bouton plein écran de la barre (il marche même avec le
+  verrouillage de rotation), pour jouer en plein écran : l'image prend tout l'écran et les boutons
   se posent dessus, en transparence ; toucher l'image hors des boutons agit toujours sur le jeu.
+- **GBA** : PokeDaisy démarre en EXPAND, la carte dessinée jusqu'aux bords de l'écran comme sur
+  Android (réglable dans les réglages du compagnon : ORIGINAL, EXPAND, ZOOM OUT). Le compagnon, le HUD
+  et EXPAND ne marchent que sur les ROM que PokeDaisy reconnaît à leur empreinte exacte : au lancement,
+  Capsule affiche son verdict (aussi dans le menu « … »), et le journal des cœurs est dans
+  `PokeDaisy/journal.txt`.
+- **DS en combat** : en mode un seul écran, les commandes et les attaques s'affichent sous le combat
+  (Platine, HeartGold / SoulSilver, Noire / Blanche 1 et 2, y compris en français).
 
 ## État du projet
 

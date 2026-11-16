@@ -38,6 +38,12 @@ final class EmulatorSession: ObservableObject {
     /// Width / height of the frame the core draws (it changes with EXPAND and the companion).
     @Published private(set) var screenAspect: CGFloat = 1.5
     @Published var notice: String?
+    /// What PokeDaisy made of the game when it loaded (shown once, then kept in the menu).
+    @Published private(set) var companionInfo: String?
+    @Published private(set) var companionSupported = true
+
+    /// Sideways or upright: the GBA core lays its picture out for the matching panel.
+    private(set) var landscape = false
 
     let game: Game
     /// The layer frames are drawn into. Set by the screen view.
@@ -59,9 +65,36 @@ final class EmulatorSession: ObservableObject {
     /// Where the core keeps its own files (the companion's settings).
     static let dataDirectory = Storage.documents.appendingPathComponent("PokeDaisy", isDirectory: true)
 
-    /// The screen size the core is told about: it places its companion to fit.
-    static var panel: String {
-        UserDefaults.standard.string(forKey: "pokedaisyPanel") ?? "auto"
+    /// A fixed panel set by hand (UserDefaults "pokedaisyPanel"), or nil to follow the phone.
+    private static var panelOverride: String? {
+        UserDefaults.standard.string(forKey: "pokedaisyPanel")
+    }
+
+    /// The screen size the core is told about: it places its picture and companion to fit.
+    var panel: String {
+        Self.panelOverride ?? Orientation.panel(landscape: landscape)
+    }
+
+    /// PokeDaisy's companion settings start with EXPAND (the map drawn to the edges of
+    /// a wide screen, as on Android) rather than the game's bare picture. Only when
+    /// there are no settings yet: a choice made in the companion stays.
+    static func prepareCompanionSettings() {
+        let folder = dataDirectory.appendingPathComponent("pokedaisy", isDirectory: true)
+        let file = folder.appendingPathComponent("settings.ini")
+        guard !FileManager.default.fileExists(atPath: file.path) else { return }
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try? Data("aspect=1\n".utf8).write(to: file)
+    }
+
+    /// The phone turned (or the plein écran button turned it).
+    func setLandscape(_ value: Bool) {
+        guard value != landscape else { return }
+        landscape = value
+        guard !game.isDS, Self.panelOverride == nil else { return }
+        let panel = self.panel
+        perform { core in
+            lr_set_panel(core, panel)
+        }
     }
 
     init(game: Game) {
@@ -70,8 +103,9 @@ final class EmulatorSession: ObservableObject {
 
     // MARK: - Lifecycle (main thread)
 
-    func start() {
+    func start(landscape: Bool) {
         guard thread == nil, !loadFailed else { return }
+        self.landscape = landscape
         Storage.prepare()
         try? FileManager.default.createDirectory(at: Self.dataDirectory, withIntermediateDirectories: true)
         guard let coreURL = game.coreURL else {
@@ -79,10 +113,16 @@ final class EmulatorSession: ObservableObject {
             loadFailed = true
             return
         }
-        guard let created = lr_create(coreURL.path, game.romURL.path, game.saveURL.path, Self.dataDirectory.path, Self.panel) else {
+        let logMark = CoreLog.mark()
+        guard let created = lr_create(coreURL.path, game.romURL.path, game.saveURL.path, Self.dataDirectory.path, panel) else {
             loadError = String(cString: lr_last_error())
             loadFailed = true
             return
+        }
+        if let status = CoreLog.companionStatus(lines: CoreLog.lines(since: logMark), isDS: game.isDS) {
+            companionInfo = status.text
+            companionSupported = status.supported
+            notice = status.text
         }
         core = created
         alive = true
