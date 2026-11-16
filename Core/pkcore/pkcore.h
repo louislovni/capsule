@@ -333,6 +333,125 @@ bool pk_gb_first_free(const PKGBSave* save, int* box);
 size_t pk_gb_save_size(const PKGBSave* save);
 size_t pk_gb_save_write(const PKGBSave* save, uint8_t* out, size_t outSize);
 
+/* ---------- DS games: generations 4 and 5 ---------- */
+
+enum { PK_NDS_DP = 1, PK_NDS_PT = 2, PK_NDS_HGSS = 3, PK_NDS_BW = 4, PK_NDS_B2W2 = 5 };
+
+/* A boxed Pokemon of the DS games, as stored in the save (encrypted). The bank
+ * keeps exactly these bytes. */
+#define PK_NDS_MON_SIZE 136
+#define PK_NDS_SAVE_SIZE 0x80000
+
+typedef struct {
+	bool valid; /* checksum matches and a species is present */
+	uint8_t generation; /* 4 or 5 */
+	bool isEgg;
+	bool isShiny;
+	bool isNicknamed;
+	bool fatefulEncounter;
+	bool hiddenAbility; /* generation 5 */
+	uint16_t species; /* National Pokedex number */
+	uint8_t form;
+	uint8_t gender; /* 0 male, 1 female, 2 genderless */
+	uint16_t heldItem;
+	uint16_t tid, sid;
+	uint32_t experience;
+	uint32_t personality;
+	uint8_t friendship;
+	uint8_t ability;
+	uint8_t markings;
+	uint8_t language;
+	uint8_t evs[6]; /* HP, Atk, Def, Spe, SpA, SpD */
+	uint8_t ivs[6];
+	uint8_t contest[6];
+	uint16_t moves[4];
+	uint8_t pp[4];
+	uint8_t ppUps[4];
+	uint8_t nature;
+	uint8_t originGame;
+	uint16_t metLocation, eggLocation;
+	uint8_t metYear, metMonth, metDay; /* year since 2000 */
+	uint8_t eggYear, eggMonth, eggDay;
+	uint8_t pokerus;
+	uint8_t ball; /* 1 Master .. 16 Cherish, 17..24 Apricorn balls, 25 Dream */
+	uint8_t metLevel;
+	uint8_t otGender;
+	uint8_t encounterType;
+	uint8_t hiddenPowerType; /* 0 Fighting .. 15 Dark */
+	uint8_t hiddenPowerPower;
+	unsigned ribbonCount;
+	char nickname[PK_TEXT_UTF8];
+	char otName[PK_TEXT_UTF8];
+} PKNDSMon;
+
+/* Decodes a 136-byte stored structure. generation is 4 or 5. */
+bool pk_nds_mon_decode(int generation, const uint8_t* raw, size_t size, PKNDSMon* out);
+/* True when the slot holds no Pokemon (any encryption of an empty structure). */
+bool pk_nds_mon_is_empty(const uint8_t* raw136);
+/* Encrypts / decrypts a 136-byte structure in place (shuffled order kept as stored). */
+void pk_nds_crypt(uint8_t* raw136);
+/* Builds the stored form of an empty slot (what the games write). */
+void pk_nds_empty_slot(uint8_t* raw136);
+
+typedef struct {
+	uint8_t stats[6]; /* HP, Atk, Def, Spe, SpA, SpD */
+	uint8_t type1, type2; /* 0 Normal .. 16 Dark */
+	uint8_t genderRatio; /* 0 always male, 254 always female, 255 genderless */
+	uint8_t growthRate; /* as PKBaseStats */
+} PKNDSBase;
+
+extern const PKNDSBase pk_nds_base[650]; /* by Pokedex number, generation 5 values */
+extern const char* const pk_nds_species_names[650];
+extern const char* const pk_nds_move_names[560];
+extern const char* const pk_nds_ability_names[165];
+extern const char* const pk_nds_item_names[639];
+extern const char* const pk_nds_type_names[17];
+extern const uint16_t pk_nds_charset[];
+extern const size_t pk_nds_charset_count;
+/* Name of a met or egg location, NULL when unknown. */
+const char* pk_nds_location_name(int generation, unsigned location);
+/* Range-checked lookups, NULL when unknown. */
+const char* pk_nds_species_name(unsigned dex);
+const char* pk_nds_move_name(unsigned move);
+const char* pk_nds_ability_name(unsigned ability);
+const char* pk_nds_item_name(unsigned item);
+const char* pk_nds_type_name(unsigned type);
+bool pk_nds_base_stats(unsigned dex, PKNDSBase* out);
+/* Name of a ball by its PKNDSMon.ball value. */
+const char* pk_nds_ball_name(unsigned ball);
+/* Level of an experience total, with the species' growth rate. */
+uint8_t pk_nds_level(unsigned dex, uint32_t exp);
+/* Stats at a level: HP, Atk, Def, Spe, SpA, SpD. False when the species is unknown. */
+bool pk_nds_calc_stats(unsigned dex, const uint8_t ivs[6], const uint8_t evs[6], unsigned level, unsigned nature,
+                       uint16_t out[6]);
+
+typedef struct PKNDSSave PKNDSSave;
+
+/* Opens a 512 KB DS save of Diamond/Pearl/Platinum, HeartGold/SoulSilver,
+ * Black/White or Black 2/White 2. Refuses (NULL, *err set) anything whose
+ * layout or checksums do not match: the bank never writes to a save it does
+ * not fully recognise. */
+PKNDSSave* pk_nds_save_open(const uint8_t* data, size_t size, int* err);
+void pk_nds_save_free(PKNDSSave* save);
+int pk_nds_save_game(const PKNDSSave* save); /* PK_NDS_* */
+int pk_nds_save_generation(const PKNDSSave* save); /* 4 or 5 */
+void pk_nds_save_trainer_name(const PKNDSSave* save, char* out, size_t outSize);
+uint16_t pk_nds_save_trainer_id(const PKNDSSave* save);
+/* Boxes the player can use (Black/White unlock theirs as they fill up). */
+unsigned pk_nds_box_count(const PKNDSSave* save);
+int pk_nds_current_box(const PKNDSSave* save);
+void pk_nds_box_name(const PKNDSSave* save, int box, char* out, size_t outSize);
+/* Copies the stored 136 bytes; false when the slot is empty or out of range. */
+bool pk_nds_box_mon(const PKNDSSave* save, int box, int slot, uint8_t* raw136);
+/* Writes a Pokemon into an empty slot. raw must decode cleanly. */
+int pk_nds_put_box_mon(PKNDSSave* save, int box, int slot, const uint8_t* raw136);
+int pk_nds_clear_box_mon(PKNDSSave* save, int box, int slot);
+/* First empty slot, starting with the box selected in the game. */
+bool pk_nds_first_empty(const PKNDSSave* save, int* box, int* slot);
+size_t pk_nds_save_size(const PKNDSSave* save);
+/* Writes the save with fresh checksums. Returns the bytes written, 0 if out is too small. */
+size_t pk_nds_save_write(const PKNDSSave* save, uint8_t* out, size_t outSize);
+
 #ifdef __cplusplus
 }
 #endif

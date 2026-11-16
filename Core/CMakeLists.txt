@@ -33,6 +33,8 @@ add_library(pkcore OBJECT
 	pkcore/pk_info.c
 	pkcore/pk_gb.c
 	pkcore/pk_gbdata_gen.c
+	pkcore/pk_nds.c
+	pkcore/pk_ndsdata_gen.c
 	pkcore/pk_profiles_gen.c)
 target_include_directories(pkcore PUBLIC pkcore)
 target_compile_options(pkcore PRIVATE -Wall -Wextra)
@@ -55,6 +57,12 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
 	target_link_libraries(test_pkgb PRIVATE capsulecore m)
 	target_include_directories(test_pkgb PRIVATE pkcore)
 	add_test(NAME pkgb COMMAND test_pkgb)
+
+	add_executable(test_pknds tests/test_pknds.c)
+	target_link_libraries(test_pknds PRIVATE capsulecore m)
+	target_include_directories(test_pknds PRIVATE pkcore)
+	target_compile_definitions(test_pknds PRIVATE TEST_DATA="${CMAKE_CURRENT_SOURCE_DIR}/tests/data")
+	add_test(NAME pknds COMMAND test_pknds)
 
 	add_executable(test_bridge tests/test_bridge.c)
 	target_link_libraries(test_bridge PRIVATE capsulecore m pthread ${CMAKE_DL_LIBS})

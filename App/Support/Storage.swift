@@ -49,8 +49,8 @@ struct Game: Identifiable, Hashable {
 
     var isDS: Bool { romURL.pathExtension.lowercased() == "nds" }
 
-    /// The Pokémon bank knows generations 1 to 3 (Game Boy and GBA games), not the DS ones yet.
-    var supportsPokemonTools: Bool { !isDS && Self.romExtensions.contains(romURL.pathExtension.lowercased()) }
+    /// The Pokémon bank knows every game here: generations 1 to 5.
+    var supportsPokemonTools: Bool { Self.romExtensions.contains(romURL.pathExtension.lowercased()) }
 
     /// PokeDaisy's core for this game: a framework inside the app.
     var coreURL: URL? {

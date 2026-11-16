@@ -45,3 +45,9 @@ pret decompilation projects  -  https://github.com/pret
 Capsule contains no game, no BIOS and no game asset. Pokemon and Game Boy
 Advance are trademarks of their respective owners; this project is not
 affiliated with or endorsed by them.
+
+PKHeX  -  https://github.com/kwsch/PKHeX
+  GPL v3. Reference for the DS save layouts (generations 4 and 5); French
+  names of species, moves, abilities, items, types and locations, and the
+  generation 4 character table (tools/gen_ndsdata.py); four sample Pokemon
+  files used by Core/tests/test_pknds.c.

@@ -8,7 +8,7 @@ struct MonDetails: Codable, Equatable {
         var pp: Int
     }
 
-    /// 1 or 2 for the Game Boy games; nil for the GBA games (generation 3).
+    /// 1 or 2 for the Game Boy games, 4 or 5 for the DS games; nil for the GBA games (generation 3).
     var generation: Int?
     var species: Int
     var speciesName: String
@@ -54,6 +54,10 @@ struct MonDetails: Codable, Equatable {
     var metLevel: Int?
     var metTime: String?
     var ball: String?
+    /// DS games only: day of the encounter, and where and when the egg was received.
+    var metDate: String?
+    var eggLocation: String?
+    var eggDate: String?
     var originGame: String
     var language: String?
 
@@ -438,6 +442,143 @@ struct MonDetails: Codable, Equatable {
     var natureEffect: String {
         guard let up = natureRaised, let down = natureLowered else { return "neutre" }
         return "+\(Self.statNames[up]), −\(Self.statNames[down])"
+    }
+}
+
+// MARK: - DS games (generations 4 and 5)
+
+extension MonDetails {
+    static func ndsSpeciesName(_ dex: Int) -> String {
+        pk_nds_species_name(UInt32(dex)).map { String(cString: $0) } ?? "Pokémon n°\(dex)"
+    }
+
+    static let ndsGameNames = [
+        1: "Saphir", 2: "Rubis", 3: "Émeraude", 4: "Rouge Feu", 5: "Vert Feuille", 7: "Or HeartGold",
+        8: "Argent SoulSilver", 10: "Diamant", 11: "Perle", 12: "Platine", 15: "Colosseum / XD",
+        20: "Blanche", 21: "Noire", 22: "Blanche 2", 23: "Noire 2",
+    ]
+
+    static let ndsLanguageNames = [
+        1: "Japonais", 2: "Anglais", 3: "Français", 4: "Italien", 5: "Allemand", 7: "Espagnol", 8: "Coréen",
+    ]
+
+    /// Decodes a 136-byte structure of the DS games, as kept in a save and in the bank.
+    static func makeNDS(generation: Int, raw: Data, sourceGame: String) -> MonDetails? {
+        var mon = PKNDSMon()
+        let ok = raw.withUnsafeBytes { bytes in
+            pk_nds_mon_decode(Int32(generation), bytes.bindMemory(to: UInt8.self).baseAddress, bytes.count, &mon)
+        }
+        guard ok else { return nil }
+        return MonDetails(nds: mon, sourceGame: sourceGame)
+    }
+
+    private static func ndsDate(year: UInt8, month: UInt8, day: UInt8) -> String? {
+        guard month >= 1, month <= 12, day >= 1, day <= 31 else { return nil }
+        return String(format: "%02d/%02d/%04d", Int(day), Int(month), 2000 + Int(year))
+    }
+
+    private static func ndsLocation(generation: Int, _ location: UInt16) -> String? {
+        guard location != 0 else { return nil }
+        return pk_nds_location_name(Int32(generation), UInt32(location)).map { String(cString: $0) }
+            ?? "Lieu n°\(location)"
+    }
+
+    private init(nds mon: PKNDSMon, sourceGame: String) {
+        let generation = Int(mon.generation)
+        let dex = Int(mon.species)
+        var baseValue = PKNDSBase()
+        let base: PKNDSBase? = pk_nds_base_stats(UInt32(dex), &baseValue) ? baseValue : nil
+        let ivList = bytes(of: mon.ivs, count: 6)
+        let evList = bytes(of: mon.evs, count: 6)
+
+        self.generation = generation
+        statLabels = nil
+        metTime = nil
+        species = dex
+        speciesName = Self.ndsSpeciesName(dex)
+        nationalDex = dex
+        nickname = stringFromCField(mon.nickname)
+        isEgg = mon.isEgg
+        isShiny = mon.isShiny
+        switch mon.gender {
+        case 0: gender = "♂"
+        case 1: gender = "♀"
+        default: gender = nil
+        }
+
+        experience = Int(mon.experience)
+        level = Int(pk_nds_level(UInt32(dex), mon.experience))
+        if let base = base, level > 0, level < 100 {
+            experienceToNext = max(Int(pk_exp_for_level(base.growthRate, UInt32(level + 1))) - experience, 0)
+        } else {
+            experienceToNext = nil
+        }
+
+        let natureIndex = Int(mon.nature) % 25
+        nature = Self.natureNames[natureIndex]
+        var raised: Int32 = -1
+        var lowered: Int32 = -1
+        pk_nature_effect(UInt32(natureIndex), &raised, &lowered)
+        natureRaised = raised >= 0 ? Int(raised) + 1 : nil
+        natureLowered = lowered >= 0 ? Int(lowered) + 1 : nil
+
+        let abilityName = pk_nds_ability_name(UInt32(mon.ability)).map { String(cString: $0) } ?? "Talent n°\(mon.ability)"
+        ability = mon.hiddenAbility ? "\(abilityName) (talent caché)" : abilityName
+        heldItem = mon.heldItem == 0 ? nil
+            : pk_nds_item_name(UInt32(mon.heldItem)).map { String(cString: $0) } ?? "Objet n°\(mon.heldItem)"
+        if let base = base {
+            let typeName = { (index: UInt8) -> String in
+                pk_nds_type_name(UInt32(index)).map { String(cString: $0) } ?? "?"
+            }
+            types = base.type1 == base.type2 ? [typeName(base.type1)] : [typeName(base.type1), typeName(base.type2)]
+        } else {
+            types = []
+        }
+        friendship = mon.isEgg ? nil : Int(mon.friendship)
+        hiddenPower = "\(Self.hiddenPowerTypes[Int(mon.hiddenPowerType) % 16]) \(mon.hiddenPowerPower)"
+
+        ivs = ivList.map(Int.init)
+        evs = evList.map(Int.init)
+        var ivBytes = ivList
+        var evBytes = evList
+        var out = [UInt16](repeating: 0, count: 6)
+        if level > 0, pk_nds_calc_stats(UInt32(dex), &ivBytes, &evBytes, UInt32(level), UInt32(natureIndex), &out) {
+            stats = out.map(Int.init)
+        } else {
+            stats = nil
+        }
+        currentHP = nil
+        status = nil
+
+        let moveIDs = words(of: mon.moves, count: 4)
+        let pp = bytes(of: mon.pp, count: 4)
+        moves = zip(moveIDs, pp).compactMap { id, pp in
+            id == 0 ? nil : Move(name: pk_nds_move_name(UInt32(id)).map { String(cString: $0) } ?? "Capacité n°\(id)",
+                                 pp: Int(pp))
+        }
+
+        trainerName = stringFromCField(mon.otName)
+        trainerGender = mon.otGender == 1 ? "♀" : "♂"
+        trainerID = Int(mon.tid)
+        secretID = Int(mon.sid)
+
+        metLocation = Self.ndsLocation(generation: generation, mon.metLocation)
+        metLevel = Int(mon.metLevel)
+        metDate = Self.ndsDate(year: mon.metYear, month: mon.metMonth, day: mon.metDay)
+        eggLocation = Self.ndsLocation(generation: generation, mon.eggLocation)
+        eggDate = mon.eggLocation != 0 ? Self.ndsDate(year: mon.eggYear, month: mon.eggMonth, day: mon.eggDay) : nil
+        ball = pk_nds_ball_name(UInt32(mon.ball)).map { String(cString: $0) }
+        originGame = Self.ndsGameNames[Int(mon.originGame)] ?? sourceGame
+        language = Self.ndsLanguageNames[Int(mon.language)]
+
+        if mon.pokerus == 0 {
+            pokerus = nil
+        } else {
+            pokerus = mon.pokerus & 0x0F != 0 ? "Porteur" : "Guéri (immunisé)"
+        }
+        ribbons = Int(mon.ribbonCount)
+        contest = bytes(of: mon.contest, count: 6).map(Int.init)
+        personality = mon.personality
     }
 }
 

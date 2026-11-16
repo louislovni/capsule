@@ -26,15 +26,18 @@ Capsule n'est ni fait ni approuvé par les auteurs de PokeDaisy.
 
 ## État du projet
 
-- **Banque, fiches, sauvegardes Gen 1 à 3** : tests automatiques sur données fabriquées ; la banque
+- **Banque, fiches, sauvegardes Gen 1 à 5** : tests automatiques sur données fabriquées (et, pour la DS,
+  sur des Pokémon réels de la suite de tests de PKHeX) ; la banque refuse toute sauvegarde dont les
+  sommes de contrôle ne collent pas, et
   fait une copie de secours de chaque sauvegarde avant d'y écrire (dossier `Backups`). Garde quand même
   ta propre copie de tes `.sav`.
 - **Hôte du cœur PokeDaisy** : testé sous Linux sur des ROM de test (image, son, états, sauvegarde) ;
   le compagnon lui-même n'a pas encore tourné sur iPhone avec un vrai jeu.
 - **DS** : le cœur DS de PokeDaisy (DSperate) passe ses propres tests sans JIT et tourne dans l'hôte
-  sous Linux. Son compagnon reconnaît Platine (US rév. 1), HeartGold / SoulSilver (US) et
-  Noir / Blanc 1 et 2 (US / Europe) en anglais ; les autres versions se jouent sans compagnon.
-  La banque ne gère pas encore la DS.
+  sous Linux. Son compagnon reconnaît Platine, HeartGold / SoulSilver et Noire / Blanche 1 et 2 en
+  anglais et en français (textes du compagnon en anglais) ; les autres versions se jouent sans.
+  La banque gère Diamant / Perle / Platine, HeartGold / SoulSilver (4e génération) et Noire / Blanche
+  1 et 2 (5e génération) ; un Pokémon ne passe qu'entre jeux de la même génération.
 
 ## Obtenir l'IPA sans Mac
 

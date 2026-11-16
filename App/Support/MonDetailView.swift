@@ -85,7 +85,7 @@ struct MonDetailView: View {
             if let nature = details.nature {
                 row("Nature", "\(nature) (\(details.natureEffect))")
             }
-            if details.generation == nil {
+            if !isGameBoy {
                 row("Talent", details.ability ?? "Inconnu")
             }
             if details.generation != 1 {
@@ -171,10 +171,19 @@ struct MonDetailView: View {
             if let time = details.metTime {
                 row("Moment", time)
             }
+            if let date = details.metDate {
+                row(details.metLevel == 0 ? "Date d'éclosion" : "Date de rencontre", date)
+            }
+            if let eggLocation = details.eggLocation {
+                row("Œuf reçu à", eggLocation)
+            }
+            if let eggDate = details.eggDate {
+                row("Œuf reçu le", eggDate)
+            }
             if let ball = details.ball {
                 row("Ball", ball)
             }
-            row(details.generation == nil ? "Jeu d'origine" : "Jeu", details.originGame)
+            row(isGameBoy ? "Jeu" : "Jeu d'origine", details.originGame)
             if let language = details.language {
                 row("Langue", language)
             }
@@ -224,7 +233,7 @@ struct MonDetailView: View {
 
     // MARK: - Helpers
 
-    private var isGameBoy: Bool { details.generation != nil }
+    private var isGameBoy: Bool { details.generation == 1 || details.generation == 2 }
     private var maxIV: Int { isGameBoy ? 15 : 31 }
     private var statLabels: [String] { details.statLabels ?? MonDetails.statNames }
 
@@ -236,6 +245,8 @@ struct MonDetailView: View {
             return details.metLocation == nil
                 ? "Or et Argent n'enregistrent pas les conditions de capture ; seul Cristal garde le lieu, le niveau et le moment. Aucun jeu Game Boy ne garde la date."
                 : "Cristal garde le lieu, le niveau et le moment de la capture, mais pas la date."
+        case 4, 5:
+            return "Les jeux DS enregistrent le lieu, le niveau et la date de la rencontre (selon l'horloge de la console)."
         default:
             return "Les jeux GBA n'enregistrent pas la date de capture : elle n'existe dans aucune sauvegarde de cette génération."
         }

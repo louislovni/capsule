@@ -17,7 +17,7 @@ struct BankEntry: Codable, Identifiable, Equatable {
     /// Details worked out with the ROM of the game it came from, when deposited.
     /// Missing for Pokémon deposited by the first version of the app.
     var details: MonDetails?
-    /// 1 or 2 for Game Boy Pokémon; nil for GBA ones (generation 3).
+    /// 1 or 2 for Game Boy Pokémon, 4 or 5 for DS ones; nil for GBA ones (generation 3).
     var generation: Int?
 
     var effectiveGeneration: Int { generation ?? 3 }
@@ -27,6 +27,7 @@ struct BankEntry: Codable, Identifiable, Equatable {
         switch generation {
         case 1: return Int(PK_GB1_BLOB)
         case 2: return Int(PK_GB2_BLOB)
+        case 4, 5: return NDSSaveFile.monSize
         default: return SaveFile.monSize
         }
     }
@@ -35,6 +36,9 @@ struct BankEntry: Codable, Identifiable, Equatable {
     func resolvedDetails() -> MonDetails? {
         if let details = details {
             return details
+        }
+        if let generation = generation, generation >= 4 {
+            return MonDetails.makeNDS(generation: generation, raw: data, sourceGame: sourceGame)
         }
         if let generation = generation {
             return MonDetails.makeGB(generation: generation, raw: data, party: false, sourceGame: sourceGame)
