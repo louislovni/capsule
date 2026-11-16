@@ -17,6 +17,8 @@ if(NOT EXISTS "${POKEDAISY_DIR}/libretro/CMakeLists.txt")
 endif()
 add_subdirectory("${POKEDAISY_DIR}/libretro" pokedaisy EXCLUDE_FROM_ALL)
 set(DSPERATE_JIT OFF CACHE BOOL "" FORCE)
+# No EGL / OpenGL ES on iOS: the DS core draws its 3D in software.
+set(DSPERATE_GLES OFF CACHE BOOL "" FORCE)
 set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
 add_subdirectory("${POKEDAISY_DIR}/linux/libretro-ds" pokedaisy-ds EXCLUDE_FROM_ALL)
 
