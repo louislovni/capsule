@@ -1,0 +1,8 @@
+build/
+Vendor/
+*.xcodeproj
+.DS_Store
+# Never commit games or saves.
+*.gba
+*.sav
+*.ss[0-9]

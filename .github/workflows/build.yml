@@ -1,0 +1,74 @@
+# Builds an unsigned IPA on a GitHub-hosted Mac. Download it from the run's
+# "Artifacts" section, then sign and install it with AltStore, SideStore or Sideloadly.
+name: Build IPA
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  core-tests:
+    name: C tests (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the C core and run its tests
+        run: sh scripts/build_core.sh host
+
+  ipa:
+    name: IPA (macOS)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          cmake --version
+
+      - name: Build the C core for iOS
+        run: sh scripts/build_core.sh ios
+
+      - name: Generate the Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Build the app (unsigned)
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project Capsule.xcodeproj \
+            -scheme CapsuleGBA \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/xcode \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build | tee build/xcodebuild.log | tail -n 200
+
+      - name: Package the IPA
+        run: |
+          APP="build/xcode/Build/Products/Release-iphoneos/CapsuleGBA.app"
+          test -d "$APP"
+          rm -rf build/ipa && mkdir -p build/ipa/Payload
+          cp -R "$APP" build/ipa/Payload/
+          (cd build/ipa && zip -qry ../Capsule.ipa Payload)
+          ls -lh build/Capsule.ipa
+
+      - name: Upload the IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Capsule-ipa
+          path: build/Capsule.ipa
+          if-no-files-found: error
+
+      - name: Upload the build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-log
+          path: build/xcodebuild.log
+          if-no-files-found: ignore

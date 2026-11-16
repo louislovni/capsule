@@ -1,0 +1,25 @@
+Capsule
+=======
+
+Capsule is free software, released under the GNU General Public License,
+version 3 (see LICENSE).
+
+It builds on the work of others:
+
+mGBA  -  https://mgba.io  -  https://github.com/mgba-emu/mgba
+  The Game Boy Advance emulation core. Copyright (c) Jeffrey Pfau and
+  contributors. Mozilla Public License 2.0. mGBA is not copied into this
+  repository: scripts/build_core.sh downloads a pinned revision at build time.
+
+PokeDaisy  -  https://pokedaisy.com  -  https://github.com/lidor30/pokedaisy
+  Core/pkcore/pk_profiles_gen.c (the per-game memory addresses) is generated
+  from PokeDaisy's gamedata by tools/gen_profiles.py. GNU GPL v3.
+  The idea of a live companion reading the game's memory comes from there too.
+
+pret decompilation projects  -  https://github.com/pret
+  The documentation of the Generation 3 data structures and save format that
+  Core/pkcore implements.
+
+Capsule contains no game, no BIOS and no game asset. Pokemon and Game Boy
+Advance are trademarks of their respective owners; this project is not
+affiliated with or endorsed by them.

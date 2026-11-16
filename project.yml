@@ -1,0 +1,48 @@
+# Xcode project description, turned into Capsule.xcodeproj by XcodeGen
+# (https://github.com/yonaskolb/XcodeGen). The C code is built beforehand by
+# scripts/build_core.sh ios, which produces build/core-ios/libcapsulecore.a.
+name: Capsule
+options:
+  deploymentTarget:
+    iOS: "16.0"
+  developmentLanguage: fr
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  # The module is called CapsuleGBA, not Capsule, so it cannot be confused with
+  # SwiftUI's Capsule shape. The name under the icon comes from Info.plist.
+  CapsuleGBA:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.capsule.gba
+        PRODUCT_NAME: CapsuleGBA
+        INFOPLIST_FILE: App/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        TARGETED_DEVICE_FAMILY: "1"
+        SWIFT_OBJC_BRIDGING_HEADER: App/Capsule-Bridging-Header.h
+        HEADER_SEARCH_PATHS:
+          - $(SRCROOT)/Core/bridge
+          - $(SRCROOT)/Core/pkcore
+        LIBRARY_SEARCH_PATHS:
+          - $(SRCROOT)/build/core-ios
+        OTHER_LDFLAGS:
+          - -lcapsulecore
+        ENABLE_BITCODE: NO
+        ARCHS: arm64
+schemes:
+  CapsuleGBA:
+    build:
+      targets:
+        CapsuleGBA: all
+    run:
+      config: Debug
+    archive:
+      config: Release
