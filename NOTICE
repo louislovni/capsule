@@ -6,15 +6,20 @@ version 3 (see LICENSE).
 
 It builds on the work of others:
 
-mGBA  -  https://mgba.io  -  https://github.com/mgba-emu/mgba
-  The Game Boy Advance emulation core. Copyright (c) Jeffrey Pfau and
-  contributors. Mozilla Public License 2.0. mGBA is not copied into this
-  repository: scripts/build_core.sh downloads a pinned revision at build time.
-
 PokeDaisy  -  https://pokedaisy.com  -  https://github.com/lidor30/pokedaisy
-  Core/pkcore/pk_profiles_gen.c (the per-game memory addresses) is generated
-  from PokeDaisy's gamedata by tools/gen_profiles.py. GNU GPL v3.
-  The idea of a live companion reading the game's memory comes from there too.
+  The game runs on PokeDaisy's libretro core (pokedaisy_gbc_libretro): mGBA
+  with PokeDaisy's companion, HUD, quick menu, EXPAND and field shortcuts built
+  in. Copyright (c) PokeDaisy's authors. GNU GPL v3. It is not copied into this
+  repository: scripts/build_core.sh downloads a pinned revision at build time
+  and builds it unchanged, except as a static library. Its own NOTICE lists
+  what it bundles.
+  Core/pkcore/pk_profiles_gen.c (per-game memory addresses) is generated from
+  PokeDaisy's gamedata by tools/gen_profiles.py.
+  Capsule is not made or endorsed by PokeDaisy's authors.
+
+mGBA  -  https://mgba.io  -  https://github.com/mgba-emu/mgba
+  The emulator inside PokeDaisy's core. Copyright (c) Jeffrey Pfau and
+  contributors. Mozilla Public License 2.0. Fetched by PokeDaisy's build.
 
 pret disassemblies  -  https://github.com/pret/pokered, https://github.com/pret/pokecrystal
   Core/pkcore/pk_gbdata_gen.c (base stats, species order, items, places of the

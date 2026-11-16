@@ -3,53 +3,37 @@ import CoreGraphics
 import Foundation
 import QuartzCore
 
-/// One member of the team, as shown by the companion panel.
-struct PartyMember: Identifiable, Equatable {
-    let id: Int
-    let speciesName: String
-    let summary: MonSummary
-    let moveNames: [String]
-    /// GBA: the 100 bytes as they are in the game's memory. Game Boy: the party
-    /// structure, trainer name, nickname and species-list byte.
-    let raw: Data
-    /// 1 or 2 for Game Boy games, nil on GBA.
-    var generation: Int? = nil
-}
-
-/// GBA key bits, as mGBA expects them.
-enum GBAKey {
-    static let a: UInt32 = 1 << 0
-    static let b: UInt32 = 1 << 1
+/// Buttons, as the libretro core expects them (bits of RETRO_DEVICE_ID_JOYPAD_*).
+enum PadKey {
+    static let b: UInt32 = 1 << 0
+    static let y: UInt32 = 1 << 1
     static let select: UInt32 = 1 << 2
     static let start: UInt32 = 1 << 3
-    static let right: UInt32 = 1 << 4
-    static let left: UInt32 = 1 << 5
-    static let up: UInt32 = 1 << 6
-    static let down: UInt32 = 1 << 7
-    static let r: UInt32 = 1 << 8
-    static let l: UInt32 = 1 << 9
+    static let up: UInt32 = 1 << 4
+    static let down: UInt32 = 1 << 5
+    static let left: UInt32 = 1 << 6
+    static let right: UInt32 = 1 << 7
+    static let a: UInt32 = 1 << 8
+    static let x: UInt32 = 1 << 9
+    static let l: UInt32 = 1 << 10
+    static let r: UInt32 = 1 << 11
 }
 
-/// Owns the emulator core and the thread that runs it.
+/// Owns the PokeDaisy core and the thread that runs it.
 ///
-/// Every call into the core happens on the emulation thread. The interface asks
-/// for things with `perform`, which queues a block for that thread.
+/// The core draws the game and PokeDaisy's companion, HUD and quick menu into
+/// one frame; this class feeds it buttons and touches and shows what it draws.
+/// Every call into the core happens on the emulation thread: the interface
+/// queues work for it with `perform`.
 final class EmulatorSession: ObservableObject {
     static let speeds = [1, 2, 4]
 
-    @Published private(set) var party: [PartyMember] = []
     @Published private(set) var speed = 1
     @Published private(set) var isPaused = false
     @Published private(set) var loadFailed = false
-    @Published private(set) var gameLabel = ""
-    @Published private(set) var isKnownGame = false
-    /// Team, companion and heal only exist for GBA Pokémon games.
-    @Published private(set) var isGBA = true
-    /// Width / height of the picture: 1.5 on GBA, 10:9 on Game Boy.
+    /// Width / height of the frame the core draws (it changes with EXPAND and the companion).
     @Published private(set) var screenAspect: CGFloat = 1.5
     @Published var notice: String?
-    /// Names, base stats and places of this ROM, for the detail sheet.
-    @Published private(set) var romData: RomData?
 
     let game: Game
     /// The layer frames are drawn into. Set by the screen view.
@@ -68,17 +52,13 @@ final class EmulatorSession: ObservableObject {
     private var speedFlag = 1
     private var pending: [(OpaquePointer) -> Void] = []
 
-    // Only touched on the emulation thread.
-    private var profile: PKProfile?
-    private var speciesTable = -1
-    private var moveTable = -1
-    private var scannedParty: UInt32?
-    private var framesSinceScan = 0
-    /// Game Boy: where the team list starts in work RAM, and its format.
-    private var gbParty: (address: UInt32, generation: Int)?
-    private var gbFramesSinceScan = 120
+    /// Where the core keeps its own files (the companion's settings).
+    static let dataDirectory = Storage.documents.appendingPathComponent("PokeDaisy", isDirectory: true)
 
-    private static let framesPerSecond = 59.7275
+    /// The screen size the core is told about: it places its companion to fit.
+    static var panel: String {
+        UserDefaults.standard.string(forKey: "pokedaisyPanel") ?? "auto"
+    }
 
     init(game: Game) {
         self.game = game
@@ -89,44 +69,18 @@ final class EmulatorSession: ObservableObject {
     func start() {
         guard thread == nil, !loadFailed else { return }
         Storage.prepare()
-        guard let created = emu_create(game.romURL.path, game.saveURL.path) else {
+        try? FileManager.default.createDirectory(at: Self.dataDirectory, withIntermediateDirectories: true)
+        guard let created = lr_create(game.romURL.path, game.saveURL.path, Self.dataDirectory.path, Self.panel) else {
             loadFailed = true
             return
         }
         core = created
         alive = true
-        isGBA = Int(emu_platform(created)) == Int(EMU_PLATFORM_GBA)
-        let width = emu_video_width(created)
-        let height = emu_video_height(created)
-        if width > 0 && height > 0 {
-            screenAspect = CGFloat(width) / CGFloat(height)
-        }
-
-        var code = [CChar](repeating: 0, count: 5)
-        emu_game_code(created, &code)
-        let codeText = String(cString: code)
-        let revision = emu_revision(created)
-        // `code` is always 5 bytes long, which is what the lookup compares against.
-        if let found = pk_profile_find(code, revision) {
-            profile = found.pointee
-            isKnownGame = true
-        }
-        gameLabel = codeText
-
-        let romURL = game.romURL
-        let loadsTables = isGBA
-        DispatchQueue.global(qos: .utility).async { [weak self] in
-            guard loadsTables else { return }
-            let data = RomData.load(romURL)
-            DispatchQueue.main.async {
-                self?.romData = data
-            }
-        }
+        updateAspect(width: lr_video_width(created), height: lr_video_height(created))
 
         audio.start(core: created)
-        let pokemonFeatures = isGBA
         let worker = Thread { [self] in
-            self.runLoop(created, pokemonFeatures: pokemonFeatures)
+            self.runLoop(created)
         }
         worker.name = "Capsule emulation"
         worker.qualityOfService = .userInteractive
@@ -134,7 +88,7 @@ final class EmulatorSession: ObservableObject {
         worker.start()
     }
 
-    /// Stops the game and waits until the save file is flushed and closed.
+    /// Stops the game and waits until the battery save is written.
     func stop() {
         guard thread != nil else { return }
         audio.stop()
@@ -150,7 +104,19 @@ final class EmulatorSession: ObservableObject {
 
     func setKeys(_ keys: UInt32) {
         guard let core = core else { return }
-        emu_set_keys(core, keys)
+        lr_set_keys(core, keys)
+    }
+
+    /// A touch on the frame, in its own coordinates (0...1 on both axes), or nil when lifted.
+    func setTouch(_ point: CGPoint?) {
+        guard let core = core else { return }
+        if let point = point {
+            let x = Int32((point.x * 2 - 1) * 32767)
+            let y = Int32((point.y * 2 - 1) * 32767)
+            lr_set_pointer(core, true, x, y)
+        } else {
+            lr_set_pointer(core, false, 0, 0)
+        }
     }
 
     func setPaused(_ paused: Bool) {
@@ -160,6 +126,9 @@ final class EmulatorSession: ObservableObject {
         lock.unlock()
         if paused {
             audio.pause()
+            perform { core in
+                lr_flush_save(core)
+            }
         } else {
             audio.resume()
         }
@@ -176,14 +145,14 @@ final class EmulatorSession: ObservableObject {
 
     func reset() {
         perform { core in
-            emu_reset(core)
+            lr_reset(core)
         }
     }
 
     func saveState(slot: Int) {
         let path = game.stateURL(slot: slot).path
         perform { [weak self] core in
-            let ok = emu_save_state(core, path)
+            let ok = lr_save_state(core, path)
             DispatchQueue.main.async {
                 self?.notice = ok ? "État \(slot) enregistré" : "Impossible d'enregistrer l'état \(slot)"
             }
@@ -193,22 +162,9 @@ final class EmulatorSession: ObservableObject {
     func loadState(slot: Int) {
         let path = game.stateURL(slot: slot).path
         perform { [weak self] core in
-            let ok = emu_load_state(core, path)
+            let ok = lr_load_state(core, path)
             DispatchQueue.main.async {
                 self?.notice = ok ? "État \(slot) chargé" : "Aucun état \(slot) à charger"
-            }
-        }
-    }
-
-    /// Restores HP and clears status conditions of the whole team.
-    /// Outside of battle only: during a fight the game works on its own copies.
-    func healParty() {
-        let gba = isGBA
-        perform { [weak self] core in
-            guard let self = self else { return }
-            let healed = gba ? self.healPartyOnThread(core) : self.healGBPartyOnThread(core)
-            DispatchQueue.main.async {
-                self.notice = healed > 0 ? "Équipe soignée" : "Équipe introuvable en mémoire"
             }
         }
     }
@@ -219,15 +175,20 @@ final class EmulatorSession: ObservableObject {
         lock.unlock()
     }
 
+    private func updateAspect(width: UInt32, height: UInt32) {
+        guard width > 0, height > 0 else { return }
+        let aspect = CGFloat(width) / CGFloat(height)
+        if abs(aspect - screenAspect) > 0.001 {
+            screenAspect = aspect
+        }
+    }
+
     // MARK: - Emulation thread
 
-    private func runLoop(_ core: OpaquePointer, pokemonFeatures: Bool) {
-        if pokemonFeatures {
-            locateNameTables(core)
-        }
-
-        let frameTime = 1.0 / Self.framesPerSecond
-        let audioTarget = Int(emu_audio_rate(core)) / 20 // keep about 50 ms queued
+    private func runLoop(_ core: OpaquePointer) {
+        let frameTime = 1.0 / lr_frame_rate(core)
+        let audioTarget = Int(lr_audio_rate(core)) / 20 // keep about 50 ms queued
+        let saveInterval = 120 // frames: the battery save is written within ~2 s of a change
         var deadline = CACurrentMediaTime()
         var frameCount = 0
 
@@ -253,22 +214,20 @@ final class EmulatorSession: ObservableObject {
             }
 
             for _ in 0..<speed {
-                emu_run_frame(core, speed > 1)
+                lr_run_frame(core, speed > 1)
             }
             present(core)
 
             frameCount += 1
-            if frameCount % 30 == 0 {
-                if pokemonFeatures {
-                    publishParty(core)
-                } else {
-                    publishGBParty(core)
+            if frameCount % saveInterval == 0 && !lr_flush_save(core) {
+                DispatchQueue.main.async { [weak self] in
+                    self?.notice = "La sauvegarde n'a pas pu être écrite"
                 }
             }
 
             // Pace on the clock, nudged by how much audio is waiting, so sound
             // neither starves nor piles up.
-            let queued = Int(emu_audio_queued(core))
+            let queued = Int(lr_audio_queued(core))
             let correction = speed > 1 ? 1.0 : (queued > audioTarget ? 1.004 : 0.996)
             deadline += frameTime * correction
             let now = CACurrentMediaTime()
@@ -279,24 +238,23 @@ final class EmulatorSession: ObservableObject {
             }
         }
 
-        emu_destroy(core)
+        lr_destroy(core) // writes the battery save
         finished.signal()
     }
 
     private func present(_ core: OpaquePointer) {
-        guard let pixels = emu_video_buffer(core) else { return }
-        let width = Int(emu_video_width(core))
-        let height = Int(emu_video_height(core))
-        let stride = Int(EMU_VIDEO_STRIDE)
+        guard let pixels = lr_video_buffer(core) else { return }
+        let width = Int(lr_video_width(core))
+        let height = Int(lr_video_height(core))
         guard width > 0, height > 0 else { return }
-        let data = Data(bytes: pixels, count: stride * height * 4)
+        let data = Data(bytes: pixels, count: width * height * 4)
         guard let provider = CGDataProvider(data: data as CFData),
               let image = CGImage(
                   width: width,
                   height: height,
                   bitsPerComponent: 8,
                   bitsPerPixel: 32,
-                  bytesPerRow: stride * 4,
+                  bytesPerRow: width * 4,
                   space: colorSpace,
                   bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipLast.rawValue),
                   provider: provider,
@@ -307,192 +265,13 @@ final class EmulatorSession: ObservableObject {
             return
         }
         DispatchQueue.main.async { [weak self] in
-            guard let layer = self?.displayLayer else { return }
+            guard let self = self else { return }
+            self.updateAspect(width: UInt32(width), height: UInt32(height))
+            guard let layer = self.displayLayer else { return }
             CATransaction.begin()
             CATransaction.setDisableActions(true)
             layer.contents = image
             CATransaction.commit()
         }
-    }
-
-    private func locateNameTables(_ core: OpaquePointer) {
-        var size = 0
-        guard let rom = emu_rom_data(core, &size) else { return }
-        speciesTable = pk_rom_find_species_names(rom, size)
-        moveTable = pk_rom_find_move_names(rom, size)
-    }
-
-    /// Address and size of the team in memory, or nil when it cannot be found.
-    private func partyLocation(_ core: OpaquePointer) -> (address: UInt32, count: Int)? {
-        if let profile = profile {
-            var countByte: UInt8 = 0
-            emu_read_bytes(core, profile.playerPartyCount, &countByte, 1)
-            return (profile.playerParty, min(Int(countByte), 6))
-        }
-
-        // Unknown game (hack): look for the team by its shape, and remember where it was.
-        if let address = scannedParty {
-            var raw = [UInt8](repeating: 0, count: 600)
-            emu_read_bytes(core, address, &raw, raw.count)
-            var count: Int32 = 0
-            let offset = pk_scan_party(raw, raw.count, &count)
-            if offset == 0 {
-                return (address, Int(count))
-            }
-            scannedParty = nil
-        }
-        framesSinceScan += 30
-        guard framesSinceScan >= 120 else { return nil }
-        framesSinceScan = 0
-        for (base, length) in [(UInt32(0x0200_0000), 0x40000), (UInt32(0x0300_0000), 0x8000)] {
-            var ram = [UInt8](repeating: 0, count: length)
-            emu_read_bytes(core, base, &ram, length)
-            var count: Int32 = 0
-            let offset = pk_scan_party(ram, length, &count)
-            if offset >= 0 {
-                let address = base + UInt32(offset)
-                scannedParty = address
-                return (address, Int(count))
-            }
-        }
-        return nil
-    }
-
-    private func publishParty(_ core: OpaquePointer) {
-        var members: [PartyMember] = []
-        if let location = partyLocation(core) {
-            var size = 0
-            let rom = emu_rom_data(core, &size)
-            var raw = [UInt8](repeating: 0, count: 100)
-            for slot in 0..<location.count {
-                emu_read_bytes(core, location.address + UInt32(slot * 100), &raw, 100)
-                var mon = PKMon()
-                guard pk_mon_decode(raw, 100, &mon) else { continue }
-                let summary = MonSummary(mon)
-                let speciesName = NameLookup.name(rom: rom, size: size, table: speciesTable,
-                                                  stride: NameLookup.speciesStride, index: summary.species)
-                    ?? "Pokémon n°\(summary.species)"
-                let moveNames = summary.moves.map { move in
-                    NameLookup.name(rom: rom, size: size, table: moveTable,
-                                    stride: NameLookup.moveStride, index: move) ?? "Capacité n°\(move)"
-                }
-                members.append(PartyMember(id: slot, speciesName: speciesName, summary: summary, moveNames: moveNames,
-                                           raw: Data(raw)))
-            }
-        }
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self, self.party != members else { return }
-            self.party = members
-        }
-    }
-
-    // MARK: - Game Boy team
-
-    private static let gbRAMStart: UInt32 = 0xC000
-    private static let gbRAMSize = 0x2000
-
-    private static func gbStructSize(_ generation: Int) -> Int {
-        generation == 1 ? Int(PK_GB1_PARTY_MON) : Int(PK_GB2_PARTY_MON)
-    }
-
-    private static func gbBlockSize(_ generation: Int) -> Int {
-        8 + 6 * gbStructSize(generation) + 12 * Int(PK_GB_NAME_LENGTH)
-    }
-
-    /// Where the team is, checked again each time; searched afresh every 2 s when lost.
-    private func gbPartyLocation(_ core: OpaquePointer) -> (address: UInt32, count: Int, generation: Int)? {
-        if let known = gbParty {
-            var block = [UInt8](repeating: 0, count: Self.gbBlockSize(known.generation))
-            emu_read_bytes(core, known.address, &block, block.count)
-            var count: Int32 = 0
-            if pk_gb_scan_party(block, block.count, Int32(known.generation), &count) == 0 {
-                return (known.address, Int(count), known.generation)
-            }
-            gbParty = nil
-        }
-        gbFramesSinceScan += 30
-        guard gbFramesSinceScan >= 120 else { return nil }
-        gbFramesSinceScan = 0
-        var ram = [UInt8](repeating: 0, count: Self.gbRAMSize)
-        emu_read_bytes(core, Self.gbRAMStart, &ram, ram.count)
-        for generation in [1, 2] {
-            var count: Int32 = 0
-            let offset = pk_gb_scan_party(ram, ram.count, Int32(generation), &count)
-            if offset >= 0 {
-                let address = Self.gbRAMStart + UInt32(offset)
-                gbParty = (address, generation)
-                return (address, Int(count), generation)
-            }
-        }
-        return nil
-    }
-
-    private func publishGBParty(_ core: OpaquePointer) {
-        var members: [PartyMember] = []
-        if let location = gbPartyLocation(core) {
-            let generation = location.generation
-            let structSize = Self.gbStructSize(generation)
-            let nameLength = Int(PK_GB_NAME_LENGTH)
-            var block = [UInt8](repeating: 0, count: Self.gbBlockSize(generation))
-            emu_read_bytes(core, location.address, &block, block.count)
-            let otStart = 8 + 6 * structSize
-            let nickStart = otStart + 6 * nameLength
-            for slot in 0..<location.count {
-                var raw = Array(block[(8 + slot * structSize)..<(8 + (slot + 1) * structSize)])
-                raw += block[(otStart + slot * nameLength)..<(otStart + (slot + 1) * nameLength)]
-                raw += block[(nickStart + slot * nameLength)..<(nickStart + (slot + 1) * nameLength)]
-                raw.append(block[1 + slot])
-                let data = Data(raw)
-                guard let mon = MonDetails.decodeGB(generation: generation, raw: data, party: true) else { continue }
-                let summary = MonSummary(gb: mon)
-                members.append(PartyMember(id: slot, speciesName: MonDetails.gbSpeciesName(summary.species),
-                                           summary: summary, moveNames: summary.moves.map(MonDetails.gbMoveName),
-                                           raw: data, generation: generation))
-            }
-        }
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self, self.party != members else { return }
-            self.party = members
-        }
-    }
-
-    private func healGBPartyOnThread(_ core: OpaquePointer) -> Int {
-        guard let location = gbPartyLocation(core) else { return 0 }
-        let generation = location.generation
-        let structSize = Self.gbStructSize(generation)
-        // Offsets of current HP, max HP and status in the party structure.
-        let (hpAt, maxAt, statusAt) = generation == 1 ? (1, 34, 4) : (34, 36, 32)
-        var healed = 0
-        var mon = [UInt8](repeating: 0, count: structSize)
-        for slot in 0..<location.count {
-            let address = location.address + UInt32(8 + slot * structSize)
-            emu_read_bytes(core, address, &mon, structSize)
-            let maxHP = [mon[maxAt], mon[maxAt + 1]]
-            guard maxHP != [0, 0] else { continue }
-            var clear: UInt8 = 0
-            emu_write_bytes(core, address + UInt32(hpAt), maxHP, 2)
-            emu_write_bytes(core, address + UInt32(statusAt), &clear, 1)
-            healed += 1
-        }
-        return healed
-    }
-
-    private func healPartyOnThread(_ core: OpaquePointer) -> Int {
-        guard let location = partyLocation(core) else { return 0 }
-        var healed = 0
-        var raw = [UInt8](repeating: 0, count: 100)
-        for slot in 0..<location.count {
-            let address = location.address + UInt32(slot * 100)
-            emu_read_bytes(core, address, &raw, 100)
-            guard pk_party_heal(&raw) else { continue }
-            // Only the status word (80..83) and current HP (86..87) changed.
-            raw.withUnsafeBufferPointer { buffer in
-                guard let base = buffer.baseAddress else { return }
-                emu_write_bytes(core, address + 80, base + 80, 4)
-                emu_write_bytes(core, address + 86, base + 86, 2)
-            }
-            healed += 1
-        }
-        return healed
     }
 }

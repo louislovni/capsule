@@ -1,6 +1,7 @@
 # Xcode project description, turned into Capsule.xcodeproj by XcodeGen
 # (https://github.com/yonaskolb/XcodeGen). The C code is built beforehand by
-# scripts/build_core.sh ios, which produces build/core-ios/libcapsulecore.a.
+# scripts/build_core.sh ios: build/core-ios/libcapsulecore.a (the host and the
+# bank's helpers) and build/core-ios/pokedaisy/pokedaisy_gbc_libretro.a (the core).
 name: Capsule
 options:
   deploymentTarget:
@@ -35,6 +36,8 @@ targets:
           - $(SRCROOT)/build/core-ios
         OTHER_LDFLAGS:
           - -lcapsulecore
+          - $(SRCROOT)/build/core-ios/pokedaisy/pokedaisy_gbc_libretro.a
+          - -lz
         ENABLE_BITCODE: NO
         ARCHS: arm64
 schemes:

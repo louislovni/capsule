@@ -6,7 +6,6 @@ struct GameView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
 
-    @State private var showingTeam = false
     @State private var staleStateSlot: Int?
     @State private var userPaused = false
 
@@ -25,7 +24,7 @@ struct GameView: View {
                 ScreenRepresentable(session: session)
                     .aspectRatio(session.screenAspect, contentMode: .fit)
                     .overlay(alignment: .bottom) { noticeBanner }
-                PadRepresentable(showsShoulders: session.isGBA, onKeys: { [weak session] keys in
+                PadRepresentable(onKeys: { [weak session] keys in
                     session?.setKeys(keys)
                 })
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -43,10 +42,6 @@ struct GameView: View {
             } else {
                 session.setPaused(true)
             }
-        }
-        .sheet(isPresented: $showingTeam) {
-            TeamPanel(session: session)
-                .presentationDetents([.medium, .large])
         }
         .alert("État antérieur à un transfert", isPresented: staleAlertBinding) {
             Button("Charger quand même", role: .destructive) {
@@ -105,12 +100,6 @@ struct GameView: View {
             }
             .accessibilityLabel("Vitesse \(session.speed) fois")
 
-            Button {
-                showingTeam = true
-            } label: {
-                Label("Équipe", systemImage: "list.bullet.rectangle")
-                    .labelStyle(.iconOnly)
-            }
 
             Menu {
                 Section("Enregistrer un état") {
@@ -128,9 +117,6 @@ struct GameView: View {
                     }
                 }
                 Section {
-                    Button("Soigner l'équipe") {
-                        session.healParty()
-                    }
                     Button("Redémarrer le jeu", role: .destructive) {
                         session.reset()
                     }
@@ -191,119 +177,5 @@ struct GameView: View {
         } else {
             session.loadState(slot: slot)
         }
-    }
-}
-
-/// The live companion: the team as it is in the game's memory right now.
-struct TeamPanel: View {
-    @ObservedObject var session: EmulatorSession
-
-    private var teamFootnote: String {
-        let heal = "Le soin rend les PV et retire les statuts, hors combat. Les PP ne sont pas restaurés."
-        if !session.isGBA {
-            return "Jeu Game Boy : l'équipe est recherchée en mémoire (Rouge, Bleu, Jaune, Or, Argent, Cristal). " + heal
-        }
-        return session.isKnownGame
-            ? "Jeu reconnu (\(session.gameLabel)). " + heal
-            : "Jeu non répertorié (\(session.gameLabel)) : l'équipe est recherchée automatiquement en mémoire, ce qui peut échouer sur certains hacks."
-    }
-
-    var body: some View {
-        NavigationStack {
-            List {
-                if session.party.isEmpty {
-                    Text("Aucune équipe détectée pour l'instant. Elle apparaît une fois la partie chargée.")
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(session.party) { member in
-                        NavigationLink {
-                            let rom = session.romData
-                            let gameName = session.game.name
-                            MonDetailLoader(load: {
-                                if let generation = member.generation {
-                                    return MonDetails.makeGB(generation: generation, raw: member.raw, party: true,
-                                                             sourceGame: gameName)
-                                }
-                                return MonDetails.make(raw: member.raw, rom: rom)
-                            })
-                        } label: {
-                            TeamRow(member: member)
-                        }
-                    }
-                }
-                Section {
-                    Button("Soigner l'équipe") {
-                        session.healParty()
-                    }
-                } footer: {
-                    Text(teamFootnote)
-                }
-            }
-            .navigationTitle("Équipe")
-            .navigationBarTitleDisplayMode(.inline)
-        }
-    }
-}
-
-private struct TeamRow: View {
-    let member: PartyMember
-
-    var body: some View {
-        let summary = member.summary
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(summary.isEgg ? "Œuf" : displayName)
-                    .font(.headline)
-                if summary.isShiny {
-                    Image(systemName: "sparkles")
-                        .foregroundStyle(.yellow)
-                        .accessibilityLabel("Chromatique")
-                }
-                Spacer()
-                if let status = summary.statusLabel {
-                    Text(status)
-                        .font(.caption.weight(.bold))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.orange.opacity(0.25), in: Capsule())
-                }
-                Text("N. \(summary.level)")
-                    .font(.subheadline)
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-            }
-            if !summary.isEgg {
-                ProgressView(value: Double(min(summary.hp, summary.maxHp)), total: Double(max(summary.maxHp, 1)))
-                    .tint(hpColor)
-                HStack {
-                    Text("PV \(summary.hp)/\(summary.maxHp)")
-                        .monospacedDigit()
-                    Spacer()
-                    Text(member.moveNames.joined(separator: " · "))
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
-        }
-        .padding(.vertical, 2)
-    }
-
-    private var displayName: String {
-        let nickname = member.summary.nickname
-        if nickname.isEmpty || nickname.caseInsensitiveCompare(member.speciesName) == .orderedSame {
-            return member.speciesName
-        }
-        return "\(nickname) (\(member.speciesName))"
-    }
-
-    private var hpColor: Color {
-        let summary = member.summary
-        guard summary.maxHp > 0 else { return .green }
-        let ratio = Double(summary.hp) / Double(summary.maxHp)
-        if ratio > 0.5 { return .green }
-        if ratio > 0.2 { return .yellow }
-        return .red
     }
 }

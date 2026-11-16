@@ -1,8 +1,7 @@
-/* Smoke test for the mGBA bridge, using a tiny ROM assembled here (no game needed).
- * Build: see scripts/test_bridge.sh
- */
+/* Smoke test for lr_bridge over the PokeDaisy core, with tiny ROMs assembled
+ * here (no game needed). Built and run by scripts/build_core.sh host. */
 #define _DEFAULT_SOURCE
-#include "emu_bridge.h"
+#include "lr_bridge.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,30 +24,22 @@ static void put32(uint8_t* p, uint32_t v) {
 	p[3] = (uint8_t) (v >> 24);
 }
 
-static void write_test_rom(const char* path) {
+static void write_gba_rom(const char* path) {
 	uint8_t rom[0x200];
 	memset(rom, 0, sizeof(rom));
 	put32(rom, 0xEA00002E); /* b 0x080000C0 */
 	memcpy(rom + 0xA0, "CAPSULETEST", 11);
 	memcpy(rom + 0xAC, "ZTSE", 4);
 	rom[0xB2] = 0x96;
-	rom[0xBC] = 3;
 	static const uint32_t code[] = {
 		0xE3A00301, /* mov  r0, #0x04000000 */
 		0xE3A01B01, /* mov  r1, #0x400 */
-		0xE2811003, /* add  r1, r1, #3      ; mode 3, BG2 on */
+		0xE2811003, /* add  r1, r1, #3   ; mode 3, BG2 on */
 		0xE1C010B0, /* strh r1, [r0] */
 		0xE3A02406, /* mov  r2, #0x06000000 */
-		0xE3A0301F, /* mov  r3, #0x1F       ; red */
-		0xE1C230B0, /* strh r3, [r2]        ; top-left pixel */
-		0xE3A04402, /* mov  r4, #0x02000000 */
-		0xE3A050AB, /* mov  r5, #0xAB */
-		0xE5C45010, /* strb r5, [r4, #0x10] */
-		0xE3A05C42, /* mov  r5, #0x4200     ; SOUNDBIAS: resolution 1 (65536 Hz), like Pokemon */
-		0xE1C058B8, /* strh r5, [r0, #0x88] */
-		0xE5906130, /* ldr  r6, [r0, #0x130] ; KEYINPUT */
-		0xE5846030, /* str  r6, [r4, #0x30] */
-		0xEAFFFFFC, /* b    back to the ldr */
+		0xE3A0301F, /* mov  r3, #0x1F    ; red */
+		0xE1C230B0, /* strh r3, [r2] */
+		0xEAFFFFFE, /* b    . */
 	};
 	for (size_t i = 0; i < sizeof(code) / sizeof(code[0]); ++i) {
 		put32(rom + 0xC0 + i * 4, code[i]);
@@ -58,20 +49,19 @@ static void write_test_rom(const char* path) {
 	fclose(f);
 }
 
-static void write_test_gb_rom(const char* path) {
+static void write_gb_rom(const char* path) {
 	enum { SIZE = 0x8000 };
 	uint8_t* rom = calloc(1, SIZE);
-	static const uint8_t entry[] = { 0x00, 0xC3, 0x50, 0x01 }; /* nop; jp 0x0150 */
+	static const uint8_t entry[] = { 0x00, 0xC3, 0x50, 0x01 };
 	memcpy(rom + 0x100, entry, sizeof(entry));
-	static const uint8_t logo[] = { 0xCE, 0xED, 0x66, 0x66 }; /* start of the boot logo */
+	static const uint8_t logo[] = { 0xCE, 0xED, 0x66, 0x66, 0xCC, 0x0D, 0x00, 0x0B, 0x03, 0x73, 0x00, 0x83,
+		                            0x00, 0x0C, 0x00, 0x0D, 0x00, 0x08, 0x11, 0x1F, 0x88, 0x89, 0x00, 0x0E,
+		                            0xDC, 0xCC, 0x6E, 0xE6, 0xDD, 0xDD, 0xD9, 0x99, 0xBB, 0xBB, 0x67, 0x63,
+		                            0x6E, 0x0E, 0xEC, 0xCC, 0xDD, 0xDC, 0x99, 0x9F, 0xBB, 0xB9, 0x33, 0x3E };
 	memcpy(rom + 0x104, logo, sizeof(logo));
 	memcpy(rom + 0x134, "CAPSULEGB", 9);
-	rom[0x143] = 0x80; /* works on Game Boy and Game Boy Color */
-	static const uint8_t code[] = {
-		0x3E, 0x42, /* ld a, 0x42 */
-		0xEA, 0x10, 0xC0, /* ld (0xC010), a */
-		0x18, 0xFE, /* jr . */
-	};
+	rom[0x143] = 0x80;
+	static const uint8_t code[] = { 0x18, 0xFE }; /* jr . */
 	memcpy(rom + 0x150, code, sizeof(code));
 	uint8_t check = 0;
 	for (int i = 0x134; i <= 0x14C; ++i) {
@@ -84,147 +74,120 @@ static void write_test_gb_rom(const char* path) {
 	free(rom);
 }
 
-static void test_game_boy(const char* dir) {
-	char rom[256], sav[256];
-	snprintf(rom, sizeof(rom), "%s/test.gbc", dir);
-	snprintf(sav, sizeof(sav), "%s/test-gb.sav", dir);
-	write_test_gb_rom(rom);
-	EmuCore* emu = emu_create(rom, sav);
-	CHECK(emu != NULL);
-	if (!emu) {
-		return;
-	}
-	CHECK(emu_platform(emu) == EMU_PLATFORM_GBC);
-	CHECK(emu_video_width(emu) == 160 && emu_video_height(emu) == 144);
-	char code[5], title[17];
-	emu_game_code(emu, code);
-	emu_game_title(emu, title);
-	CHECK(code[0] == '\0');
-	CHECK(strcmp(title, "CAPSULEGB") == 0);
-	CHECK(emu_revision(emu) == 0);
-	for (int i = 0; i < 10; ++i) {
-		emu_run_frame(emu, false);
-	}
-	uint8_t byte = 0;
-	CHECK(emu_read_bytes(emu, 0xC010, &byte, 1) == 1 && byte == 0x42);
-	uint8_t v = 0x33;
-	CHECK(emu_write_bytes(emu, 0xC020, &v, 1) == 1);
-	CHECK(emu_write_bytes(emu, 0x8000, &v, 1) == 0);
-	CHECK(emu_write_bytes(emu, 0xDFFF, &v, 2) == 0);
-	CHECK(emu_read_bytes(emu, 0xC020, &byte, 1) == 1 && byte == 0x33);
+static size_t drain(LRCore* core) {
 	int16_t audio[4096 * 2];
 	size_t total = 0, got;
-	while ((got = emu_audio_read(emu, audio, 4096)) > 0) {
+	while ((got = lr_audio_read(core, audio, 4096)) > 0) {
 		total += got;
 	}
-	printf("game boy: %zu audio frames for 10 video frames, native rate %u Hz\n", total, emu_native_audio_rate(emu));
-	CHECK(total > 6000 && total < 9500);
-	emu_destroy(emu);
+	return total;
+}
+
+static long file_size(const char* path) {
+	FILE* f = fopen(path, "rb");
+	if (!f) {
+		return -1;
+	}
+	fseek(f, 0, SEEK_END);
+	long size = ftell(f);
+	fclose(f);
+	return size;
 }
 
 int main(void) {
-	char dir[] = "/tmp/capsule-test-XXXXXX";
+	char dir[] = "/tmp/capsule-lr-XXXXXX";
 	if (!mkdtemp(dir)) {
 		return 2;
 	}
-	char rom[256], sav[256], state[256], junk[256];
+	char rom[256], gb[256], sav[256], gbsav[256], state[256], data[256];
 	snprintf(rom, sizeof(rom), "%s/test.gba", dir);
+	snprintf(gb, sizeof(gb), "%s/test.gbc", dir);
 	snprintf(sav, sizeof(sav), "%s/test.sav", dir);
-	snprintf(state, sizeof(state), "%s/test.ss0", dir);
-	snprintf(junk, sizeof(junk), "%s/junk.gba", dir);
-	write_test_rom(rom);
+	snprintf(gbsav, sizeof(gbsav), "%s/test-gb.sav", dir);
+	snprintf(state, sizeof(state), "%s/test.ss1", dir);
+	snprintf(data, sizeof(data), "%s/data", dir);
+	write_gba_rom(rom);
+	write_gb_rom(gb);
 
-	/* Not a ROM, and a missing file: both refused cleanly. */
-	FILE* f = fopen(junk, "wb");
-	for (int i = 0; i < 1024; ++i) {
-		fputc(i & 0x7F, f);
+	CHECK(lr_create("/nonexistent/file.gba", sav, data, "auto") == NULL);
+
+	/* A battery save that exists is loaded and left alone while nothing changes. */
+	enum { SAVE_SIZE = 0x20000 };
+	uint8_t* pattern = malloc(SAVE_SIZE);
+	for (int i = 0; i < SAVE_SIZE; ++i) {
+		pattern[i] = (uint8_t) (i * 7);
 	}
+	FILE* f = fopen(sav, "wb");
+	fwrite(pattern, 1, SAVE_SIZE, f);
 	fclose(f);
-	CHECK(emu_create(junk, NULL) == NULL);
-	CHECK(emu_create("/nonexistent/file.gba", NULL) == NULL);
 
-	EmuCore* emu = emu_create(rom, sav);
-	CHECK(emu != NULL);
-	if (!emu) {
+	LRCore* core = lr_create(rom, sav, data, "auto");
+	CHECK(core != NULL);
+	if (!core) {
+		printf("bridge test: %d failures\n", failures + 1);
 		return 1;
 	}
-	char code[5], title[17];
-	emu_game_code(emu, code);
-	emu_game_title(emu, title);
-	CHECK(strcmp(code, "ZTSE") == 0);
-	CHECK(strcmp(title, "CAPSULETEST") == 0);
-	CHECK(emu_revision(emu) == 3);
-	CHECK(emu_platform(emu) == EMU_PLATFORM_GBA);
-	CHECK(emu_video_width(emu) == 240 && emu_video_height(emu) == 160);
-	size_t romSize = 0;
-	CHECK(emu_rom_data(emu, &romSize) != NULL && romSize == 0x200);
-	CHECK(emu_audio_rate(emu) == 48000);
-	CHECK(emu_native_audio_rate(emu) == 32768);
-
-	for (int i = 0; i < 10; ++i) {
-		emu_run_frame(emu, false);
+	CHECK(lr_create(rom, sav, data, "auto") == NULL); /* one core at a time */
+	CHECK(lr_audio_rate(core) >= 8000 && lr_frame_rate(core) > 50 && lr_frame_rate(core) < 70);
+	for (int i = 0; i < 30; ++i) {
+		lr_run_frame(core, false);
 	}
-	printf("native rate after the game set SOUNDBIAS: %u Hz\n", emu_native_audio_rate(emu));
-	CHECK(emu_native_audio_rate(emu) == 65536);
-		const uint8_t* px = emu_video_buffer(emu);
-	printf("pixel0 = %02X %02X %02X %02X, pixel1 = %02X %02X %02X\n", px[0], px[1], px[2], px[3], px[4], px[5], px[6]);
-	CHECK(px[0] >= 0xF8 && px[1] == 0 && px[2] == 0); /* red first: R, G, B order */
-	CHECK(px[4] == 0 && px[5] == 0 && px[6] == 0);
-
-	uint8_t byte = 0;
-	CHECK(emu_read_bytes(emu, 0x02000010, &byte, 1) == 1 && byte == 0xAB);
-
-	int16_t audio[4096 * 2];
-	size_t total = 0, got;
-	size_t queued = emu_audio_queued(emu);
-	CHECK(queued > 0);
-	while ((got = emu_audio_read(emu, audio, 4096)) > 0) {
-		total += got;
+	unsigned w = lr_video_width(core), h = lr_video_height(core);
+	printf("frame %ux%u, audio %u Hz\n", w, h, lr_audio_rate(core));
+	CHECK(w >= 240 && h >= 160 && w <= 1024 && h <= 1024);
+	const uint8_t* px = lr_video_buffer(core);
+	int red = 0;
+	for (unsigned i = 0; i < w * h; ++i) {
+		red += px[i * 4] >= 0xF0 && px[i * 4 + 1] < 0x10 && px[i * 4 + 2] < 0x10;
 	}
-	double expected = emu_audio_rate(emu) * 10.0 / 59.7275;
-	printf("audio: %zu frames for 10 video frames (expected about %.0f) at %u Hz\n", total, expected, emu_audio_rate(emu));
-	CHECK(total > expected * 0.8 && total < expected * 1.2);
-	CHECK(total == queued && emu_audio_queued(emu) == 0);
+	CHECK(red >= 1); /* the game's red pixel made it, at whatever scale */
+	size_t queued = lr_audio_queued(core);
+	size_t total = drain(core);
+	double expected = lr_audio_rate(core) * 30.0 / lr_frame_rate(core);
+	printf("audio: %zu frames for 30 video frames (about %.0f expected)\n", total, expected);
+	CHECK(total == queued && total > expected * 0.8 && total < expected * 1.2);
+	lr_run_frame(core, true);
+	CHECK(drain(core) == 0);
 
-	/* fast-forward frames drop their audio */
-	emu_run_frame(emu, true);
-	CHECK(emu_audio_read(emu, audio, 4096) == 0);
+	lr_set_keys(core, LR_KEY_A | LR_KEY_X);
+	lr_set_pointer(core, true, 100000, -100000);
+	lr_run_frame(core, false);
+	lr_set_pointer(core, false, 0, 0);
+	lr_set_keys(core, 0);
 
-	/* memory writes: RAM only */
-	uint8_t v = 0x5A;
-	CHECK(emu_write_bytes(emu, 0x02000020, &v, 1) == 1);
-	CHECK(emu_write_bytes(emu, 0x08000000, &v, 1) == 0);
-	CHECK(emu_write_bytes(emu, 0x0E000000, &v, 1) == 0);
-	CHECK(emu_read_bytes(emu, 0x02000020, &byte, 1) == 1 && byte == 0x5A);
+	CHECK(lr_save_state(core, state));
+	CHECK(file_size(state) > 1000);
+	lr_run_frame(core, false);
+	CHECK(lr_load_state(core, state));
+	CHECK(drain(core) == 0);
+	CHECK(!lr_load_state(core, "/nonexistent/state"));
+	lr_reset(core);
+	lr_run_frame(core, false);
+	CHECK(lr_flush_save(core));
+	lr_destroy(core);
+	f = fopen(sav, "rb");
+	uint8_t* back = malloc(SAVE_SIZE);
+	CHECK(f && fread(back, 1, SAVE_SIZE, f) == SAVE_SIZE && memcmp(back, pattern, SAVE_SIZE) == 0);
+	if (f) {
+		fclose(f);
+	}
 
-	/* save state round trip */
-	CHECK(emu_save_state(emu, state));
-	v = 0x77;
-	emu_write_bytes(emu, 0x02000020, &v, 1);
-	emu_run_frame(emu, false);
-	CHECK(emu_read_bytes(emu, 0x02000020, &byte, 1) == 1 && byte == 0x77);
-	CHECK(emu_load_state(emu, state));
-	CHECK(emu_read_bytes(emu, 0x02000020, &byte, 1) == 1 && byte == 0x5A);
-	CHECK(emu_audio_read(emu, audio, 4096) == 0); /* queue flushed by the load */
-	CHECK(!emu_load_state(emu, "/nonexistent/state"));
+	/* Game Boy Color, no save file: none is written for a save the game never touched. */
+	core = lr_create(gb, gbsav, data, "auto");
+	CHECK(core != NULL);
+	if (core) {
+		for (int i = 0; i < 10; ++i) {
+			lr_run_frame(core, false);
+		}
+		printf("game boy frame %ux%u\n", lr_video_width(core), lr_video_height(core));
+		CHECK(lr_video_width(core) >= 160 && lr_video_height(core) >= 144);
+		CHECK(drain(core) > 0);
+		lr_destroy(core);
+	}
+	CHECK(access(gbsav, F_OK) != 0);
 
-	emu_set_keys(emu, EMU_KEY_A | EMU_KEY_START);
-	emu_run_frame(emu, false);
-	uint8_t keyReg[2];
-	emu_read_bytes(emu, 0x02000030, keyReg, 2); /* the ROM copies KEYINPUT here; pressed keys read as 0 */
-	printf("KEYINPUT = %02X%02X\n", keyReg[1], keyReg[0]);
-	CHECK((keyReg[0] & 0x09) == 0 && (keyReg[0] & 0x02) != 0);
-	emu_set_keys(emu, 0);
-	emu_run_frame(emu, false);
-	emu_read_bytes(emu, 0x02000030, keyReg, 2);
-	CHECK(keyReg[0] == 0xFF && (keyReg[1] & 0x03) == 0x03);
-
-	emu_reset(emu);
-	emu_run_frame(emu, false);
-	emu_destroy(emu);
-	CHECK(access(sav, F_OK) == 0);
-
-	test_game_boy(dir);
+	free(back);
+	free(pattern);
 	printf("bridge test: %d failures\n", failures);
 	return failures ? 1 : 0;
 }

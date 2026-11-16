@@ -15,7 +15,7 @@ final class AudioOutput {
         try? session.setCategory(.playback, options: [.mixWithOthers])
         try? session.setActive(true)
 
-        let rate = Double(emu_audio_rate(core))
+        let rate = Double(lr_audio_rate(core))
         guard let format = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: rate, channels: 2, interleaved: false) else {
             return
         }
@@ -33,7 +33,7 @@ final class AudioOutput {
                   let right = buffers[1].mData?.assumingMemoryBound(to: Float.self) else {
                 return noErr
             }
-            let got = Int(emu_audio_read(core, buffer, min(wanted, capacity)))
+            let got = Int(lr_audio_read(core, buffer, min(wanted, capacity)))
             let scale: Float = 1.0 / 32768.0
             var index = 0
             while index < got {

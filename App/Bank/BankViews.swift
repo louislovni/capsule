@@ -274,7 +274,7 @@ struct TransferView: View {
         isLoading = false
     }
 
-    private static func openStorage(for game: Game) throws -> PCStorage {
+    nonisolated private static func openStorage(for game: Game) throws -> PCStorage {
         if game.romURL.pathExtension.lowercased() == "gba" {
             let save = try SaveFile(url: game.saveURL)
             save.rom = RomData.load(game.romURL)

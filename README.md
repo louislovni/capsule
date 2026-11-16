@@ -1,33 +1,31 @@
 # Capsule
 
-Émulateur Game Boy Advance, Game Boy et Game Boy Color pour iPhone, pensé pour les jeux
-Pokémon. Le compagnon, la fiche détaillée et la banque gèrent les générations 1 à 3 (Rouge,
-Bleu, Jaune, Or, Argent, Cristal, Rubis, Saphir, Émeraude, Rouge Feu, Vert Feuille, versions
-occidentales). La banque ne fait passer un Pokémon que vers un jeu de sa génération.
+Le compagnon de [PokeDaisy](https://pokedaisy.com) sur iPhone, avec une banque Pokémon en plus.
 
-- **Émulation** : cœur [mGBA](https://mgba.io), son, commandes tactiles, vitesse ×2 / ×4, trois états de sauvegarde.
-- **Compagnon** : l'équipe lue en direct dans la mémoire du jeu (PV, statut, niveau, capacités), et un soin de l'équipe hors combat.
-- **Banque** : dépose les Pokémon des boîtes PC d'une partie, retire-les dans une autre. La banque est un fichier exportable.
+Les jeux tournent sur le cœur libretro de PokeDaisy : mGBA avec, intégrés, son compagnon (équipe,
+sac, carte, Pokédex, guide, combat), son HUD, son menu rapide (PC, Vol, Repousse, vélo, rencontres),
+EXPAND et ses autres outils. Capsule fournit l'enveloppe iOS (image, son, boutons, toucher,
+sauvegardes, états, vitesse) et la **banque** : déposer les Pokémon du PC d'une partie et les
+retirer dans une autre de la même génération, avec une fiche détaillée.
 
-Aucun jeu n'est fourni : il faut tes propres ROM.
+Game Boy Advance, Game Boy et Game Boy Color. Aucun jeu n'est fourni : il faut tes propres ROM.
+Capsule n'est ni fait ni approuvé par les auteurs de PokeDaisy.
+
+## Commandes
+
+- **X** ouvre le compagnon de PokeDaisy, **Y** son menu rapide. Les deux se règlent dans le
+  compagnon (SETTINGS).
+- **Toucher l'image** agit sur le compagnon et le HUD.
+- La barre du haut : pause, vitesse ×1 / ×2 / ×4, états de sauvegarde, redémarrage.
 
 ## État du projet
 
-Première version, **jamais encore compilée pour iOS ni lancée sur un iPhone**.
-
-| Partie | Vérifié | Comment |
-|---|---|---|
-| Cœur C (sauvegardes, structures Pokémon, banque) | Oui, sur données synthétiques | 523 vérifications automatiques, aussi sous AddressSanitizer |
-| Pont mGBA (image, son, touches, états, mémoire) | Oui, sous Linux | ROM de test minuscule assemblée par le test |
-| Adresses mémoire par jeu | Non | Reprises des données de PokeDaisy, pas testées ici avec de vrais jeux |
-| Vraies sauvegardes et vraies ROM | Non | Aucun jeu disponible pendant le développement |
-| App iOS (Swift) | Syntaxe seulement | Pas de compilateur Swift ni de Mac disponibles |
-| Compilation GitHub Actions | Non | Jamais exécutée |
-
-Attends-toi donc à des erreurs de compilation au premier passage sur GitHub, puis à des
-défauts à l'usage. La banque fait une copie de secours de la sauvegarde avant d'y écrire
-(dossier `Backups`), mais **garde aussi ta propre copie de tes `.sav`** tant que rien n'a été
-validé sur de vrais jeux.
+- **Banque, fiches, sauvegardes Gen 1 à 3** : tests automatiques sur données fabriquées ; la banque
+  fait une copie de secours de chaque sauvegarde avant d'y écrire (dossier `Backups`). Garde quand même
+  ta propre copie de tes `.sav`.
+- **Hôte du cœur PokeDaisy** : testé sous Linux sur des ROM de test (image, son, états, sauvegarde) ;
+  le compagnon lui-même n'a pas encore tourné sur iPhone avec un vrai jeu.
+- **DS** : pas encore.
 
 ## Obtenir l'IPA sans Mac
 

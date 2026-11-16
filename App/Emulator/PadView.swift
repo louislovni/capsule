@@ -6,12 +6,12 @@ import UIKit
 final class PadView: UIView {
     var onKeys: ((UInt32) -> Void)?
 
-    /// L and R only exist on the Game Boy Advance.
+    /// L and R can be hidden; PokeDaisy's companion uses them on every console, so they show by default.
     var showsShoulders = true {
         didSet {
             guard showsShoulders != oldValue else { return }
-            button(GBAKey.l)?.isHidden = !showsShoulders
-            button(GBAKey.r)?.isHidden = !showsShoulders
+            button(PadKey.l)?.isHidden = !showsShoulders
+            button(PadKey.r)?.isHidden = !showsShoulders
             setNeedsLayout()
         }
     }
@@ -55,9 +55,10 @@ final class PadView: UIView {
         }
         addSubview(dpad)
 
+        // X opens PokeDaisy's companion, Y its quick menu.
         let specs: [(String, UInt32)] = [
-            ("A", GBAKey.a), ("B", GBAKey.b), ("L", GBAKey.l), ("R", GBAKey.r),
-            ("START", GBAKey.start), ("SELECT", GBAKey.select),
+            ("A", PadKey.a), ("B", PadKey.b), ("X", PadKey.x), ("Y", PadKey.y), ("L", PadKey.l), ("R", PadKey.r),
+            ("START", PadKey.start), ("SELECT", PadKey.select),
         ]
         for (title, key) in specs {
             let label = UILabel()
@@ -87,13 +88,13 @@ final class PadView: UIView {
 
         let shoulder = CGSize(width: 84, height: 38)
         let top: CGFloat = 12
-        button(GBAKey.l)?.frame = CGRect(x: 16, y: top, width: shoulder.width, height: shoulder.height)
-        button(GBAKey.r)?.frame = CGRect(x: width - 16 - shoulder.width, y: top, width: shoulder.width, height: shoulder.height)
+        button(PadKey.l)?.frame = CGRect(x: 16, y: top, width: shoulder.width, height: shoulder.height)
+        button(PadKey.r)?.frame = CGRect(x: width - 16 - shoulder.width, y: top, width: shoulder.width, height: shoulder.height)
 
         let pill = CGSize(width: 76, height: 30)
         let bottom = height - pill.height - 18
-        button(GBAKey.select)?.frame = CGRect(x: width / 2 - pill.width - 10, y: bottom, width: pill.width, height: pill.height)
-        button(GBAKey.start)?.frame = CGRect(x: width / 2 + 10, y: bottom, width: pill.width, height: pill.height)
+        button(PadKey.select)?.frame = CGRect(x: width / 2 - pill.width - 10, y: bottom, width: pill.width, height: pill.height)
+        button(PadKey.start)?.frame = CGRect(x: width / 2 + 10, y: bottom, width: pill.width, height: pill.height)
 
         // The main cluster sits between the shoulder row and the START/SELECT row.
         let clusterTop = top + shoulder.height + 10
@@ -106,11 +107,19 @@ final class PadView: UIView {
         dpadHorizontal.frame = CGRect(x: 0, y: (dpadSize - arm) / 2, width: dpadSize, height: arm)
         dpadVertical.frame = CGRect(x: (dpadSize - arm) / 2, y: 0, width: arm, height: dpadSize)
 
-        let diameter = min(width * 0.2, clusterHeight * 0.48, 78)
-        let aCenter = CGPoint(x: width - 22 - diameter / 2, y: centerY - diameter * 0.35)
-        let bCenter = CGPoint(x: aCenter.x - diameter * 1.15, y: centerY + diameter * 0.35)
-        button(GBAKey.a)?.frame = CGRect(x: aCenter.x - diameter / 2, y: aCenter.y - diameter / 2, width: diameter, height: diameter)
-        button(GBAKey.b)?.frame = CGRect(x: bCenter.x - diameter / 2, y: bCenter.y - diameter / 2, width: diameter, height: diameter)
+        // Four face buttons in a diamond: X top, A right, B bottom, Y left.
+        let diameter = min(width * 0.15, clusterHeight * 0.32, 62)
+        let gap = diameter * 0.95
+        let clusterCenter = CGPoint(x: width - 18 - diameter / 2 - gap, y: centerY)
+        let places: [(UInt32, CGPoint)] = [
+            (PadKey.x, CGPoint(x: clusterCenter.x, y: clusterCenter.y - gap)),
+            (PadKey.a, CGPoint(x: clusterCenter.x + gap, y: clusterCenter.y)),
+            (PadKey.b, CGPoint(x: clusterCenter.x, y: clusterCenter.y + gap)),
+            (PadKey.y, CGPoint(x: clusterCenter.x - gap, y: clusterCenter.y)),
+        ]
+        for (key, center) in places {
+            button(key)?.frame = CGRect(x: center.x - diameter / 2, y: center.y - diameter / 2, width: diameter, height: diameter)
+        }
 
         for item in buttons {
             item.view.layer.cornerRadius = item.view.bounds.height / 2
@@ -150,10 +159,10 @@ final class PadView: UIView {
             // A direction counts when it is at least half as strong as the other
             // one, which leaves room for diagonals.
             if abs(dx) > abs(dy) * 0.5 {
-                keys |= dx > 0 ? GBAKey.right : GBAKey.left
+                keys |= dx > 0 ? PadKey.right : PadKey.left
             }
             if abs(dy) > abs(dx) * 0.5 {
-                keys |= dy > 0 ? GBAKey.down : GBAKey.up
+                keys |= dy > 0 ? PadKey.down : PadKey.up
             }
             return keys
         }
@@ -176,8 +185,8 @@ final class PadView: UIView {
         for item in buttons {
             item.view.backgroundColor = keys & item.key != 0 ? pressedColor : buttonColor
         }
-        let horizontal = keys & (GBAKey.left | GBAKey.right) != 0
-        let vertical = keys & (GBAKey.up | GBAKey.down) != 0
+        let horizontal = keys & (PadKey.left | PadKey.right) != 0
+        let vertical = keys & (PadKey.up | PadKey.down) != 0
         dpadHorizontal.backgroundColor = horizontal ? pressedColor : buttonColor
         dpadVertical.backgroundColor = vertical ? pressedColor : buttonColor
         onKeys?(keys)
@@ -211,8 +220,42 @@ struct PadRepresentable: UIViewRepresentable {
     }
 }
 
-/// The game picture: a layer the emulation thread hands frames to.
+/// The game picture: a layer the emulation thread hands frames to. Touches on it
+/// reach the core (PokeDaisy's companion and HUD answer them).
 final class ScreenUIView: UIView {
+    /// Where the finger is, as a fraction of the picture (0...1), or nil when lifted.
+    var onTouch: ((CGPoint?) -> Void)?
+    private var tracked: UITouch?
+
+    private func report(_ touch: UITouch) {
+        guard bounds.width > 0, bounds.height > 0 else { return }
+        let point = touch.location(in: self)
+        onTouch?(CGPoint(x: min(max(point.x / bounds.width, 0), 1), y: min(max(point.y / bounds.height, 0), 1)))
+    }
+
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard tracked == nil, let touch = touches.first else { return }
+        tracked = touch
+        report(touch)
+    }
+
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if let touch = tracked, touches.contains(touch) {
+            report(touch)
+        }
+    }
+
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if let touch = tracked, touches.contains(touch) {
+            tracked = nil
+            onTouch?(nil)
+        }
+    }
+
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        touchesEnded(touches, with: event)
+    }
+
     override init(frame: CGRect) {
         super.init(frame: frame)
         setUp()
@@ -228,7 +271,8 @@ final class ScreenUIView: UIView {
         layer.magnificationFilter = .nearest // keep pixels sharp when scaled up
         layer.minificationFilter = .linear
         layer.contentsGravity = .resizeAspect
-        isUserInteractionEnabled = false
+        isUserInteractionEnabled = true
+        isMultipleTouchEnabled = false
         isAccessibilityElement = true
         accessibilityLabel = "Écran du jeu"
     }
@@ -240,6 +284,9 @@ struct ScreenRepresentable: UIViewRepresentable {
     func makeUIView(context: Context) -> ScreenUIView {
         let view = ScreenUIView()
         session.displayLayer = view.layer
+        view.onTouch = { [weak session] point in
+            session?.setTouch(point)
+        }
         return view
     }
 
