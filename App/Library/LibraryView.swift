@@ -49,6 +49,14 @@ struct LibraryView: View {
                 } footer: {
                     Text("Pour déposer ou retirer des Pokémon, touche l'icône de boîte à côté d'un jeu.")
                 }
+
+                Section {
+                    NavigationLink {
+                        PokeDaisySettingsView()
+                    } label: {
+                        Label("Réglages PokeDaisy", systemImage: "slider.horizontal.3")
+                    }
+                }
             }
             .navigationTitle("Capsule")
             .toolbar {
