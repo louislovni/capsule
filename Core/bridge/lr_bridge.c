@@ -36,6 +36,10 @@ struct LRCore {
 	atomic_uint keys;
 	atomic_int pointerX, pointerY;
 	atomic_bool pointerDown;
+	/* A tap shorter than a frame (down and up between two polls) still shows as
+	 * pressed for one frame, where it went down. */
+	atomic_bool pointerLatch;
+	atomic_bool pointerPolled; /* the core read the touch during this frame */
 
 	int16_t ring[RING_FRAMES * 2];
 	atomic_size_t ringWrite;
@@ -319,8 +323,10 @@ static int16_t input_state(unsigned port, unsigned device, unsigned index, unsig
 		switch (id) {
 		case RETRO_DEVICE_ID_POINTER_X: return (int16_t) atomic_load(&core->pointerX);
 		case RETRO_DEVICE_ID_POINTER_Y: return (int16_t) atomic_load(&core->pointerY);
-		case RETRO_DEVICE_ID_POINTER_PRESSED: return atomic_load(&core->pointerDown) ? 1 : 0;
-		case RETRO_DEVICE_ID_POINTER_COUNT: return atomic_load(&core->pointerDown) ? 1 : 0;
+		case RETRO_DEVICE_ID_POINTER_PRESSED:
+		case RETRO_DEVICE_ID_POINTER_COUNT:
+			atomic_store(&core->pointerPolled, true);
+			return atomic_load(&core->pointerDown) || atomic_load(&core->pointerLatch) ? 1 : 0;
 		default: return 0;
 		}
 	}
@@ -522,6 +528,9 @@ void lr_run_frame(LRCore* core, bool discardAudio) {
 	core->discardAudio = discardAudio;
 	api.run();
 	core->discardAudio = false;
+	if (atomic_exchange(&core->pointerPolled, false)) {
+		atomic_store(&core->pointerLatch, false);
+	}
 }
 
 void lr_set_keys(LRCore* core, uint32_t keys) {
@@ -546,9 +555,15 @@ void lr_set_pointer(LRCore* core, bool pressed, int x, int y) {
 	if (y > 0x7FFF) {
 		y = 0x7FFF;
 	}
+	if (!pressed) {
+		/* Lifted: the last place stays, for a tap the core has not seen yet. */
+		atomic_store(&core->pointerDown, false);
+		return;
+	}
 	atomic_store(&core->pointerX, x);
 	atomic_store(&core->pointerY, y);
-	atomic_store(&core->pointerDown, pressed);
+	atomic_store(&core->pointerLatch, true);
+	atomic_store(&core->pointerDown, true);
 }
 
 const uint8_t* lr_video_buffer(const LRCore* core) {

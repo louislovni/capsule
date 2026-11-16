@@ -24,12 +24,12 @@ enum Orientation {
         scene.requestGeometryUpdate(.iOS(interfaceOrientations: wanted)) { _ in }
     }
 
-    /// The panel the GBA core lays its picture out for, in pixels: the whole screen
-    /// sideways, or the width by three quarters of it upright (the room above the controller).
+    /// The panel the GBA core lays its picture out for, in pixels: the whole screen, either way
+    /// up (EXPAND then draws the map to every edge, the controller lying over it).
     static func panel(landscape: Bool) -> String {
         let native = UIScreen.main.nativeBounds.size
         let long = Int(max(native.width, native.height))
         let short = Int(min(native.width, native.height))
-        return landscape ? "\(long)x\(short)" : "\(short)x\(short * 3 / 4)"
+        return landscape ? "\(long)x\(short)" : "\(short)x\(long)"
     }
 }

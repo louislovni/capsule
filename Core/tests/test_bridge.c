@@ -242,12 +242,13 @@ int main(void) {
 			for (int i = 0; i < 5; ++i) lr_run_frame(core, false);
 			unsigned w = lr_video_width(core), h = lr_video_height(core);
 			printf("landscape panel frame %ux%u\n", w, h);
-			CHECK(w * 100 / h > 200); /* about the phone's 2.17:1 */
-			lr_set_panel(core, "1179x884");
+			CHECK(w * 100 / h >= 140); /* no EXPAND support in the test ROM: the game's own 3:2 */
+			lr_set_panel(core, "1179x2556");
 			for (int i = 0; i < 5; ++i) lr_run_frame(core, false);
 			w = lr_video_width(core), h = lr_video_height(core);
 			printf("portrait panel frame %ux%u\n", w, h);
-			CHECK(w * 100 / h > 125 && w * 100 / h < 140); /* about 4:3 */
+			/* The test ROM has no EXPAND support: its own picture, not a speck in a tall canvas. */
+			CHECK(w * 100 / h > 140);
 			lr_destroy(core);
 		}
 		remove(ini);

@@ -75,16 +75,41 @@ struct GameView: View {
 
     // MARK: - Layouts
 
-    /// Upright: the picture across the width, the controller below it.
+    /// Upright. A tall picture (EXPAND on a GBA game: PokeDaisy draws the map down the
+    /// whole screen) fills the screen with the controller over it; any other picture sits
+    /// across the width with the controller below it.
+    @ViewBuilder
     private var portraitLayout: some View {
-        VStack(spacing: 0) {
-            toolbar
-            if session.loadFailed {
-                loadFailure
-            } else {
+        if !session.loadFailed && session.screenAspect < 0.75 {
+            ZStack {
                 screen
-                pad
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .ignoresSafeArea()
+                GeometryReader { geometry in
+                    VStack(spacing: 0) {
+                        Spacer(minLength: 0)
+                        pad
+                            .frame(height: geometry.size.height * 0.5)
+                    }
+                }
+                .ignoresSafeArea(edges: .bottom)
+                VStack {
+                    toolbar
+                        .background(Color.black.opacity(0.35), in: Capsule())
+                        .fixedSize()
+                    Spacer()
+                }
+            }
+        } else {
+            VStack(spacing: 0) {
+                toolbar
+                if session.loadFailed {
+                    loadFailure
+                } else {
+                    screen
+                    pad
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             }
         }
     }

@@ -25,7 +25,7 @@ Capsule n'est ni fait ni approuvé par les auteurs de PokeDaisy.
   verrouillage de rotation), pour jouer en plein écran : l'image prend tout l'écran et les boutons
   se posent dessus, en transparence ; toucher l'image hors des boutons agit toujours sur le jeu.
 - **GBA** : PokeDaisy démarre en EXPAND, la carte dessinée jusqu'aux bords de l'écran comme sur
-  Android (réglable dans les réglages du compagnon : ORIGINAL, EXPAND, ZOOM OUT). Le compagnon, le HUD
+  Android, en paysage comme debout (la manette se pose alors sur le bas de la carte) (réglable dans les réglages du compagnon : ORIGINAL, EXPAND, ZOOM OUT). Le compagnon, le HUD
   et EXPAND ne marchent que sur les ROM que PokeDaisy reconnaît à leur empreinte exacte : au lancement,
   Capsule affiche son verdict (aussi dans le menu « … »), et le journal des cœurs est dans
   `PokeDaisy/journal.txt`.
