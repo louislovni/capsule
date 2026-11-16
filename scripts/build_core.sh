@@ -26,10 +26,16 @@ git -C "$SRC" submodule update -q --init --recursive --depth 1 third_party/dsper
 # Start from PokeDaisy's files as published, then make the two changes below.
 git -C "$SRC" checkout -q -- libretro/CMakeLists.txt linux/libretro-ds/CMakeLists.txt
 git -C "$SRC/third_party/mgba" checkout -q -- CMakeLists.txt
+git -C "$SRC/third_party/dsperate-lr/DSperate" checkout -q -- src/core/crypto/aes.c
 # 1. Their link options are GNU ld's (version scripts): Apple's linker has none of them.
 perl -pi -e 's/^(target_link_options\(pokedaisy_\w+_libretro PRIVATE -Wl,--.*\))$/if(NOT APPLE)\n  $1\nendif()/' \
 	"$SRC/libretro/CMakeLists.txt" "$SRC/linux/libretro-ds/CMakeLists.txt"
-# 2. mGBA's CMake forces a macOS deployment target on every Apple platform, wrong for iOS.
+# 2. DSperate asks Linux (getauxval) whether an ARM CPU has AES instructions: elsewhere
+#    it takes its plain C cipher instead, as it does on any other system.
+perl -0pi -e 's/#if defined\(__aarch64__\) && defined\(__GNUC__\)\n#include <arm_neon.h>\n#include <sys\/auxv.h>/#if defined(__aarch64__) && defined(__GNUC__) && defined(__linux__)\n#include <arm_neon.h>\n#include <sys\/auxv.h>/' \
+	"$SRC/third_party/dsperate-lr/DSperate/src/core/crypto/aes.c"
+grep -q 'defined(__GNUC__) && defined(__linux__)' "$SRC/third_party/dsperate-lr/DSperate/src/core/crypto/aes.c"
+# 3. mGBA's CMake forces a macOS deployment target on every Apple platform, wrong for iOS.
 perl -pi -e 's/set\(CMAKE_OSX_DEPLOYMENT_TARGET "10.6"\)/# deployment target left to the caller/' \
 	"$SRC/third_party/mgba/CMakeLists.txt"
 
