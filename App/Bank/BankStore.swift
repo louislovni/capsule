@@ -17,11 +17,27 @@ struct BankEntry: Codable, Identifiable, Equatable {
     /// Details worked out with the ROM of the game it came from, when deposited.
     /// Missing for Pokémon deposited by the first version of the app.
     var details: MonDetails?
+    /// 1 or 2 for Game Boy Pokémon; nil for GBA ones (generation 3).
+    var generation: Int?
 
-    /// Details to show: the saved ones, or worked out now with a ROM at hand.
+    var effectiveGeneration: Int { generation ?? 3 }
+
+    /// Size of `data` for each generation.
+    static func dataSize(generation: Int) -> Int {
+        switch generation {
+        case 1: return Int(PK_GB1_BLOB)
+        case 2: return Int(PK_GB2_BLOB)
+        default: return SaveFile.monSize
+        }
+    }
+
+    /// Details to show: the saved ones, or worked out now.
     func resolvedDetails() -> MonDetails? {
         if let details = details {
             return details
+        }
+        if let generation = generation {
+            return MonDetails.makeGB(generation: generation, raw: data, party: false, sourceGame: sourceGame)
         }
         return MonDetails.make(raw: data, rom: RomData.anyROM(preferring: sourceGame))
     }
@@ -109,7 +125,9 @@ final class BankStore: ObservableObject {
         let data = try Data(contentsOf: url)
         let incoming = try Self.makeDecoder().decode([BankEntry].self, from: data)
         let known = Set(entries.map { $0.id })
-        let fresh = incoming.filter { !known.contains($0.id) && $0.data.count == SaveFile.monSize }
+        let fresh = incoming.filter {
+            !known.contains($0.id) && $0.data.count == BankEntry.dataSize(generation: $0.effectiveGeneration)
+        }
         guard !fresh.isEmpty else { return 0 }
         let before = entries
         entries.append(contentsOf: fresh)

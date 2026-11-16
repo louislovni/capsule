@@ -82,12 +82,22 @@ struct MonDetailView: View {
 
     private var characteristics: some View {
         Section("Caractéristiques") {
-            row("Nature", "\(details.nature) (\(details.natureEffect))")
-            row("Talent", details.ability ?? "Inconnu")
-            row("Objet tenu", details.heldItem ?? "Aucun")
-            row("Bonheur", "\(details.friendship) / 255")
+            if let nature = details.nature {
+                row("Nature", "\(nature) (\(details.natureEffect))")
+            }
+            if details.generation == nil {
+                row("Talent", details.ability ?? "Inconnu")
+            }
+            if details.generation != 1 {
+                row("Objet tenu", details.heldItem ?? "Aucun")
+            }
+            if let friendship = details.friendship {
+                row("Bonheur", "\(friendship) / 255")
+            }
             row("Expérience", experienceText)
-            row("Puissance Cachée", details.hiddenPower)
+            if let hiddenPower = details.hiddenPower {
+                row("Puissance Cachée", hiddenPower)
+            }
         }
     }
 
@@ -97,38 +107,44 @@ struct MonDetailView: View {
                 GridRow {
                     Text("")
                     Text("Valeur").gridColumnAlignment(.trailing)
-                    Text("IV").gridColumnAlignment(.trailing)
-                    Text("EV").gridColumnAlignment(.trailing)
+                    Text(isGameBoy ? "DV" : "IV").gridColumnAlignment(.trailing)
+                    Text(isGameBoy ? "Exp." : "EV").gridColumnAlignment(.trailing)
                 }
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
-                ForEach(0..<6, id: \.self) { index in
+                ForEach(0..<statLabels.count, id: \.self) { index in
                     GridRow {
-                        Text(MonDetails.statNames[index])
+                        Text(statLabels[index])
                             .foregroundStyle(statColor(index))
-                        Text(details.stats.map { String($0[index]) } ?? "–")
+                        Text(details.stats.flatMap { index < $0.count ? String($0[index]) : nil } ?? "–")
                             .fontWeight(.medium)
-                        Text("\(details.ivs[index])")
-                            .foregroundStyle(details.ivs[index] == 31 ? Color.green : Color.primary)
-                        Text("\(details.evs[index])")
+                        Text(index < details.ivs.count ? "\(details.ivs[index])" : "–")
+                            .foregroundStyle(index < details.ivs.count && details.ivs[index] == maxIV ? Color.green : Color.primary)
+                        Text(index < details.evs.count ? "\(details.evs[index])" : "–")
                     }
                     .monospacedDigit()
                 }
                 Divider()
-                GridRow {
-                    Text("Total")
-                    Text(details.stats.map { String($0.reduce(0, +)) } ?? "–")
-                    Text("\(details.ivs.reduce(0, +))")
-                    Text("\(details.evs.reduce(0, +))")
+                if !isGameBoy {
+                    GridRow {
+                        Text("Total")
+                        Text(details.stats.map { String($0.reduce(0, +)) } ?? "–")
+                        Text("\(details.ivs.reduce(0, +))")
+                        Text("\(details.evs.reduce(0, +))")
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .monospacedDigit()
                 }
-                .font(.subheadline.weight(.semibold))
-                .monospacedDigit()
             }
             .padding(.vertical, 4)
         } header: {
             Text("Statistiques")
         } footer: {
-            Text("En rouge la statistique favorisée par la nature, en bleu celle qui est pénalisée. IV de 0 à 31 (31 en vert), EV de 0 à 255, 510 au total.")
+            if isGameBoy {
+                Text("DV de 0 à 15 (15 en vert) ; le DV de PV découle des quatre autres. Exp. : l'expérience de statistique, de 0 à 65 535." + (details.generation == 2 ? " Les deux statistiques spéciales partagent le DV et l'expérience du Spécial." : ""))
+            } else {
+                Text("En rouge la statistique favorisée par la nature, en bleu celle qui est pénalisée. IV de 0 à 31 (31 en vert), EV de 0 à 255, 510 au total.")
+            }
         }
     }
 
@@ -146,41 +162,84 @@ struct MonDetailView: View {
 
     private var captureSection: some View {
         Section {
-            row(details.metLevel == 0 ? "Lieu d'éclosion" : "Lieu de capture", details.metLocation)
-            row("Niveau de rencontre", details.metLevel == 0 ? "Éclos d'un Œuf" : "\(details.metLevel)")
-            row("Ball", details.ball)
-            row("Jeu d'origine", details.originGame)
-            row("Langue", details.language)
+            if let location = details.metLocation {
+                row(details.metLevel == 0 ? "Lieu d'éclosion" : "Lieu de capture", location)
+            }
+            if let level = details.metLevel {
+                row("Niveau de rencontre", level == 0 ? "Éclos d'un Œuf" : "\(level)")
+            }
+            if let time = details.metTime {
+                row("Moment", time)
+            }
+            if let ball = details.ball {
+                row("Ball", ball)
+            }
+            row(details.generation == nil ? "Jeu d'origine" : "Jeu", details.originGame)
+            if let language = details.language {
+                row("Langue", language)
+            }
             if let bankDate = bankDate {
                 row("En banque depuis", bankDate.formatted(date: .long, time: .shortened))
             }
         } header: {
             Text("Rencontre")
         } footer: {
-            Text("Les jeux GBA n'enregistrent pas la date de capture : elle n'existe dans aucune sauvegarde de cette génération.")
+            Text(encounterFootnote)
         }
     }
 
     private var trainerSection: some View {
         Section("Dresseur d'origine") {
-            row("Nom", "\(details.trainerName) \(details.trainerGender)")
+            row("Nom", details.trainerGender.map { "\(details.trainerName) \($0)" } ?? details.trainerName)
             row("ID", String(format: "%05d", details.trainerID))
-            row("ID secret", String(format: "%05d", details.secretID))
+            if let secretID = details.secretID {
+                row("ID secret", String(format: "%05d", secretID))
+            }
         }
     }
 
     private var otherSection: some View {
         Section("Autres") {
-            row("Pokérus", details.pokerus ?? "Jamais attrapé")
-            row("Rubans", "\(details.ribbons)")
-            ForEach(0..<6, id: \.self) { index in
-                row(MonDetails.contestNames[index], "\(details.contest[index])")
+            if details.generation != 1 {
+                row("Pokérus", details.pokerus ?? "Jamais attrapé")
             }
-            row("Valeur de personnalité", String(format: "%08X", details.personality))
+            if let ribbons = details.ribbons {
+                row("Rubans", "\(ribbons)")
+            }
+            if let contest = details.contest {
+                ForEach(0..<min(6, contest.count), id: \.self) { index in
+                    row(MonDetails.contestNames[index], "\(contest[index])")
+                }
+            }
+            if let personality = details.personality {
+                row("Valeur de personnalité", String(format: "%08X", personality))
+            }
+            if details.generation == 1 {
+                Text("Rouge, Bleu et Jaune n'ont ni objet tenu, ni bonheur, ni Pokérus, ni chromatiques.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 
     // MARK: - Helpers
+
+    private var isGameBoy: Bool { details.generation != nil }
+    private var maxIV: Int { isGameBoy ? 15 : 31 }
+    private var statLabels: [String] { details.statLabels ?? MonDetails.statNames }
+
+    private var encounterFootnote: String {
+        switch details.generation {
+        case 1:
+            return "Rouge, Bleu et Jaune n'enregistrent ni lieu, ni niveau, ni date de capture."
+        case 2:
+            return details.metLocation == nil
+                ? "Or et Argent n'enregistrent pas les conditions de capture ; seul Cristal garde le lieu, le niveau et le moment. Aucun jeu Game Boy ne garde la date."
+                : "Cristal garde le lieu, le niveau et le moment de la capture, mais pas la date."
+        default:
+            return "Les jeux GBA n'enregistrent pas la date de capture : elle n'existe dans aucune sauvegarde de cette génération."
+        }
+    }
 
     private var experienceText: String {
         if let next = details.experienceToNext {

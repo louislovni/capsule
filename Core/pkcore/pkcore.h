@@ -218,6 +218,121 @@ void pk_rom_location_name(const uint8_t* rom, size_t size, long table, int kind,
 void pk_rom_table_name(const uint8_t* rom, size_t size, long table, size_t stride, unsigned index, char* out,
                        size_t outSize);
 
+/* ---------- Game Boy games: generations 1 and 2 ---------- */
+
+enum { PK_GB_GEN1 = 1, PK_GB_GS = 2, PK_GB_CRYSTAL = 3 };
+
+#define PK_GB_NAME_LENGTH 11
+#define PK_GB1_BOX_MON 33
+#define PK_GB1_PARTY_MON 44
+#define PK_GB2_BOX_MON 32
+#define PK_GB2_PARTY_MON 48
+#define PK_GB_BOX_SLOTS 20
+/* What the bank keeps for a Game Boy Pokemon: the box structure, then the
+ * trainer name and the nickname (stored apart in these games), then the byte
+ * of the species list (0xFD for a generation 2 egg). */
+#define PK_GB1_BLOB 56 /* 33 + 11 + 11 + 1; a plain number so that Swift can import it */
+#define PK_GB2_BLOB 55 /* 32 + 11 + 11 + 1 */
+
+/* Text of the Western Game Boy games to UTF-8. Stops at 0x50. */
+size_t pk_gb_text_decode(const uint8_t* in, size_t maxLen, char* out, size_t outSize);
+
+typedef struct {
+	bool valid;
+	uint8_t generation; /* 1 or 2 */
+	bool isEgg;
+	bool isShiny; /* generation 2 only */
+	uint8_t species; /* internal index: Red/Blue/Yellow order, Pokedex order in Gold/Silver/Crystal */
+	uint16_t dex; /* National Pokedex number */
+	uint8_t level;
+	uint8_t heldItem; /* generation 2; catch rate byte in generation 1 */
+	uint8_t moves[4];
+	uint8_t pp[4];
+	uint8_t ppUps[4];
+	uint16_t otId;
+	uint32_t experience;
+	uint16_t statExp[5]; /* HP, Atk, Def, Spe, Special */
+	uint8_t dvs[5]; /* same order; the HP DV is derived from the others */
+	uint8_t friendship; /* generation 2 */
+	uint8_t pokerus; /* generation 2 */
+	bool hasCaughtData; /* Crystal only */
+	uint8_t metTime; /* 1 morning, 2 day, 3 night */
+	uint8_t metLevel;
+	uint8_t metLocation;
+	uint8_t otGender;
+	uint8_t status;
+	uint16_t hp;
+	bool hasPartyData;
+	uint16_t stats[6]; /* party only: max HP, Atk, Def, Spe, SpA, SpD (SpA = SpD in generation 1) */
+	char nickname[PK_TEXT_UTF8];
+	char otName[PK_TEXT_UTF8];
+} PKGBMon;
+
+/* Decodes a box (33 / 32 bytes) or party (44 / 48 bytes) structure with its
+ * names. listSpecies is the byte of the species list (pass mon[0] if unknown). */
+bool pk_gb_mon_decode(int generation, const uint8_t* mon, size_t monSize, const uint8_t* otName,
+                      const uint8_t* nickname, uint8_t listSpecies, PKGBMon* out);
+/* Decodes a bank blob (PK_GB1_BLOB / PK_GB2_BLOB bytes). */
+bool pk_gb_blob_decode(int generation, const uint8_t* blob, size_t size, PKGBMon* out);
+
+/* Base stats from the built-in tables, by National Pokedex number.
+ * Order: HP, Atk, Def, Spe, SpA, SpD (generation 1: Special twice). */
+bool pk_gb_base_stats(int generation, unsigned dex, uint8_t stats[6], uint8_t* type1, uint8_t* type2,
+                      uint8_t* genderRatio, uint8_t* growthRate);
+/* Stats of a level: max HP, Atk, Def, Spe, SpA, SpD. */
+void pk_gb_calc_stats(int generation, unsigned dex, const uint8_t dvs[5], const uint16_t statExp[5], unsigned level,
+                      uint16_t out[6]);
+/* 0 male, 1 female, 2 genderless (generation 2 rules). */
+int pk_gb_gender(unsigned dex, const uint8_t dvs[5]);
+/* Hidden Power of generation 2: type index as in PKMon (0 Fighting .. 15 Dark), power 31..70. */
+void pk_gb_hidden_power(const uint8_t dvs[5], uint8_t* type, uint8_t* power);
+
+/* Built-in French names (NULL when missing). Index 0 is never used. */
+extern const char* const pk_gb_species_names[252]; /* by Pokedex number */
+extern const char* const pk_gb_move_names[252];
+extern const char* const pk_gb_item_names[256];
+extern const char* const pk_gb_landmark_names[];
+extern const size_t pk_gb_landmark_count;
+extern const uint8_t pk_gb1_index_to_dex[256];
+extern const uint8_t pk_gb1_base[152][8];
+extern const uint8_t pk_gb2_base[252][10];
+
+/* The same names, range-checked (NULL when unknown). */
+const char* pk_gb_species_name(unsigned dex);
+const char* pk_gb_move_name(unsigned move);
+const char* pk_gb_item_name(unsigned item);
+const char* pk_gb_landmark_name(unsigned landmark);
+
+/* Finds the team in a dump of work RAM (0xC000-0xDFFF): returns the offset of
+ * the count byte, or -1. Layout: count, species list, structures, trainer
+ * names, nicknames. */
+long pk_gb_scan_party(const uint8_t* ram, size_t size, int generation, int* countOut);
+
+typedef struct PKGBSave PKGBSave;
+
+PKGBSave* pk_gb_save_open(const uint8_t* data, size_t size, int* err);
+void pk_gb_save_free(PKGBSave* save);
+int pk_gb_save_game(const PKGBSave* save); /* PK_GB_GEN1, PK_GB_GS, PK_GB_CRYSTAL */
+int pk_gb_save_generation(const PKGBSave* save);
+void pk_gb_save_trainer_name(const PKGBSave* save, char* out, size_t outSize);
+uint16_t pk_gb_save_trainer_id(const PKGBSave* save);
+unsigned pk_gb_box_count(const PKGBSave* save);
+int pk_gb_current_box(const PKGBSave* save);
+/* False for boxes the game has not set up yet (Red/Blue/Yellow before the
+ * first box change): they read as empty and cannot receive Pokemon. */
+bool pk_gb_box_usable(const PKGBSave* save, int box);
+unsigned pk_gb_box_size(const PKGBSave* save, int box);
+void pk_gb_box_name(const PKGBSave* save, int box, char* out, size_t outSize);
+size_t pk_gb_blob_size(const PKGBSave* save);
+/* Copies the blob of one Pokemon; false when out of range. */
+bool pk_gb_box_mon(const PKGBSave* save, int box, int index, uint8_t* blob);
+int pk_gb_box_remove(PKGBSave* save, int box, int index);
+int pk_gb_box_append(PKGBSave* save, int box, const uint8_t* blob, size_t size);
+/* First box with room: the current one if possible. */
+bool pk_gb_first_free(const PKGBSave* save, int* box);
+size_t pk_gb_save_size(const PKGBSave* save);
+size_t pk_gb_save_write(const PKGBSave* save, uint8_t* out, size_t outSize);
+
 #ifdef __cplusplus
 }
 #endif

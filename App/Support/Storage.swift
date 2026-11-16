@@ -46,8 +46,8 @@ struct Game: Identifiable, Hashable {
         }
     }
 
-    /// The Pokémon bank and the companion only know the GBA games.
-    var supportsPokemonTools: Bool { romURL.pathExtension.lowercased() == "gba" }
+    /// The Pokémon bank works with the GBA games and the Game Boy ones (generations 1 and 2).
+    var supportsPokemonTools: Bool { Self.romExtensions.contains(romURL.pathExtension.lowercased()) }
 
     /// Remembers when Pokémon were last moved between this game's save and the bank,
     /// so that loading an older save state can be flagged.

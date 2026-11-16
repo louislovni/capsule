@@ -18,18 +18,8 @@ struct SaveFileError: LocalizedError {
     }
 }
 
-/// A Pokémon sitting in a PC box of a save file.
-struct BoxedMon: Identifiable {
-    let box: Int
-    let slot: Int
-    let raw: Data
-    let summary: MonSummary
-
-    var id: Int { box * 30 + slot }
-}
-
 /// A Generation 3 save file opened for PC box access. Swift face of `PKSave`.
-final class SaveFile {
+final class SaveFile: PCStorage {
     static let boxCount = 14
     static let slotsPerBox = 30
     static let monSize = 80
@@ -82,9 +72,16 @@ final class SaveFile {
         return name.isEmpty ? "Boîte \(box + 1)" : name
     }
 
+    struct Slot {
+        let box: Int
+        let slot: Int
+        let raw: Data
+        let summary: MonSummary
+    }
+
     /// Every Pokémon stored in the given box.
-    func mons(inBox box: Int) -> [BoxedMon] {
-        var result: [BoxedMon] = []
+    func mons(inBox box: Int) -> [Slot] {
+        var result: [Slot] = []
         for slot in 0..<Self.slotsPerBox {
             guard let pointer = pk_save_box_mon(handle, Int32(box), Int32(slot)), !pk_mon_is_empty(pointer) else {
                 continue
@@ -92,7 +89,7 @@ final class SaveFile {
             var mon = PKMon()
             guard pk_mon_decode(pointer, Self.monSize, &mon) else { continue }
             let raw = Data(bytes: pointer, count: Self.monSize)
-            result.append(BoxedMon(box: box, slot: slot, raw: raw, summary: MonSummary(mon)))
+            result.append(Slot(box: box, slot: slot, raw: raw, summary: MonSummary(mon)))
         }
         return result
     }
@@ -127,11 +124,10 @@ final class SaveFile {
         }
     }
 
-    /// Writes the changes back to disk. The first write of a session keeps a dated
-    /// copy of the original file in Backups.
+    /// Writes the changes back to disk, keeping a dated copy of the original first.
     func write() throws {
         if !backedUp {
-            try backUp()
+            try SaveBackup.backUp(url)
             backedUp = true
         }
         let size = pk_save_size(handle)
@@ -143,7 +139,38 @@ final class SaveFile {
         try Data(output).write(to: url, options: .atomic)
     }
 
-    private func backUp() throws {
+    // MARK: - PCStorage
+
+    /// Names come from the game's ROM, when it could be read.
+    var rom: RomData?
+
+    var generation: Int { 3 }
+    var boxCount: Int { Self.boxCount }
+    var summaryLine: String { "Dresseur \(trainerName) · \(playTime)" }
+    var footnote: String? { nil }
+
+    func listMons(inBox box: Int) -> [BoxedMon] {
+        mons(inBox: box).map { item in
+            let summary = item.summary
+            let speciesName = rom?.speciesName(summary.species) ?? "Pokémon n°\(summary.species)"
+            return BoxedMon(box: item.box, slot: item.slot, raw: item.raw, species: summary.species,
+                            speciesName: speciesName, nickname: summary.nickname, trainer: summary.trainerName,
+                            isShiny: summary.isShiny, isEgg: summary.isEgg)
+        }
+    }
+
+    func remove(_ mon: BoxedMon) throws {
+        try remove(box: mon.box, slot: mon.slot)
+    }
+
+    func details(of mon: BoxedMon) -> MonDetails? {
+        MonDetails.make(raw: mon.raw, rom: rom)
+    }
+}
+
+/// A dated copy of a save file, made before Capsule first changes it.
+enum SaveBackup {
+    static func backUp(_ url: URL) throws {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyyMMdd-HHmmss"
@@ -153,11 +180,11 @@ final class SaveFile {
         if !FileManager.default.fileExists(atPath: destination.path) {
             try FileManager.default.copyItem(at: url, to: destination)
         }
-        pruneBackups(for: name)
+        prune(name)
     }
 
     /// Keeps the 10 most recent backups of a game.
-    private func pruneBackups(for name: String) {
+    private static func prune(_ name: String) {
         let manager = FileManager.default
         guard let files = try? manager.contentsOfDirectory(at: Storage.backups, includingPropertiesForKeys: nil) else {
             return

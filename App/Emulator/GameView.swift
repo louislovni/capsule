@@ -105,13 +105,11 @@ struct GameView: View {
             }
             .accessibilityLabel("Vitesse \(session.speed) fois")
 
-            if session.isGBA {
-                Button {
-                    showingTeam = true
-                } label: {
-                    Label("Équipe", systemImage: "list.bullet.rectangle")
-                        .labelStyle(.iconOnly)
-                }
+            Button {
+                showingTeam = true
+            } label: {
+                Label("Équipe", systemImage: "list.bullet.rectangle")
+                    .labelStyle(.iconOnly)
             }
 
             Menu {
@@ -130,10 +128,8 @@ struct GameView: View {
                     }
                 }
                 Section {
-                    if session.isGBA {
-                        Button("Soigner l'équipe") {
-                            session.healParty()
-                        }
+                    Button("Soigner l'équipe") {
+                        session.healParty()
                     }
                     Button("Redémarrer le jeu", role: .destructive) {
                         session.reset()
@@ -202,6 +198,16 @@ struct GameView: View {
 struct TeamPanel: View {
     @ObservedObject var session: EmulatorSession
 
+    private var teamFootnote: String {
+        let heal = "Le soin rend les PV et retire les statuts, hors combat. Les PP ne sont pas restaurés."
+        if !session.isGBA {
+            return "Jeu Game Boy : l'équipe est recherchée en mémoire (Rouge, Bleu, Jaune, Or, Argent, Cristal). " + heal
+        }
+        return session.isKnownGame
+            ? "Jeu reconnu (\(session.gameLabel)). " + heal
+            : "Jeu non répertorié (\(session.gameLabel)) : l'équipe est recherchée automatiquement en mémoire, ce qui peut échouer sur certains hacks."
+    }
+
     var body: some View {
         NavigationStack {
             List {
@@ -212,7 +218,14 @@ struct TeamPanel: View {
                     ForEach(session.party) { member in
                         NavigationLink {
                             let rom = session.romData
-                            MonDetailLoader(load: { MonDetails.make(raw: member.raw, rom: rom) })
+                            let gameName = session.game.name
+                            MonDetailLoader(load: {
+                                if let generation = member.generation {
+                                    return MonDetails.makeGB(generation: generation, raw: member.raw, party: true,
+                                                             sourceGame: gameName)
+                                }
+                                return MonDetails.make(raw: member.raw, rom: rom)
+                            })
                         } label: {
                             TeamRow(member: member)
                         }
@@ -223,9 +236,7 @@ struct TeamPanel: View {
                         session.healParty()
                     }
                 } footer: {
-                    Text(session.isKnownGame
-                        ? "Jeu reconnu (\(session.gameLabel)). Le soin rend les PV et retire les statuts, hors combat. Les PP ne sont pas restaurés."
-                        : "Jeu non répertorié (\(session.gameLabel)) : l'équipe est recherchée automatiquement en mémoire, ce qui peut échouer sur certains hacks.")
+                    Text(teamFootnote)
                 }
             }
             .navigationTitle("Équipe")

@@ -8,6 +8,8 @@ struct MonDetails: Codable, Equatable {
         var pp: Int
     }
 
+    /// 1 or 2 for the Game Boy games; nil for the GBA games (generation 3).
+    var generation: Int?
     var species: Int
     var speciesName: String
     var nationalDex: Int?
@@ -21,16 +23,18 @@ struct MonDetails: Codable, Equatable {
     var experience: Int
     /// Experience still needed for the next level; nil at level 100 or when unknown.
     var experienceToNext: Int?
-    var nature: String
+    var nature: String?
     /// Index into `stats` (1...5) of the stat the nature raises / lowers.
     var natureRaised: Int?
     var natureLowered: Int?
     var ability: String?
     var heldItem: String?
     var types: [String]
-    var friendship: Int
-    var hiddenPower: String
+    var friendship: Int?
+    var hiddenPower: String?
 
+    /// Names of the rows of `stats`, `ivs` and `evs`; nil means `statNames`.
+    var statLabels: [String]?
     /// HP, Attack, Defense, Speed, Sp. Atk, Sp. Def. Nil when the base stats are unknown.
     var stats: [Int]?
     var ivs: [Int]
@@ -40,21 +44,23 @@ struct MonDetails: Codable, Equatable {
     var moves: [Move]
 
     var trainerName: String
-    var trainerGender: String
+    var trainerGender: String?
     var trainerID: Int
-    var secretID: Int
+    var secretID: Int?
 
-    var metLocation: String
+    /// Nil when the game does not record it (everything before Crystal).
+    var metLocation: String?
     /// 0 when the Pokémon hatched from an egg.
-    var metLevel: Int
-    var ball: String
+    var metLevel: Int?
+    var metTime: String?
+    var ball: String?
     var originGame: String
-    var language: String
+    var language: String?
 
     var pokerus: String?
-    var ribbons: Int
-    var contest: [Int]
-    var personality: UInt32
+    var ribbons: Int?
+    var contest: [Int]?
+    var personality: UInt32?
 
     // MARK: - Labels
 
@@ -113,6 +119,9 @@ struct MonDetails: Codable, Equatable {
         let evList = bytes(of: mon.evs, count: 6).map(Int.init)
         let base = rom?.baseStats(species: summary.species)
 
+        generation = nil
+        statLabels = nil
+        metTime = nil
         species = summary.species
         speciesName = rom?.speciesName(summary.species) ?? "Pokémon n°\(summary.species)"
         nationalDex = rom?.nationalDex(species: summary.species)
@@ -238,6 +247,182 @@ struct MonDetails: Codable, Equatable {
 
     private static func typeName(_ id: Int) -> String {
         id >= 0 && id < typeNames.count ? typeNames[id] : "Type n°\(id)"
+    }
+
+    // MARK: - Game Boy games
+
+    static let gbTypeNames: [Int: String] = [
+        0: "Normal", 1: "Combat", 2: "Vol", 3: "Poison", 4: "Sol", 5: "Roche", 7: "Insecte", 8: "Spectre",
+        9: "Acier", 20: "Feu", 21: "Eau", 22: "Plante", 23: "Électrik", 24: "Psy", 25: "Glace", 26: "Dragon",
+        27: "Ténèbres",
+    ]
+
+    static func gbSpeciesName(_ dex: Int) -> String {
+        pk_gb_species_name(UInt32(max(dex, 0))).map { String(cString: $0) } ?? "Pokémon n°\(dex)"
+    }
+
+    static func gbMoveName(_ id: Int) -> String {
+        pk_gb_move_name(UInt32(max(id, 0))).map { String(cString: $0) } ?? "Capacité n°\(id)"
+    }
+
+    static func gbItemName(_ id: Int) -> String {
+        pk_gb_item_name(UInt32(max(id, 0))).map { String(cString: $0) } ?? "Objet n°\(id)"
+    }
+
+    static func gbLandmarkName(_ id: Int) -> String? {
+        pk_gb_landmark_name(UInt32(max(id, 0))).map { String(cString: $0) }
+    }
+
+    /// Size of the structure at the start of a Game Boy blob: box or party.
+    static func gbStructureSize(generation: Int, party: Bool) -> Int {
+        if generation == 1 {
+            return party ? Int(PK_GB1_PARTY_MON) : Int(PK_GB1_BOX_MON)
+        }
+        return party ? Int(PK_GB2_PARTY_MON) : Int(PK_GB2_BOX_MON)
+    }
+
+    /// Decodes a Game Boy Pokémon kept as: structure (box or party size), trainer
+    /// name, nickname, species-list byte.
+    static func decodeGB(generation: Int, raw: Data, party: Bool) -> PKGBMon? {
+        let size = gbStructureSize(generation: generation, party: party)
+        let names = Int(PK_GB_NAME_LENGTH)
+        guard raw.count >= size + 2 * names + 1 else { return nil }
+        var mon = PKGBMon()
+        let ok = raw.withUnsafeBytes { bytes -> Bool in
+            guard let base = bytes.bindMemory(to: UInt8.self).baseAddress else { return false }
+            return pk_gb_mon_decode(Int32(generation), base, size, base + size, base + size + names,
+                                    base[size + 2 * names], &mon)
+        }
+        return ok ? mon : nil
+    }
+
+    static func makeGB(generation: Int, raw: Data, party: Bool, sourceGame: String) -> MonDetails? {
+        guard let mon = decodeGB(generation: generation, raw: raw, party: party) else { return nil }
+        return MonDetails(gb: mon, sourceGame: sourceGame)
+    }
+
+    private init(gb mon: PKGBMon, sourceGame: String) {
+        let generation = Int(mon.generation)
+        let dex = Int(mon.dex)
+        let dvs = bytes(of: mon.dvs, count: 5).map(Int.init)
+        let statExp = withUnsafeBytes(of: mon.statExp) { Array($0.bindMemory(to: UInt16.self).prefix(5)) }.map(Int.init)
+        var baseStats = [UInt8](repeating: 0, count: 6)
+        var type1: UInt8 = 0
+        var type2: UInt8 = 0
+        var growth: UInt8 = 0
+        let hasBase = pk_gb_base_stats(Int32(generation), UInt32(dex), &baseStats, &type1, &type2, nil, &growth)
+
+        self.generation = generation
+        species = dex
+        speciesName = Self.gbSpeciesName(dex)
+        nationalDex = dex
+        nickname = stringFromCField(mon.nickname)
+        isEgg = mon.isEgg
+        isShiny = mon.isShiny
+        if generation == 2 {
+            var dvBytes = dvs.map { UInt8($0) }
+            switch pk_gb_gender(UInt32(dex), &dvBytes) {
+            case 0: gender = "♂"
+            case 1: gender = "♀"
+            default: gender = nil
+            }
+        } else {
+            gender = nil
+        }
+
+        level = Int(mon.level)
+        experience = Int(mon.experience)
+        if hasBase && level < 100 {
+            experienceToNext = max(Int(pk_exp_for_level(growth, UInt32(level + 1))) - experience, 0)
+        } else {
+            experienceToNext = nil
+        }
+        nature = nil
+        natureRaised = nil
+        natureLowered = nil
+        ability = nil
+        heldItem = generation == 2 && mon.heldItem != 0 ? Self.gbItemName(Int(mon.heldItem)) : nil
+        if hasBase {
+            var list = [Self.gbTypeNames[Int(type1)] ?? "Type n°\(type1)"]
+            if type2 != type1 {
+                list.append(Self.gbTypeNames[Int(type2)] ?? "Type n°\(type2)")
+            }
+            types = list
+        } else {
+            types = []
+        }
+        if generation == 2 {
+            friendship = Int(mon.friendship)
+            var dvBytes = dvs.map { UInt8($0) }
+            var hpType: UInt8 = 0
+            var hpPower: UInt8 = 0
+            pk_gb_hidden_power(&dvBytes, &hpType, &hpPower)
+            hiddenPower = "\(Self.hiddenPowerTypes[Int(hpType) % 16]) \(hpPower)"
+        } else {
+            friendship = nil
+            hiddenPower = nil
+        }
+
+        let rows = generation == 1 ? 5 : 6
+        statLabels = generation == 1 ? ["PV", "Attaque", "Défense", "Vitesse", "Spécial"] : nil
+        // Generation 2 uses the Special DV and stat experience for both special stats.
+        ivs = Array((dvs + [dvs[4]]).prefix(rows))
+        evs = Array((statExp + [statExp[4]]).prefix(rows))
+        let partyStats = withUnsafeBytes(of: mon.stats) { Array($0.bindMemory(to: UInt16.self).prefix(6)) }.map(Int.init)
+        if mon.hasPartyData && partyStats[0] > 0 {
+            stats = Array(partyStats.prefix(rows))
+            currentHP = Int(mon.hp)
+            status = MonSummary.statusLabel(status: UInt32(mon.status), hp: Int(mon.hp), maxHp: partyStats[0])
+        } else if hasBase && level > 0 {
+            var dvBytes = dvs.map { UInt8($0) }
+            var expValues = statExp.map { UInt16($0) }
+            var out = [UInt16](repeating: 0, count: 6)
+            pk_gb_calc_stats(Int32(generation), UInt32(dex), &dvBytes, &expValues, UInt32(level), &out)
+            stats = Array(out.map(Int.init).prefix(rows))
+            currentHP = nil
+            status = nil
+        } else {
+            stats = nil
+            currentHP = nil
+            status = nil
+        }
+
+        let moveIDs = bytes(of: mon.moves, count: 4)
+        let pp = bytes(of: mon.pp, count: 4)
+        moves = zip(moveIDs, pp).compactMap { id, pp in
+            id == 0 ? nil : Move(name: Self.gbMoveName(Int(id)), pp: Int(pp))
+        }
+
+        trainerName = stringFromCField(mon.otName)
+        trainerID = Int(mon.otId)
+        secretID = nil
+        if mon.hasCaughtData {
+            trainerGender = mon.otGender == 1 ? "♀" : "♂"
+            metLevel = Int(mon.metLevel)
+            metLocation = Self.gbLandmarkName(Int(mon.metLocation)) ?? "Lieu n°\(mon.metLocation)"
+            switch mon.metTime {
+            case 1: metTime = "Matin"
+            case 2: metTime = "Jour"
+            case 3: metTime = "Nuit"
+            default: metTime = nil
+            }
+        } else {
+            trainerGender = nil
+            metLevel = nil
+            metLocation = nil
+            metTime = nil
+        }
+        ball = nil
+        originGame = sourceGame
+        language = nil
+        if generation == 2 && mon.pokerus != 0 {
+            pokerus = mon.pokerus & 0x0F != 0 ? "Porteur" : "Guéri (immunisé)"
+        } else {
+            pokerus = nil
+        }
+        ribbons = nil
+        contest = nil
+        personality = nil
     }
 
     // MARK: - Display helpers

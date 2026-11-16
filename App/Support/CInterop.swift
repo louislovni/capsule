@@ -49,8 +49,27 @@ struct MonSummary: Equatable {
         status = mon.status
     }
 
+    /// Game Boy Pokémon (generations 1 and 2). `species` is the Pokédex number.
+    init(gb mon: PKGBMon) {
+        species = Int(mon.dex)
+        nickname = stringFromCField(mon.nickname)
+        trainerName = stringFromCField(mon.otName)
+        isShiny = mon.isShiny
+        isEgg = mon.isEgg
+        moves = [mon.moves.0, mon.moves.1, mon.moves.2, mon.moves.3].filter { $0 != 0 }.map(Int.init)
+        level = Int(mon.level)
+        hp = Int(mon.hp)
+        maxHp = Int(mon.stats.0)
+        status = UInt32(mon.status)
+    }
+
     /// Short label for the status condition, or nil when healthy.
     var statusLabel: String? {
+        Self.statusLabel(status: status, hp: hp, maxHp: maxHp)
+    }
+
+    /// The status bits are the same in generations 1 to 3.
+    static func statusLabel(status: UInt32, hp: Int, maxHp: Int) -> String? {
         if maxHp > 0 && hp == 0 { return "K.O." }
         if status & 0x07 != 0 { return "SOM" }
         if status & 0x08 != 0 || status & 0x80 != 0 { return "PSN" }

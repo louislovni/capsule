@@ -9,8 +9,11 @@ struct PartyMember: Identifiable, Equatable {
     let speciesName: String
     let summary: MonSummary
     let moveNames: [String]
-    /// The 100 bytes as they are in the game's memory.
+    /// GBA: the 100 bytes as they are in the game's memory. Game Boy: the party
+    /// structure, trainer name, nickname and species-list byte.
     let raw: Data
+    /// 1 or 2 for Game Boy games, nil on GBA.
+    var generation: Int? = nil
 }
 
 /// GBA key bits, as mGBA expects them.
@@ -71,6 +74,9 @@ final class EmulatorSession: ObservableObject {
     private var moveTable = -1
     private var scannedParty: UInt32?
     private var framesSinceScan = 0
+    /// Game Boy: where the team list starts in work RAM, and its format.
+    private var gbParty: (address: UInt32, generation: Int)?
+    private var gbFramesSinceScan = 120
 
     private static let framesPerSecond = 59.7275
 
@@ -197,10 +203,10 @@ final class EmulatorSession: ObservableObject {
     /// Restores HP and clears status conditions of the whole team.
     /// Outside of battle only: during a fight the game works on its own copies.
     func healParty() {
-        guard isGBA else { return }
+        let gba = isGBA
         perform { [weak self] core in
             guard let self = self else { return }
-            let healed = self.healPartyOnThread(core)
+            let healed = gba ? self.healPartyOnThread(core) : self.healGBPartyOnThread(core)
             DispatchQueue.main.async {
                 self.notice = healed > 0 ? "Équipe soignée" : "Équipe introuvable en mémoire"
             }
@@ -252,8 +258,12 @@ final class EmulatorSession: ObservableObject {
             present(core)
 
             frameCount += 1
-            if pokemonFeatures && frameCount % 30 == 0 {
-                publishParty(core)
+            if frameCount % 30 == 0 {
+                if pokemonFeatures {
+                    publishParty(core)
+                } else {
+                    publishGBParty(core)
+                }
             }
 
             // Pace on the clock, nudged by how much audio is waiting, so sound
@@ -374,6 +384,97 @@ final class EmulatorSession: ObservableObject {
             guard let self = self, self.party != members else { return }
             self.party = members
         }
+    }
+
+    // MARK: - Game Boy team
+
+    private static let gbRAMStart: UInt32 = 0xC000
+    private static let gbRAMSize = 0x2000
+
+    private static func gbStructSize(_ generation: Int) -> Int {
+        generation == 1 ? Int(PK_GB1_PARTY_MON) : Int(PK_GB2_PARTY_MON)
+    }
+
+    private static func gbBlockSize(_ generation: Int) -> Int {
+        8 + 6 * gbStructSize(generation) + 12 * Int(PK_GB_NAME_LENGTH)
+    }
+
+    /// Where the team is, checked again each time; searched afresh every 2 s when lost.
+    private func gbPartyLocation(_ core: OpaquePointer) -> (address: UInt32, count: Int, generation: Int)? {
+        if let known = gbParty {
+            var block = [UInt8](repeating: 0, count: Self.gbBlockSize(known.generation))
+            emu_read_bytes(core, known.address, &block, block.count)
+            var count: Int32 = 0
+            if pk_gb_scan_party(block, block.count, Int32(known.generation), &count) == 0 {
+                return (known.address, Int(count), known.generation)
+            }
+            gbParty = nil
+        }
+        gbFramesSinceScan += 30
+        guard gbFramesSinceScan >= 120 else { return nil }
+        gbFramesSinceScan = 0
+        var ram = [UInt8](repeating: 0, count: Self.gbRAMSize)
+        emu_read_bytes(core, Self.gbRAMStart, &ram, ram.count)
+        for generation in [1, 2] {
+            var count: Int32 = 0
+            let offset = pk_gb_scan_party(ram, ram.count, Int32(generation), &count)
+            if offset >= 0 {
+                let address = Self.gbRAMStart + UInt32(offset)
+                gbParty = (address, generation)
+                return (address, Int(count), generation)
+            }
+        }
+        return nil
+    }
+
+    private func publishGBParty(_ core: OpaquePointer) {
+        var members: [PartyMember] = []
+        if let location = gbPartyLocation(core) {
+            let generation = location.generation
+            let structSize = Self.gbStructSize(generation)
+            let nameLength = Int(PK_GB_NAME_LENGTH)
+            var block = [UInt8](repeating: 0, count: Self.gbBlockSize(generation))
+            emu_read_bytes(core, location.address, &block, block.count)
+            let otStart = 8 + 6 * structSize
+            let nickStart = otStart + 6 * nameLength
+            for slot in 0..<location.count {
+                var raw = Array(block[(8 + slot * structSize)..<(8 + (slot + 1) * structSize)])
+                raw += block[(otStart + slot * nameLength)..<(otStart + (slot + 1) * nameLength)]
+                raw += block[(nickStart + slot * nameLength)..<(nickStart + (slot + 1) * nameLength)]
+                raw.append(block[1 + slot])
+                let data = Data(raw)
+                guard let mon = MonDetails.decodeGB(generation: generation, raw: data, party: true) else { continue }
+                let summary = MonSummary(gb: mon)
+                members.append(PartyMember(id: slot, speciesName: MonDetails.gbSpeciesName(summary.species),
+                                           summary: summary, moveNames: summary.moves.map(MonDetails.gbMoveName),
+                                           raw: data, generation: generation))
+            }
+        }
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self, self.party != members else { return }
+            self.party = members
+        }
+    }
+
+    private func healGBPartyOnThread(_ core: OpaquePointer) -> Int {
+        guard let location = gbPartyLocation(core) else { return 0 }
+        let generation = location.generation
+        let structSize = Self.gbStructSize(generation)
+        // Offsets of current HP, max HP and status in the party structure.
+        let (hpAt, maxAt, statusAt) = generation == 1 ? (1, 34, 4) : (34, 36, 32)
+        var healed = 0
+        var mon = [UInt8](repeating: 0, count: structSize)
+        for slot in 0..<location.count {
+            let address = location.address + UInt32(8 + slot * structSize)
+            emu_read_bytes(core, address, &mon, structSize)
+            let maxHP = [mon[maxAt], mon[maxAt + 1]]
+            guard maxHP != [0, 0] else { continue }
+            var clear: UInt8 = 0
+            emu_write_bytes(core, address + UInt32(hpAt), maxHP, 2)
+            emu_write_bytes(core, address + UInt32(statusAt), &clear, 1)
+            healed += 1
+        }
+        return healed
     }
 
     private func healPartyOnThread(_ core: OpaquePointer) -> Int {

@@ -1,8 +1,9 @@
 # Capsule
 
 Émulateur Game Boy Advance, Game Boy et Game Boy Color pour iPhone, pensé pour les jeux
-Pokémon. Le compagnon, la fiche détaillée et la banque concernent la 3ᵉ génération (Rubis,
-Saphir, Émeraude, Rouge Feu, Vert Feuille, toutes langues occidentales).
+Pokémon. Le compagnon, la fiche détaillée et la banque gèrent les générations 1 à 3 (Rouge,
+Bleu, Jaune, Or, Argent, Cristal, Rubis, Saphir, Émeraude, Rouge Feu, Vert Feuille, versions
+occidentales). La banque ne fait passer un Pokémon que vers un jeu de sa génération.
 
 - **Émulation** : cœur [mGBA](https://mgba.io), son, commandes tactiles, vitesse ×2 / ×4, trois états de sauvegarde.
 - **Compagnon** : l'équipe lue en direct dans la mémoire du jeu (PV, statut, niveau, capacités), et un soin de l'équipe hors combat.

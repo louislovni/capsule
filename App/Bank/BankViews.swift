@@ -74,8 +74,7 @@ struct TransferView: View {
     }
 
     @State private var side: Side = .pc
-    @State private var save: SaveFile?
-    @State private var rom: RomData?
+    @State private var storage: PCStorage?
     @State private var shownDetails: MonDetails?
     @State private var shownBankDate: Date?
     @State private var boxes: [[BoxedMon]] = []
@@ -134,6 +133,12 @@ struct TransferView: View {
         Binding(get: { actionError != nil }, set: { if !$0 { actionError = nil } })
     }
 
+    private var generation: Int { storage?.generation ?? 3 }
+
+    private var compatibleEntries: [BankEntry] {
+        bank.entries.filter { $0.effectiveGeneration == generation }
+    }
+
     @ViewBuilder
     private var content: some View {
         List {
@@ -147,8 +152,8 @@ struct TransferView: View {
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets())
             } footer: {
-                if let save = save {
-                    Text("\(save.gameFamily) · Dresseur \(save.trainerName) · \(save.playTime)")
+                if let storage = storage {
+                    Text("\(storage.gameFamily) · \(storage.summaryLine)")
                 }
             }
 
@@ -169,15 +174,15 @@ struct TransferView: View {
         } else {
             ForEach(boxes.indices, id: \.self) { box in
                 if !boxes[box].isEmpty {
-                    Section(save?.boxName(box) ?? "Boîte \(box + 1)") {
+                    Section(storage?.boxName(box) ?? "Boîte \(box + 1)") {
                         ForEach(boxes[box]) { mon in
                             HStack {
                                 Button {
                                     shownBankDate = nil
-                                    shownDetails = MonDetails.make(raw: mon.raw, rom: rom)
+                                    shownDetails = storage?.details(of: mon)
                                 } label: {
                                     HStack {
-                                        MonLabel(name: displayName(mon.summary), trainer: mon.summary.trainerName, isShiny: mon.summary.isShiny)
+                                        MonLabel(name: mon.displayName, trainer: mon.trainer, isShiny: mon.isShiny)
                                         Spacer()
                                         Image(systemName: "info.circle")
                                             .foregroundStyle(.secondary)
@@ -195,20 +200,28 @@ struct TransferView: View {
                 }
             }
         }
+        if let note = storage?.footnote {
+            Section {
+                EmptyView()
+            } footer: {
+                Text(note)
+            }
+        }
     }
 
     @ViewBuilder
     private var bankSection: some View {
-        if bank.entries.isEmpty {
-            Text("La banque est vide.")
+        let entries = compatibleEntries
+        if entries.isEmpty {
+            Text(bank.entries.isEmpty ? "La banque est vide." : "Aucun Pokémon de cette génération dans la banque.")
                 .foregroundStyle(.secondary)
         } else {
             Section {
-                ForEach(bank.entries) { entry in
+                ForEach(entries) { entry in
                     HStack {
                         Button {
                             shownBankDate = entry.depositedAt
-                            shownDetails = entry.details ?? MonDetails.make(raw: entry.data, rom: rom)
+                            shownDetails = entry.resolvedDetails()
                         } label: {
                             HStack {
                                 BankEntryRow(entry: entry)
@@ -229,63 +242,71 @@ struct TransferView: View {
                 Text("Un Pokémon retiré va dans la première place libre du PC. Relance ensuite le jeu depuis sa sauvegarde, pas depuis un état enregistré avant le transfert.")
             }
         }
+        let others = bank.entries.count - entries.count
+        if others > 0 {
+            Section {
+                EmptyView()
+            } footer: {
+                Text(others == 1
+                    ? "1 Pokémon d'une autre génération reste dans la banque : il ne peut aller que dans un jeu de sa génération."
+                    : "\(others) Pokémon d'autres générations restent dans la banque : chacun ne peut aller que dans un jeu de sa génération.")
+            }
+        }
     }
 
     // MARK: - Actions
 
-    private func displayName(_ summary: MonSummary) -> String {
-        if summary.isEgg { return "Œuf" }
-        let species = rom?.speciesName(summary.species) ?? "Pokémon n°\(summary.species)"
-        if summary.nickname.isEmpty || summary.nickname.caseInsensitiveCompare(species) == .orderedSame {
-            return species
-        }
-        return "\(summary.nickname) (\(species))"
-    }
-
     private func load() async {
-        let saveURL = game.saveURL
-        let romURL = game.romURL
-        let outcome = await Task.detached(priority: .userInitiated) { () -> (SaveFile?, RomData?, String?) in
-            guard FileManager.default.fileExists(atPath: saveURL.path) else {
-                return (nil, nil, "Pas encore de sauvegarde pour ce jeu. Lance-le et sauvegarde une fois depuis son menu.")
+        let game = self.game
+        let outcome = await Task.detached(priority: .userInitiated) { () -> (PCStorage?, String?) in
+            guard FileManager.default.fileExists(atPath: game.saveURL.path) else {
+                return (nil, "Pas encore de sauvegarde pour ce jeu. Lance-le et sauvegarde une fois depuis son menu.")
             }
             do {
-                let save = try SaveFile(url: saveURL)
-                return (save, RomData.load(romURL), nil)
+                return (try Self.openStorage(for: game), nil)
             } catch {
-                return (nil, nil, error.localizedDescription)
+                return (nil, error.localizedDescription)
             }
         }.value
-        save = outcome.0
-        rom = outcome.1
-        loadError = outcome.2
+        storage = outcome.0
+        loadError = outcome.1
         reloadBoxes()
         isLoading = false
     }
 
+    private static func openStorage(for game: Game) throws -> PCStorage {
+        if game.romURL.pathExtension.lowercased() == "gba" {
+            let save = try SaveFile(url: game.saveURL)
+            save.rom = RomData.load(game.romURL)
+            return save
+        }
+        return try GBSaveFile(url: game.saveURL, sourceGame: game.name)
+    }
+
     private func reloadBoxes() {
-        guard let save = save else {
+        guard let storage = storage else {
             boxes = []
             return
         }
-        boxes = (0..<SaveFile.boxCount).map { save.mons(inBox: $0) }
+        boxes = (0..<storage.boxCount).map { storage.listMons(inBox: $0) }
     }
 
     private func deposit(_ mon: BoxedMon) {
-        guard let save = save else { return }
-        let summary = mon.summary
+        guard let storage = storage else { return }
+        let details = storage.details(of: mon)
         let entry = BankEntry(
             id: UUID(),
             data: mon.raw,
-            species: summary.species,
-            speciesName: rom?.speciesName(summary.species) ?? "Pokémon n°\(summary.species)",
-            nickname: summary.nickname,
-            trainerName: summary.trainerName,
-            isShiny: summary.isShiny,
-            isEgg: summary.isEgg,
+            species: mon.species,
+            speciesName: mon.speciesName,
+            nickname: mon.nickname,
+            trainerName: mon.trainer,
+            isShiny: mon.isShiny,
+            isEgg: mon.isEgg,
             sourceGame: game.name,
             depositedAt: Date(),
-            details: MonDetails.make(raw: mon.raw, rom: rom)
+            details: details,
+            generation: storage.generation == 3 ? nil : storage.generation
         )
         do {
             try bank.add(entry)
@@ -294,27 +315,27 @@ struct TransferView: View {
             return
         }
         do {
-            try save.remove(box: mon.box, slot: mon.slot)
-            try save.write()
+            try storage.remove(mon)
+            try storage.write()
             game.markBankTransfer()
         } catch {
             // The save was not updated: take the Pokémon back out of the bank.
             try? bank.remove(entry)
             actionError = error.localizedDescription
-            reopenSave()
+            reopen()
         }
         reloadBoxes()
     }
 
     private func withdraw(_ entry: BankEntry) {
-        guard let save = save else { return }
+        guard let storage = storage else { return }
         do {
-            _ = try save.deposit(entry.data)
-            try save.write()
+            _ = try storage.deposit(entry.data)
+            try storage.write()
             game.markBankTransfer()
         } catch {
             actionError = error.localizedDescription
-            reopenSave()
+            reopen()
             reloadBoxes()
             return
         }
@@ -327,8 +348,8 @@ struct TransferView: View {
     }
 
     /// After a failed write, memory and disk may disagree: start again from disk.
-    private func reopenSave() {
-        save = try? SaveFile(url: game.saveURL)
+    private func reopen() {
+        storage = try? Self.openStorage(for: game)
     }
 }
 
