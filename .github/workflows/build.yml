@@ -19,7 +19,7 @@ jobs:
 
   ipa:
     name: IPA (macOS)
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
