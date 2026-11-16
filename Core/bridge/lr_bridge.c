@@ -58,6 +58,7 @@ typedef struct {
 	void (*unload_game)(void);
 	void (*run)(void);
 	void (*reset)(void);
+	void (*get_system_info)(struct retro_system_info*);
 	void (*get_system_av_info)(struct retro_system_av_info*);
 	void (*set_controller_port_device)(unsigned, unsigned);
 	void* (*get_memory_data)(unsigned);
@@ -145,6 +146,7 @@ static bool load_api(const char* corePath) {
 	LOOKUP(unload_game)
 	LOOKUP(run)
 	LOOKUP(reset)
+	LOOKUP(get_system_info)
 	LOOKUP(get_system_av_info)
 	LOOKUP(set_controller_port_device)
 	LOOKUP(get_memory_data)
@@ -408,7 +410,21 @@ LRCore* lr_create(const char* corePath, const char* romPath, const char* savePat
 		return NULL;
 	}
 	core->format = RETRO_PIXEL_FORMAT_0RGB1555;
-	core->rom = read_file(romPath, &core->romSize, 0x4000000);
+	/* A core that maps the file itself (the DS one: carts run to 512 MB) gets
+	 * only its path; the others get its bytes. */
+	struct retro_system_info system;
+	memset(&system, 0, sizeof(system));
+	api.get_system_info(&system);
+	bool wantsPath = system.need_fullpath;
+	if (wantsPath) {
+		struct stat st;
+		if (stat(romPath, &st) == 0 && st.st_size > 0) {
+			core->romSize = (size_t) st.st_size;
+			core->rom = malloc(1); /* a placeholder: nothing is read */
+		}
+	} else {
+		core->rom = read_file(romPath, &core->romSize, 0x4000000);
+	}
 	core->savePath = copy_string(savePath);
 	core->dataDir = copy_string(dataDir ? dataDir : ".");
 	core->panel = copy_string(panel);
@@ -431,7 +447,7 @@ LRCore* lr_create(const char* corePath, const char* romPath, const char* savePat
 	api.set_input_state(input_state);
 	api.init();
 
-	struct retro_game_info info = { romPath, core->rom, core->romSize, NULL };
+	struct retro_game_info info = { romPath, wantsPath ? NULL : core->rom, wantsPath ? 0 : core->romSize, NULL };
 	if (!api.load_game(&info)) {
 		set_error("the core refused the ROM (%zu bytes)", core->romSize);
 		api.deinit();
