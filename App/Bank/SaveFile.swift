@@ -170,27 +170,3 @@ final class SaveFile {
         }
     }
 }
-
-/// Species names read from a ROM file, in the ROM's own language.
-final class RomNames {
-    private let data: Data
-    private let speciesTable: Int
-
-    init?(url: URL) {
-        guard let loaded = try? Data(contentsOf: url, options: .alwaysMapped) else {
-            return nil
-        }
-        data = loaded
-        speciesTable = loaded.withUnsafeBytes { raw in
-            pk_rom_find_species_names(raw.bindMemory(to: UInt8.self).baseAddress, raw.count)
-        }
-    }
-
-    func species(_ index: Int) -> String {
-        let found: String? = data.withUnsafeBytes { raw in
-            NameLookup.name(rom: raw.bindMemory(to: UInt8.self).baseAddress, size: raw.count,
-                            table: speciesTable, stride: NameLookup.speciesStride, index: index)
-        }
-        return found ?? "Pokémon n°\(index)"
-    }
-}

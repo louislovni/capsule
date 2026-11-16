@@ -9,6 +9,8 @@ struct PartyMember: Identifiable, Equatable {
     let speciesName: String
     let summary: MonSummary
     let moveNames: [String]
+    /// The 100 bytes as they are in the game's memory.
+    let raw: Data
 }
 
 /// GBA key bits, as mGBA expects them.
@@ -39,6 +41,8 @@ final class EmulatorSession: ObservableObject {
     @Published private(set) var gameLabel = ""
     @Published private(set) var isKnownGame = false
     @Published var notice: String?
+    /// Names, base stats and places of this ROM, for the detail sheet.
+    @Published private(set) var romData: RomData?
 
     let game: Game
     /// The layer frames are drawn into. Set by the screen view.
@@ -94,6 +98,14 @@ final class EmulatorSession: ObservableObject {
             isKnownGame = true
         }
         gameLabel = codeText
+
+        let romURL = game.romURL
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            let data = RomData.load(romURL)
+            DispatchQueue.main.async {
+                self?.romData = data
+            }
+        }
 
         audio.start(core: created)
         let worker = Thread { [self] in
@@ -337,7 +349,8 @@ final class EmulatorSession: ObservableObject {
                     NameLookup.name(rom: rom, size: size, table: moveTable,
                                     stride: NameLookup.moveStride, index: move) ?? "Capacité n°\(move)"
                 }
-                members.append(PartyMember(id: slot, speciesName: speciesName, summary: summary, moveNames: moveNames))
+                members.append(PartyMember(id: slot, speciesName: speciesName, summary: summary, moveNames: moveNames,
+                                           raw: Data(raw)))
             }
         }
         DispatchQueue.main.async { [weak self] in

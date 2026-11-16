@@ -206,7 +206,12 @@ struct TeamPanel: View {
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(session.party) { member in
-                        TeamRow(member: member)
+                        NavigationLink {
+                            let rom = session.romData
+                            MonDetailLoader(load: { MonDetails.make(raw: member.raw, rom: rom) })
+                        } label: {
+                            TeamRow(member: member)
+                        }
                     }
                 }
                 Section {

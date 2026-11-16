@@ -114,6 +114,21 @@ bool pk_mon_decode(const uint8_t* raw, size_t rawSize, PKMon* out) {
 		out->isEgg = true;
 	}
 	out->abilityBit = (uint8_t) (ivWord >> 31);
+	out->otGender = (uint8_t) (origins >> 15);
+	out->pokerus = misc[0];
+	out->ribbons = rd32(misc + 8);
+	out->markings = raw[27];
+	for (int i = 0; i < 6; ++i) {
+		out->contest[i] = evs[6 + i];
+	}
+	out->nature = (uint8_t) (out->personality % 25);
+	unsigned typeBits = 0, powerBits = 0;
+	for (int i = 0; i < 6; ++i) {
+		typeBits |= (unsigned) (out->ivs[i] & 1) << i;
+		powerBits |= (unsigned) ((out->ivs[i] >> 1) & 1) << i;
+	}
+	out->hiddenPowerType = (uint8_t) (typeBits * 15 / 63);
+	out->hiddenPowerPower = (uint8_t) (powerBits * 40 / 63 + 30);
 
 	uint32_t p = out->personality;
 	uint32_t shinyValue = (out->otId >> 16) ^ (out->otId & 0xFFFF) ^ (p >> 16) ^ (p & 0xFFFF);

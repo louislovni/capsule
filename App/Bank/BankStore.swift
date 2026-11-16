@@ -14,6 +14,17 @@ struct BankEntry: Codable, Identifiable, Equatable {
     var isEgg: Bool
     var sourceGame: String
     var depositedAt: Date
+    /// Details worked out with the ROM of the game it came from, when deposited.
+    /// Missing for Pokémon deposited by the first version of the app.
+    var details: MonDetails?
+
+    /// Details to show: the saved ones, or worked out now with a ROM at hand.
+    func resolvedDetails() -> MonDetails? {
+        if let details = details {
+            return details
+        }
+        return MonDetails.make(raw: data, rom: RomData.anyROM(preferring: sourceGame))
+    }
 
     var displayName: String {
         if isEgg { return "Œuf" }

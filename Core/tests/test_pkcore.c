@@ -382,11 +382,179 @@ static void test_live(void) {
 	free(rom);
 }
 
+static void put_text(uint8_t* p, const char* ascii) {
+	/* uppercase ASCII letters, digits and spaces only */
+	for (; *ascii; ++ascii, ++p) {
+		char c = *ascii;
+		*p = c == ' ' ? 0x00 : (c >= '0' && c <= '9') ? (uint8_t) (0xA1 + c - '0') : (uint8_t) (0xBB + c - 'A');
+	}
+	*p = 0xFF;
+}
+
+static void test_info(void) {
+	/* Experience curves: level 100 totals and a few boundaries. */
+	CHECK(pk_exp_for_level(0, 100) == 1000000);
+	CHECK(pk_exp_for_level(1, 100) == 600000);
+	CHECK(pk_exp_for_level(2, 100) == 1640000);
+	CHECK(pk_exp_for_level(3, 100) == 1059860);
+	CHECK(pk_exp_for_level(4, 100) == 800000);
+	CHECK(pk_exp_for_level(5, 100) == 1250000);
+	CHECK(pk_exp_for_level(1, 50) == 125000 && pk_exp_for_level(1, 68) == 257834 && pk_exp_for_level(1, 98) == 583539);
+	CHECK(pk_exp_for_level(2, 15) == 1957 && pk_exp_for_level(2, 36) == 46656);
+	CHECK(pk_exp_for_level(3, 1) == 0 && pk_exp_for_level(3, 2) == 9 && pk_exp_for_level(3, 5) == 135);
+	CHECK(pk_level_for_exp(3, 135) == 5 && pk_level_for_exp(3, 134) == 4 && pk_level_for_exp(3, 0) == 1);
+	CHECK(pk_level_for_exp(0, 2000000) == 100);
+	for (uint8_t g = 0; g <= 5; ++g) {
+		for (unsigned l = 2; l <= 100; ++l) {
+			CHECK(pk_exp_for_level(g, l) > pk_exp_for_level(g, l - 1));
+			CHECK(pk_level_for_exp(g, pk_exp_for_level(g, l)) == l);
+		}
+	}
+
+	/* Bulbapedia's worked example: level 78 Garchomp, Adamant. */
+	PKBaseStats garchomp = { .baseStats = { 108, 130, 95, 102, 80, 85 } };
+	uint8_t ivs[6] = { 24, 12, 30, 5, 16, 23 };
+	uint8_t evs[6] = { 74, 190, 91, 23, 48, 84 };
+	uint16_t stats[6];
+	pk_calc_stats(&garchomp, ivs, evs, 78, 3, 445, stats);
+	CHECK(stats[0] == 289 && stats[1] == 278 && stats[2] == 193 && stats[3] == 171 && stats[4] == 135 && stats[5] == 171);
+	pk_calc_stats(&garchomp, ivs, evs, 78, 3, 303, stats);
+	CHECK(stats[0] == 1);
+	int up, down;
+	pk_nature_effect(3, &up, &down);
+	CHECK(up == 0 && down == 3);
+	pk_nature_effect(12, &up, &down);
+	CHECK(up == -1 && down == -1);
+
+	CHECK(pk_gender(0x100, 0) == 0 && pk_gender(0x1FF, 254) == 1 && pk_gender(0, 255) == 2);
+	CHECK(pk_gender(0x1E, 31) == 1 && pk_gender(0x1F, 31) == 0);
+	CHECK(pk_ribbon_count(0) == 0);
+	CHECK(pk_ribbon_count(4u | (1u << 15) | (1u << 26) | (1u << 31)) == 6);
+
+	uint8_t raw[PK_BOX_MON_SIZE];
+	make_mon(raw, sizeof(raw), 0x1111, 0x2222, 280, 0);
+	PKMon mon;
+	CHECK(pk_mon_decode(raw, sizeof(raw), &mon));
+	CHECK(mon.nature == 0x1111 % 25);
+	CHECK(mon.hiddenPowerType == 5 && mon.hiddenPowerPower == 62);
+
+	/* ROM tables, laid out in a synthetic ROM. */
+	enum { ROM = 0x100000 };
+	uint8_t* rom = calloc(1, ROM);
+	for (int i = 0; i < ROM; ++i) {
+		rom[i] = (uint8_t) (i * 37 + 11);
+	}
+	/* base stats: 412 entries of 28 bytes */
+	long baseAt = 0x10000;
+	memset(rom + baseAt, 0, 28 * 412);
+	const uint8_t bulba[24] = { 45, 49, 49, 45, 65, 65, 12, 3, 45, 64, 0, 1, 0, 0, 0, 0, 31, 20, 70, 3, 1, 7, 65, 0 };
+	memcpy(rom + baseAt + 28, bulba, sizeof(bulba));
+	CHECK(pk_rom_find_base_stats(rom, ROM) == baseAt);
+	PKBaseStats bs;
+	CHECK(pk_rom_base_stats(rom, ROM, baseAt, 1, &bs));
+	CHECK(bs.baseStats[5] == 65 && bs.type1 == 12 && bs.genderRatio == 31 && bs.growthRate == 3 && bs.ability1 == 65);
+	CHECK(!pk_rom_base_stats(rom, ROM, baseAt, 2, &bs)); /* all zero */
+	CHECK(!pk_rom_base_stats(rom, ROM, baseAt, 0, &bs));
+
+	/* national dex: species 1..411 */
+	long dexAt = 0x20002;
+	for (unsigned i = 0; i < 411; ++i) {
+		unsigned v = i < 251 ? i + 1 : (i < 276 ? 387 : 252 + (i - 276));
+		rom[dexAt + i * 2] = (uint8_t) v;
+		rom[dexAt + i * 2 + 1] = (uint8_t) (v >> 8);
+	}
+	CHECK(pk_rom_find_national_dex(rom, ROM) == dexAt);
+	CHECK(pk_rom_national_dex(rom, ROM, dexAt, 25) == 25);
+	CHECK(pk_rom_national_dex(rom, ROM, dexAt, 277) == 252);
+	CHECK(pk_rom_national_dex(rom, ROM, dexAt, 260) == 0);
+
+	/* abilities: 78 x 13 */
+	long abilityAt = 0x30001;
+	memset(rom + abilityAt, 0, 13 * 78);
+	memset(rom + abilityAt, 0xAE, 7);
+	rom[abilityAt + 7] = 0xFF;
+	for (int i = 1; i < 78; ++i) {
+		put_text(rom + abilityAt + i * 13, i == 65 ? "ENGRAIS" : "TALENT");
+	}
+	CHECK(pk_rom_find_ability_names(rom, ROM) == abilityAt);
+	char text[PK_TEXT_UTF8];
+	pk_rom_table_name(rom, ROM, abilityAt, PK_ABILITY_NAME_STRIDE, 65, text, sizeof(text));
+	CHECK(strcmp(text, "ENGRAIS") == 0);
+
+	/* items: 44-byte entries with their own index at +14 */
+	long itemAt = 0x40000;
+	memset(rom + itemAt, 0, 44 * 60);
+	memset(rom + itemAt, 0xAC, 8);
+	rom[itemAt + 8] = 0xFF;
+	for (int i = 1; i < 60; ++i) {
+		put_text(rom + itemAt + i * 44, i == 4 ? "POKE BALL" : "OBJET");
+		rom[itemAt + i * 44 + 14] = (uint8_t) i;
+	}
+	CHECK(pk_rom_find_items(rom, ROM) == itemAt);
+	pk_rom_table_name(rom, ROM, itemAt, PK_ITEM_STRIDE, 4, text, sizeof(text));
+	CHECK(strcmp(text, "POKE BALL") == 0);
+
+	/* locations, Emerald style: 100 entries of {x, y, w, h, name pointer} */
+	long namesAt = 0x50000, mapAt = 0x60000;
+	size_t textAt = (size_t) namesAt;
+	for (int i = 0; i < 100; ++i) {
+		char name[24];
+		snprintf(name, sizeof(name), i == 16 ? "ROUTE 101" : "LIEU %d", i);
+		put_text(rom + textAt, name);
+		uint8_t* e = rom + mapAt + i * 8;
+		e[0] = (uint8_t) (i % 28);
+		e[1] = (uint8_t) (i % 15);
+		e[2] = 1;
+		e[3] = 1;
+		uint32_t ptr = 0x08000000u + (uint32_t) textAt;
+		e[4] = (uint8_t) ptr;
+		e[5] = (uint8_t) (ptr >> 8);
+		e[6] = (uint8_t) (ptr >> 16);
+		e[7] = (uint8_t) (ptr >> 24);
+		textAt += strlen(name) + 1;
+	}
+	memset(rom + mapAt + 100 * 8, 0, 8);
+	int kind = -1;
+	unsigned count = 0;
+	CHECK(pk_rom_find_location_names(rom, ROM, &kind, &count) == mapAt);
+	CHECK(kind == PK_MAPSEC_REGION_MAP && count == 100);
+	pk_rom_location_name(rom, ROM, mapAt, kind, count, 16, text, sizeof(text));
+	CHECK(strcmp(text, "ROUTE 101") == 0);
+	pk_rom_location_name(rom, ROM, mapAt, kind, count, 0xFD, text, sizeof(text));
+	CHECK(text[0] == '\0');
+	pk_rom_location_name(rom, ROM, mapAt, kind, count, 150, text, sizeof(text));
+	CHECK(text[0] == '\0');
+
+	/* FireRed style: break the region map, add a list of 109 pointers */
+	memset(rom + mapAt, 0, 100 * 8);
+	long listAt = 0x70000;
+	for (int i = 0; i < 109; ++i) {
+		uint32_t ptr = 0x08000000u + (uint32_t) namesAt;
+		if (i == 1) {
+			ptr = 0x08000000u + (uint32_t) namesAt + 7; /* "LIEU 1" -> second string */
+		}
+		rom[listAt + i * 4] = (uint8_t) ptr;
+		rom[listAt + i * 4 + 1] = (uint8_t) (ptr >> 8);
+		rom[listAt + i * 4 + 2] = (uint8_t) (ptr >> 16);
+		rom[listAt + i * 4 + 3] = (uint8_t) (ptr >> 24);
+	}
+	memset(rom + listAt + 109 * 4, 0, 4);
+	CHECK(pk_rom_find_location_names(rom, ROM, &kind, &count) == listAt);
+	CHECK(kind == PK_MAPSEC_NAME_LIST && count == 109);
+	pk_rom_location_name(rom, ROM, listAt, kind, count, 0x59, text, sizeof(text));
+	CHECK(strcmp(text, "LIEU 1") == 0);
+	pk_rom_location_name(rom, ROM, listAt, kind, count, 0x10, text, sizeof(text));
+	CHECK(text[0] == '\0');
+
+	free(rom);
+}
+
 int main(void) {
 	test_text();
 	test_mon();
 	test_save();
 	test_live();
+	test_info();
 	printf("%d checks, %d failures\n", checks, failures);
 	return failures ? 1 : 0;
 }

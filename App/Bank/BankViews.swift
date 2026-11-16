@@ -12,7 +12,11 @@ struct BankView: View {
             } else {
                 Section {
                     ForEach(bank.entries) { entry in
-                        BankEntryRow(entry: entry)
+                        NavigationLink {
+                            MonDetailLoader(load: { entry.resolvedDetails() }, bankDate: entry.depositedAt)
+                        } label: {
+                            BankEntryRow(entry: entry)
+                        }
                     }
                 } footer: {
                     Text("La banque est un fichier dans Capsule > Bank. Exporte-le pour le garder ailleurs ; importe-le depuis l'écran des jeux pour fusionner.")
@@ -71,7 +75,9 @@ struct TransferView: View {
 
     @State private var side: Side = .pc
     @State private var save: SaveFile?
-    @State private var names: RomNames?
+    @State private var rom: RomData?
+    @State private var shownDetails: MonDetails?
+    @State private var shownBankDate: Date?
     @State private var boxes: [[BoxedMon]] = []
     @State private var loadError: String?
     @State private var actionError: String?
@@ -113,6 +119,15 @@ struct TransferView: View {
         .task {
             await load()
         }
+        .navigationDestination(isPresented: detailsShown) {
+            if let details = shownDetails {
+                MonDetailView(details: details, bankDate: shownBankDate)
+            }
+        }
+    }
+
+    private var detailsShown: Binding<Bool> {
+        Binding(get: { shownDetails != nil }, set: { if !$0 { shownDetails = nil } })
     }
 
     private var errorBinding: Binding<Bool> {
@@ -157,8 +172,19 @@ struct TransferView: View {
                     Section(save?.boxName(box) ?? "Boîte \(box + 1)") {
                         ForEach(boxes[box]) { mon in
                             HStack {
-                                MonLabel(name: displayName(mon.summary), trainer: mon.summary.trainerName, isShiny: mon.summary.isShiny)
-                                Spacer()
+                                Button {
+                                    shownBankDate = nil
+                                    shownDetails = MonDetails.make(raw: mon.raw, rom: rom)
+                                } label: {
+                                    HStack {
+                                        MonLabel(name: displayName(mon.summary), trainer: mon.summary.trainerName, isShiny: mon.summary.isShiny)
+                                        Spacer()
+                                        Image(systemName: "info.circle")
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
                                 Button("Déposer") {
                                     deposit(mon)
                                 }
@@ -180,8 +206,19 @@ struct TransferView: View {
             Section {
                 ForEach(bank.entries) { entry in
                     HStack {
-                        BankEntryRow(entry: entry)
-                        Spacer()
+                        Button {
+                            shownBankDate = entry.depositedAt
+                            shownDetails = entry.details ?? MonDetails.make(raw: entry.data, rom: rom)
+                        } label: {
+                            HStack {
+                                BankEntryRow(entry: entry)
+                                Spacer()
+                                Image(systemName: "info.circle")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
                         Button("Retirer") {
                             withdraw(entry)
                         }
@@ -198,7 +235,7 @@ struct TransferView: View {
 
     private func displayName(_ summary: MonSummary) -> String {
         if summary.isEgg { return "Œuf" }
-        let species = names?.species(summary.species) ?? "Pokémon n°\(summary.species)"
+        let species = rom?.speciesName(summary.species) ?? "Pokémon n°\(summary.species)"
         if summary.nickname.isEmpty || summary.nickname.caseInsensitiveCompare(species) == .orderedSame {
             return species
         }
@@ -208,19 +245,19 @@ struct TransferView: View {
     private func load() async {
         let saveURL = game.saveURL
         let romURL = game.romURL
-        let outcome = await Task.detached(priority: .userInitiated) { () -> (SaveFile?, RomNames?, String?) in
+        let outcome = await Task.detached(priority: .userInitiated) { () -> (SaveFile?, RomData?, String?) in
             guard FileManager.default.fileExists(atPath: saveURL.path) else {
                 return (nil, nil, "Pas encore de sauvegarde pour ce jeu. Lance-le et sauvegarde une fois depuis son menu.")
             }
             do {
                 let save = try SaveFile(url: saveURL)
-                return (save, RomNames(url: romURL), nil)
+                return (save, RomData.load(romURL), nil)
             } catch {
                 return (nil, nil, error.localizedDescription)
             }
         }.value
         save = outcome.0
-        names = outcome.1
+        rom = outcome.1
         loadError = outcome.2
         reloadBoxes()
         isLoading = false
@@ -241,13 +278,14 @@ struct TransferView: View {
             id: UUID(),
             data: mon.raw,
             species: summary.species,
-            speciesName: names?.species(summary.species) ?? "Pokémon n°\(summary.species)",
+            speciesName: rom?.speciesName(summary.species) ?? "Pokémon n°\(summary.species)",
             nickname: summary.nickname,
             trainerName: summary.trainerName,
             isShiny: summary.isShiny,
             isEgg: summary.isEgg,
             sourceGame: game.name,
-            depositedAt: Date()
+            depositedAt: Date(),
+            details: MonDetails.make(raw: mon.raw, rom: rom)
         )
         do {
             try bank.add(entry)

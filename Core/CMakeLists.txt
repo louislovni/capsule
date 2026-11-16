@@ -26,6 +26,7 @@ add_library(pkcore OBJECT
 	pkcore/pk_mon.c
 	pkcore/pk_save.c
 	pkcore/pk_live.c
+	pkcore/pk_info.c
 	pkcore/pk_profiles_gen.c)
 target_include_directories(pkcore PUBLIC pkcore)
 target_compile_options(pkcore PRIVATE -Wall -Wextra)
