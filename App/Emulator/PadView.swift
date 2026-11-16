@@ -6,6 +6,16 @@ import UIKit
 final class PadView: UIView {
     var onKeys: ((UInt32) -> Void)?
 
+    /// L and R only exist on the Game Boy Advance.
+    var showsShoulders = true {
+        didSet {
+            guard showsShoulders != oldValue else { return }
+            button(GBAKey.l)?.isHidden = !showsShoulders
+            button(GBAKey.r)?.isHidden = !showsShoulders
+            setNeedsLayout()
+        }
+    }
+
     private struct PadButton {
         let key: UInt32
         let view: UILabel
@@ -147,7 +157,7 @@ final class PadView: UIView {
             }
             return keys
         }
-        for item in buttons where item.view.frame.insetBy(dx: -12, dy: -12).contains(point) {
+        for item in buttons where !item.view.isHidden && item.view.frame.insetBy(dx: -12, dy: -12).contains(point) {
             return item.key
         }
         return 0
@@ -181,16 +191,19 @@ final class PadView: UIView {
 }
 
 struct PadRepresentable: UIViewRepresentable {
+    var showsShoulders = true
     let onKeys: (UInt32) -> Void
 
     func makeUIView(context: Context) -> PadView {
         let view = PadView()
         view.onKeys = onKeys
+        view.showsShoulders = showsShoulders
         return view
     }
 
     func updateUIView(_ uiView: PadView, context: Context) {
         uiView.onKeys = onKeys
+        uiView.showsShoulders = showsShoulders
     }
 
     static func dismantleUIView(_ uiView: PadView, coordinator: ()) {

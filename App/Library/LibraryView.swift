@@ -19,7 +19,7 @@ struct LibraryView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Aucun jeu pour l'instant")
                                 .font(.headline)
-                            Text("Touche + pour importer tes ROM .gba (et tes sauvegardes .sav si tu en as). Tu peux aussi les déposer dans le dossier Capsule > ROMs de l'app Fichiers.")
+                            Text("Touche + pour importer tes ROM (.gba, .gb, .gbc) et tes sauvegardes .sav si tu en as. Tu peux aussi les déposer dans le dossier Capsule > ROMs de l'app Fichiers.")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
@@ -170,7 +170,7 @@ private struct GameRow: View {
                         .font(.body.weight(.medium))
                         .foregroundStyle(.primary)
                         .lineLimit(2)
-                    Text(game.hasSave ? "Sauvegarde présente" : "Pas encore de sauvegarde")
+                    Text(game.platformLabel + " · " + (game.hasSave ? "sauvegarde présente" : "pas encore de sauvegarde"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -179,14 +179,16 @@ private struct GameRow: View {
             }
             .buttonStyle(.plain)
 
-            Button(action: openBank) {
-                Label("Banque", systemImage: "archivebox")
-                    .labelStyle(.iconOnly)
-                    .font(.title3)
-                    .padding(8)
+            if game.supportsPokemonTools {
+                Button(action: openBank) {
+                    Label("Banque", systemImage: "archivebox")
+                        .labelStyle(.iconOnly)
+                        .font(.title3)
+                        .padding(8)
+                }
+                .buttonStyle(.borderless)
+                .disabled(!game.hasSave)
             }
-            .buttonStyle(.borderless)
-            .disabled(!game.hasSave)
         }
     }
 }

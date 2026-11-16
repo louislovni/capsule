@@ -1,5 +1,5 @@
 # Builds everything written in C as one static library, libcapsulecore.a:
-#   - mGBA (GBA core only, no optional dependency)
+#   - mGBA (Game Boy Advance and Game Boy / Game Boy Color cores, no optional dependency)
 #   - the bridge between mGBA and the app
 #   - pkcore, the Pokemon save / memory helpers
 # The app only ever sees emu_bridge.h and pkcore.h.
@@ -12,7 +12,7 @@ if(NOT EXISTS "${MGBA_DIR}/CMakeLists.txt")
 endif()
 
 set(M_CORE_GBA ON)
-set(M_CORE_GB OFF)
+set(M_CORE_GB ON)
 set(BUILD_LTO OFF)
 set(SKIP_GIT ON)
 # EXCLUDE_FROM_ALL puts mGBA in its "library only" mode: static, no frontends, no dependencies.

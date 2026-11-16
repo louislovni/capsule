@@ -1,7 +1,8 @@
 # Capsule
 
-Émulateur Game Boy Advance pour iPhone, pensé pour les jeux Pokémon de 3ᵉ génération
-(Rubis, Saphir, Émeraude, Rouge Feu, Vert Feuille, toutes langues occidentales).
+Émulateur Game Boy Advance, Game Boy et Game Boy Color pour iPhone, pensé pour les jeux
+Pokémon. Le compagnon, la fiche détaillée et la banque concernent la 3ᵉ génération (Rubis,
+Saphir, Émeraude, Rouge Feu, Vert Feuille, toutes langues occidentales).
 
 - **Émulation** : cœur [mGBA](https://mgba.io), son, commandes tactiles, vitesse ×2 / ×4, trois états de sauvegarde.
 - **Compagnon** : l'équipe lue en direct dans la mémoire du jeu (PV, statut, niveau, capacités), et un soin de l'équipe hors combat.
@@ -41,7 +42,7 @@ Si le flux échoue, l'artefact **xcodebuild-log** contient le détail de l'erreu
 ## Utilisation
 
 - **Importer** : bouton + de l'écran d'accueil, ou dépose les fichiers dans l'app Fichiers,
-  `Sur mon iPhone > Capsule > ROMs` (jeux `.gba`, non compressés) et `Saves` (sauvegardes `.sav`
+  `Sur mon iPhone > Capsule > ROMs` (jeux `.gba`, `.gb`, `.gbc`, non compressés) et `Saves` (sauvegardes `.sav`
   portant le même nom que la ROM).
 - **Jouer** : touche un jeu. La barre du haut donne la pause, la vitesse, l'équipe et un menu
   (états, soin, redémarrage).

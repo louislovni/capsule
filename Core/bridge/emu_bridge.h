@@ -17,8 +17,12 @@
 extern "C" {
 #endif
 
-#define EMU_VIDEO_WIDTH 240
-#define EMU_VIDEO_HEIGHT 160
+/* The video buffer is always EMU_VIDEO_STRIDE pixels wide; the picture in it
+ * is emu_video_width x emu_video_height (240x160 GBA, 160x144 Game Boy). */
+#define EMU_VIDEO_STRIDE 256
+#define EMU_VIDEO_MAX_HEIGHT 224
+
+enum { EMU_PLATFORM_GBA = 1, EMU_PLATFORM_GB = 2, EMU_PLATFORM_GBC = 3 };
 
 enum {
 	EMU_KEY_A = 1 << 0,
@@ -35,8 +39,8 @@ enum {
 
 typedef struct EmuCore EmuCore;
 
-/* Loads a GBA ROM. savePath is the battery save (created if missing).
- * Returns NULL when the file is not a usable GBA ROM. */
+/* Loads a Game Boy Advance, Game Boy or Game Boy Color ROM. savePath is the
+ * battery save (created if missing). Returns NULL for anything else. */
 EmuCore* emu_create(const char* romPath, const char* savePath);
 void emu_destroy(EmuCore* emu);
 
@@ -46,8 +50,11 @@ void emu_reset(EmuCore* emu);
 void emu_run_frame(EmuCore* emu, bool discardAudio);
 void emu_set_keys(EmuCore* emu, uint32_t keys);
 
-/* 240x160 pixels, 4 bytes each in memory order R, G, B, unused. */
+/* EMU_VIDEO_STRIDE pixels per row, 4 bytes each in memory order R, G, B, unused. */
 const uint8_t* emu_video_buffer(const EmuCore* emu);
+unsigned emu_video_width(const EmuCore* emu);
+unsigned emu_video_height(const EmuCore* emu);
+int emu_platform(const EmuCore* emu);
 
 /* Rate of the audio handed out by emu_audio_read. Fixed: the bridge resamples. */
 unsigned emu_audio_rate(const EmuCore* emu);
@@ -64,14 +71,16 @@ bool emu_save_state(EmuCore* emu, const char* path);
 /* Restores a state. The battery save currently in use is kept as it is. */
 bool emu_load_state(EmuCore* emu, const char* path);
 
-/* Game memory, by GBA bus address (0x02000000 = work RAM, 0x03000000 = fast RAM...).
+/* Game memory, by bus address (GBA: 0x02000000 work RAM, 0x03000000 fast RAM;
+ * Game Boy: 0xC000 work RAM). Writes are limited to work RAM.
  * Return the number of bytes copied. */
 size_t emu_read_bytes(EmuCore* emu, uint32_t address, uint8_t* out, size_t length);
 size_t emu_write_bytes(EmuCore* emu, uint32_t address, const uint8_t* in, size_t length);
 
-/* ROM header: 4-letter game code (NUL-terminated in out[5]), title, revision. */
+/* GBA ROM header: 4-letter game code (NUL-terminated in out[5]), title, revision.
+ * Empty / 0 for Game Boy games, except the title. */
 void emu_game_code(const EmuCore* emu, char out[5]);
-void emu_game_title(const EmuCore* emu, char out[13]);
+void emu_game_title(const EmuCore* emu, char out[17]);
 uint8_t emu_revision(const EmuCore* emu);
 const uint8_t* emu_rom_data(const EmuCore* emu, size_t* sizeOut);
 

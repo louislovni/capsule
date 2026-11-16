@@ -40,6 +40,10 @@ final class EmulatorSession: ObservableObject {
     @Published private(set) var loadFailed = false
     @Published private(set) var gameLabel = ""
     @Published private(set) var isKnownGame = false
+    /// Team, companion and heal only exist for GBA Pokémon games.
+    @Published private(set) var isGBA = true
+    /// Width / height of the picture: 1.5 on GBA, 10:9 on Game Boy.
+    @Published private(set) var screenAspect: CGFloat = 1.5
     @Published var notice: String?
     /// Names, base stats and places of this ROM, for the detail sheet.
     @Published private(set) var romData: RomData?
@@ -68,8 +72,6 @@ final class EmulatorSession: ObservableObject {
     private var scannedParty: UInt32?
     private var framesSinceScan = 0
 
-    private static let videoWidth = 240
-    private static let videoHeight = 160
     private static let framesPerSecond = 59.7275
 
     init(game: Game) {
@@ -87,6 +89,12 @@ final class EmulatorSession: ObservableObject {
         }
         core = created
         alive = true
+        isGBA = Int(emu_platform(created)) == Int(EMU_PLATFORM_GBA)
+        let width = emu_video_width(created)
+        let height = emu_video_height(created)
+        if width > 0 && height > 0 {
+            screenAspect = CGFloat(width) / CGFloat(height)
+        }
 
         var code = [CChar](repeating: 0, count: 5)
         emu_game_code(created, &code)
@@ -100,7 +108,9 @@ final class EmulatorSession: ObservableObject {
         gameLabel = codeText
 
         let romURL = game.romURL
+        let loadsTables = isGBA
         DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard loadsTables else { return }
             let data = RomData.load(romURL)
             DispatchQueue.main.async {
                 self?.romData = data
@@ -108,8 +118,9 @@ final class EmulatorSession: ObservableObject {
         }
 
         audio.start(core: created)
+        let pokemonFeatures = isGBA
         let worker = Thread { [self] in
-            self.runLoop(created)
+            self.runLoop(created, pokemonFeatures: pokemonFeatures)
         }
         worker.name = "Capsule emulation"
         worker.qualityOfService = .userInteractive
@@ -186,6 +197,7 @@ final class EmulatorSession: ObservableObject {
     /// Restores HP and clears status conditions of the whole team.
     /// Outside of battle only: during a fight the game works on its own copies.
     func healParty() {
+        guard isGBA else { return }
         perform { [weak self] core in
             guard let self = self else { return }
             let healed = self.healPartyOnThread(core)
@@ -203,8 +215,10 @@ final class EmulatorSession: ObservableObject {
 
     // MARK: - Emulation thread
 
-    private func runLoop(_ core: OpaquePointer) {
-        locateNameTables(core)
+    private func runLoop(_ core: OpaquePointer, pokemonFeatures: Bool) {
+        if pokemonFeatures {
+            locateNameTables(core)
+        }
 
         let frameTime = 1.0 / Self.framesPerSecond
         let audioTarget = Int(emu_audio_rate(core)) / 20 // keep about 50 ms queued
@@ -238,7 +252,7 @@ final class EmulatorSession: ObservableObject {
             present(core)
 
             frameCount += 1
-            if frameCount % 30 == 0 {
+            if pokemonFeatures && frameCount % 30 == 0 {
                 publishParty(core)
             }
 
@@ -261,15 +275,18 @@ final class EmulatorSession: ObservableObject {
 
     private func present(_ core: OpaquePointer) {
         guard let pixels = emu_video_buffer(core) else { return }
-        let byteCount = Self.videoWidth * Self.videoHeight * 4
-        let data = Data(bytes: pixels, count: byteCount)
+        let width = Int(emu_video_width(core))
+        let height = Int(emu_video_height(core))
+        let stride = Int(EMU_VIDEO_STRIDE)
+        guard width > 0, height > 0 else { return }
+        let data = Data(bytes: pixels, count: stride * height * 4)
         guard let provider = CGDataProvider(data: data as CFData),
               let image = CGImage(
-                  width: Self.videoWidth,
-                  height: Self.videoHeight,
+                  width: width,
+                  height: height,
                   bitsPerComponent: 8,
                   bitsPerPixel: 32,
-                  bytesPerRow: Self.videoWidth * 4,
+                  bytesPerRow: stride * 4,
                   space: colorSpace,
                   bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipLast.rawValue),
                   provider: provider,

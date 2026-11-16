@@ -36,6 +36,7 @@ struct EmuCore {
 	uint8_t* rom;
 	size_t romSize;
 	mColor* video;
+	int platform;
 	atomic_uint keys;
 	struct mAudioResampler resampler;
 	struct mAudioBuffer resampled;
@@ -68,8 +69,8 @@ static uint8_t* read_file(const char* path, size_t* sizeOut) {
 	uint8_t* data = NULL;
 	if (fseek(f, 0, SEEK_END) == 0) {
 		long size = ftell(f);
-		/* GBA cartridges are at most 32 MB. */
-		if (size >= 0xC0 && size <= 0x2000000 && fseek(f, 0, SEEK_SET) == 0) {
+		/* Cartridges are at most 32 MB (GBA) or 8 MB (Game Boy). */
+		if (size >= 0x150 && size <= 0x2000000 && fseek(f, 0, SEEK_SET) == 0) {
 			data = malloc((size_t) size);
 			if (data && fread(data, 1, (size_t) size, f) != (size_t) size) {
 				free(data);
@@ -93,15 +94,16 @@ EmuCore* emu_create(const char* romPath, const char* savePath) {
 		return NULL;
 	}
 	emu->rom = read_file(romPath, &emu->romSize);
-	emu->video = calloc(EMU_VIDEO_WIDTH * EMU_VIDEO_HEIGHT, sizeof(mColor));
+	emu->video = calloc(EMU_VIDEO_STRIDE * EMU_VIDEO_MAX_HEIGHT, sizeof(mColor));
 	if (!emu->rom || !emu->video) {
 		emu_destroy(emu);
 		return NULL;
 	}
 
 	struct VFile* romFile = VFileFromConstMemory(emu->rom, emu->romSize);
-	struct mCore* core = GBACoreCreate();
-	if (!romFile || !core || !core->isROM(romFile)) {
+	struct mCore* core = romFile ? mCoreFindVF(romFile) : NULL;
+	enum mPlatform platform = core ? core->platform(core) : mPLATFORM_NONE;
+	if (!romFile || !core || (platform != mPLATFORM_GBA && platform != mPLATFORM_GB)) {
 		if (romFile) {
 			romFile->close(romFile);
 		}
@@ -129,10 +131,16 @@ EmuCore* emu_create(const char* romPath, const char* savePath) {
 		.volume = 0x100,
 	};
 	mCoreConfigSetDefaultValue(&core->config, "idleOptimization", "detect");
+	/* Game Boy: games made for the Super Game Boy (Pokemon Red, Blue, Yellow)
+	 * get its colours, without its border; other monochrome games get the
+	 * palettes a Game Boy Color would give them. */
+	mCoreConfigSetDefaultValue(&core->config, "sgb.model", "SGB");
+	mCoreConfigSetDefaultIntValue(&core->config, "sgb.borders", 0);
+	mCoreConfigSetDefaultIntValue(&core->config, "gb.colors", 3);
 	mCoreConfigLoadDefaults(&core->config, &opts);
 	mCoreLoadForeignConfig(core, &core->config);
 
-	core->setVideoBuffer(core, emu->video, EMU_VIDEO_WIDTH);
+	core->setVideoBuffer(core, emu->video, EMU_VIDEO_STRIDE);
 	core->setAudioBufferSize(core, CORE_AUDIO_FRAMES);
 
 	if (!core->loadROM(core, romFile)) {
@@ -147,6 +155,12 @@ EmuCore* emu_create(const char* romPath, const char* savePath) {
 		}
 	}
 	core->reset(core);
+	if (platform == mPLATFORM_GBA) {
+		emu->platform = EMU_PLATFORM_GBA;
+	} else {
+		/* CGB flag of the cartridge header: 0x80 works on both, 0xC0 Color only. */
+		emu->platform = (emu->rom[0x143] & 0x80) ? EMU_PLATFORM_GBC : EMU_PLATFORM_GB;
+	}
 
 	mAudioBufferInit(&emu->resampled, CORE_AUDIO_FRAMES, 2);
 	mAudioResamplerInit(&emu->resampler, mINTERPOLATOR_SINC);
@@ -233,6 +247,36 @@ void emu_set_keys(EmuCore* emu, uint32_t keys) {
 
 const uint8_t* emu_video_buffer(const EmuCore* emu) {
 	return emu ? (const uint8_t*) emu->video : NULL;
+}
+
+static void video_size(const EmuCore* emu, unsigned* width, unsigned* height) {
+	*width = 0;
+	*height = 0;
+	if (emu && emu->core) {
+		emu->core->currentVideoSize(emu->core, width, height);
+	}
+	if (*width > EMU_VIDEO_STRIDE) {
+		*width = EMU_VIDEO_STRIDE;
+	}
+	if (*height > EMU_VIDEO_MAX_HEIGHT) {
+		*height = EMU_VIDEO_MAX_HEIGHT;
+	}
+}
+
+unsigned emu_video_width(const EmuCore* emu) {
+	unsigned width, height;
+	video_size(emu, &width, &height);
+	return width;
+}
+
+unsigned emu_video_height(const EmuCore* emu) {
+	unsigned width, height;
+	video_size(emu, &width, &height);
+	return height;
+}
+
+int emu_platform(const EmuCore* emu) {
+	return emu ? emu->platform : 0;
 }
 
 unsigned emu_audio_rate(const EmuCore* emu) {
@@ -328,9 +372,13 @@ size_t emu_write_bytes(EmuCore* emu, uint32_t address, const uint8_t* in, size_t
 	if (!emu || !emu->core || !in) {
 		return 0;
 	}
-	/* RAM only: never the ROM, the BIOS or the cartridge save. */
-	uint32_t region = address >> 24;
-	if (region != 0x02 && region != 0x03) {
+	/* Work RAM only: never the ROM, the BIOS, I/O or the cartridge save. */
+	if (emu->platform == EMU_PLATFORM_GBA) {
+		uint32_t region = address >> 24;
+		if (region != 0x02 && region != 0x03) {
+			return 0;
+		}
+	} else if (address < 0xC000 || address + length > 0xE000) {
 		return 0;
 	}
 	struct mCore* core = emu->core;
@@ -342,20 +390,29 @@ size_t emu_write_bytes(EmuCore* emu, uint32_t address, const uint8_t* in, size_t
 
 void emu_game_code(const EmuCore* emu, char out[5]) {
 	memset(out, 0, 5);
-	if (emu && emu->rom && emu->romSize >= 0xC0) {
+	if (emu && emu->rom && emu->platform == EMU_PLATFORM_GBA) {
 		memcpy(out, emu->rom + 0xAC, 4);
 	}
 }
 
-void emu_game_title(const EmuCore* emu, char out[13]) {
-	memset(out, 0, 13);
-	if (emu && emu->rom && emu->romSize >= 0xC0) {
+void emu_game_title(const EmuCore* emu, char out[17]) {
+	memset(out, 0, 17);
+	if (!emu || !emu->rom) {
+		return;
+	}
+	if (emu->platform == EMU_PLATFORM_GBA) {
 		memcpy(out, emu->rom + 0xA0, 12);
+	} else {
+		/* Up to 16 characters at 0x134, shorter on Game Boy Color carts. */
+		size_t length = emu->platform == EMU_PLATFORM_GBC ? 15 : 16;
+		for (size_t i = 0; i < length && emu->rom[0x134 + i] >= 0x20 && emu->rom[0x134 + i] < 0x7F; ++i) {
+			out[i] = (char) emu->rom[0x134 + i];
+		}
 	}
 }
 
 uint8_t emu_revision(const EmuCore* emu) {
-	return emu && emu->rom && emu->romSize >= 0xC0 ? emu->rom[0xBC] : 0;
+	return emu && emu->rom && emu->platform == EMU_PLATFORM_GBA ? emu->rom[0xBC] : 0;
 }
 
 const uint8_t* emu_rom_data(const EmuCore* emu, size_t* sizeOut) {

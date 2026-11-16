@@ -58,6 +58,70 @@ static void write_test_rom(const char* path) {
 	fclose(f);
 }
 
+static void write_test_gb_rom(const char* path) {
+	enum { SIZE = 0x8000 };
+	uint8_t* rom = calloc(1, SIZE);
+	static const uint8_t entry[] = { 0x00, 0xC3, 0x50, 0x01 }; /* nop; jp 0x0150 */
+	memcpy(rom + 0x100, entry, sizeof(entry));
+	static const uint8_t logo[] = { 0xCE, 0xED, 0x66, 0x66 }; /* start of the boot logo */
+	memcpy(rom + 0x104, logo, sizeof(logo));
+	memcpy(rom + 0x134, "CAPSULEGB", 9);
+	rom[0x143] = 0x80; /* works on Game Boy and Game Boy Color */
+	static const uint8_t code[] = {
+		0x3E, 0x42, /* ld a, 0x42 */
+		0xEA, 0x10, 0xC0, /* ld (0xC010), a */
+		0x18, 0xFE, /* jr . */
+	};
+	memcpy(rom + 0x150, code, sizeof(code));
+	uint8_t check = 0;
+	for (int i = 0x134; i <= 0x14C; ++i) {
+		check = (uint8_t) (check - rom[i] - 1);
+	}
+	rom[0x14D] = check;
+	FILE* f = fopen(path, "wb");
+	fwrite(rom, 1, SIZE, f);
+	fclose(f);
+	free(rom);
+}
+
+static void test_game_boy(const char* dir) {
+	char rom[256], sav[256];
+	snprintf(rom, sizeof(rom), "%s/test.gbc", dir);
+	snprintf(sav, sizeof(sav), "%s/test-gb.sav", dir);
+	write_test_gb_rom(rom);
+	EmuCore* emu = emu_create(rom, sav);
+	CHECK(emu != NULL);
+	if (!emu) {
+		return;
+	}
+	CHECK(emu_platform(emu) == EMU_PLATFORM_GBC);
+	CHECK(emu_video_width(emu) == 160 && emu_video_height(emu) == 144);
+	char code[5], title[17];
+	emu_game_code(emu, code);
+	emu_game_title(emu, title);
+	CHECK(code[0] == '\0');
+	CHECK(strcmp(title, "CAPSULEGB") == 0);
+	CHECK(emu_revision(emu) == 0);
+	for (int i = 0; i < 10; ++i) {
+		emu_run_frame(emu, false);
+	}
+	uint8_t byte = 0;
+	CHECK(emu_read_bytes(emu, 0xC010, &byte, 1) == 1 && byte == 0x42);
+	uint8_t v = 0x33;
+	CHECK(emu_write_bytes(emu, 0xC020, &v, 1) == 1);
+	CHECK(emu_write_bytes(emu, 0x8000, &v, 1) == 0);
+	CHECK(emu_write_bytes(emu, 0xDFFF, &v, 2) == 0);
+	CHECK(emu_read_bytes(emu, 0xC020, &byte, 1) == 1 && byte == 0x33);
+	int16_t audio[4096 * 2];
+	size_t total = 0, got;
+	while ((got = emu_audio_read(emu, audio, 4096)) > 0) {
+		total += got;
+	}
+	printf("game boy: %zu audio frames for 10 video frames, native rate %u Hz\n", total, emu_native_audio_rate(emu));
+	CHECK(total > 6000 && total < 9500);
+	emu_destroy(emu);
+}
+
 int main(void) {
 	char dir[] = "/tmp/capsule-test-XXXXXX";
 	if (!mkdtemp(dir)) {
@@ -84,12 +148,14 @@ int main(void) {
 	if (!emu) {
 		return 1;
 	}
-	char code[5], title[13];
+	char code[5], title[17];
 	emu_game_code(emu, code);
 	emu_game_title(emu, title);
 	CHECK(strcmp(code, "ZTSE") == 0);
 	CHECK(strcmp(title, "CAPSULETEST") == 0);
 	CHECK(emu_revision(emu) == 3);
+	CHECK(emu_platform(emu) == EMU_PLATFORM_GBA);
+	CHECK(emu_video_width(emu) == 240 && emu_video_height(emu) == 160);
 	size_t romSize = 0;
 	CHECK(emu_rom_data(emu, &romSize) != NULL && romSize == 0x200);
 	CHECK(emu_audio_rate(emu) == 48000);
@@ -158,6 +224,7 @@ int main(void) {
 	emu_destroy(emu);
 	CHECK(access(sav, F_OK) == 0);
 
+	test_game_boy(dir);
 	printf("bridge test: %d failures\n", failures);
 	return failures ? 1 : 0;
 }

@@ -36,6 +36,19 @@ struct Game: Identifiable, Hashable {
 
     var hasSave: Bool { FileManager.default.fileExists(atPath: saveURL.path) }
 
+    static let romExtensions: Set<String> = ["gba", "gb", "gbc"]
+
+    var platformLabel: String {
+        switch romURL.pathExtension.lowercased() {
+        case "gb": return "Game Boy"
+        case "gbc": return "Game Boy Color"
+        default: return "GBA"
+        }
+    }
+
+    /// The Pokémon bank and the companion only know the GBA games.
+    var supportsPokemonTools: Bool { romURL.pathExtension.lowercased() == "gba" }
+
     /// Remembers when Pokémon were last moved between this game's save and the bank,
     /// so that loading an older save state can be flagged.
     private var transferKey: String { "lastBankTransfer." + name }

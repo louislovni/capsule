@@ -23,9 +23,9 @@ struct GameView: View {
                 loadFailure
             } else {
                 ScreenRepresentable(session: session)
-                    .aspectRatio(3.0 / 2.0, contentMode: .fit)
+                    .aspectRatio(session.screenAspect, contentMode: .fit)
                     .overlay(alignment: .bottom) { noticeBanner }
-                PadRepresentable(onKeys: { [weak session] keys in
+                PadRepresentable(showsShoulders: session.isGBA, onKeys: { [weak session] keys in
                     session?.setKeys(keys)
                 })
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -105,11 +105,13 @@ struct GameView: View {
             }
             .accessibilityLabel("Vitesse \(session.speed) fois")
 
-            Button {
-                showingTeam = true
-            } label: {
-                Label("Équipe", systemImage: "list.bullet.rectangle")
-                    .labelStyle(.iconOnly)
+            if session.isGBA {
+                Button {
+                    showingTeam = true
+                } label: {
+                    Label("Équipe", systemImage: "list.bullet.rectangle")
+                        .labelStyle(.iconOnly)
+                }
             }
 
             Menu {
@@ -128,8 +130,10 @@ struct GameView: View {
                     }
                 }
                 Section {
-                    Button("Soigner l'équipe") {
-                        session.healParty()
+                    if session.isGBA {
+                        Button("Soigner l'équipe") {
+                            session.healParty()
+                        }
                     }
                     Button("Redémarrer le jeu", role: .destructive) {
                         session.reset()
@@ -171,7 +175,7 @@ struct GameView: View {
                 .font(.largeTitle)
             Text("Ce fichier n'a pas pu être lancé")
                 .font(.headline)
-            Text("Vérifie qu'il s'agit bien d'une ROM Game Boy Advance (.gba) non compressée.")
+            Text("Vérifie qu'il s'agit bien d'une ROM Game Boy Advance (.gba), Game Boy (.gb) ou Game Boy Color (.gbc), non compressée.")
                 .font(.subheadline)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
