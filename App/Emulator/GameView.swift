@@ -22,7 +22,7 @@ struct GameView: View {
             let isLandscape = geometry.size.width > geometry.size.height
             Group {
                 if isLandscape {
-                    landscapeLayout
+                    landscapeLayout(bandsBeside: picturesLeavesBands(geometry))
                 } else {
                     portraitLayout
                 }
@@ -114,8 +114,17 @@ struct GameView: View {
         }
     }
 
-    /// Sideways: the picture as large as the screen allows, the controls over it.
-    private var landscapeLayout: some View {
+    /// Sideways, whether the picture (full height) leaves black bands wide enough for the controls.
+    private func picturesLeavesBands(_ geometry: GeometryProxy) -> Bool {
+        let insets = geometry.safeAreaInsets
+        let fullWidth = geometry.size.width + insets.leading + insets.trailing
+        let fullHeight = geometry.size.height + insets.top + insets.bottom
+        return (fullWidth - fullHeight * session.screenAspect) / 2 >= 120
+    }
+
+    /// Sideways: the picture as large as the screen allows, the controls over it (or beside it,
+    /// in the bands a narrower picture leaves, such as a DS game's).
+    private func landscapeLayout(bandsBeside: Bool) -> some View {
         ZStack {
             if session.loadFailed {
                 loadFailure
@@ -124,7 +133,7 @@ struct GameView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .ignoresSafeArea()
                 pad
-                    .ignoresSafeArea(edges: .vertical)
+                    .ignoresSafeArea(edges: bandsBeside ? .all : .vertical)
             }
             VStack {
                 toolbar
@@ -142,7 +151,7 @@ struct GameView: View {
     }
 
     private var pad: some View {
-        PadRepresentable(isDS: session.game.isDS, onKeys: { [weak session] keys in
+        PadRepresentable(isDS: session.game.isDS, pictureAspect: session.screenAspect, onKeys: { [weak session] keys in
             session?.setKeys(keys)
         })
     }

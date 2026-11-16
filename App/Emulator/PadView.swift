@@ -37,6 +37,16 @@ final class PadView: UIView {
         }
     }
 
+    /// Width / height of the game picture. Sideways, when it leaves black bands on both
+    /// sides (a DS game: 4:3 on a long phone), the controls move into them, off the game.
+    var pictureAspect: CGFloat = 1.5 {
+        didSet {
+            if abs(pictureAspect - oldValue) > 0.001 {
+                setNeedsLayout()
+            }
+        }
+    }
+
     private static let shortcuts: [(String, UInt32)] = [
         ("COMPAGNON", PadKey.l2),
         ("MENU", PadKey.select | PadKey.l2),
@@ -127,6 +137,18 @@ final class PadView: UIView {
         let width = bounds.width
         let height = bounds.height
         guard width > 0, height > 0 else { return }
+        defer {
+            for item in buttons {
+                item.view.layer.cornerRadius = item.view.bounds.height / 2
+            }
+        }
+        if width > height {
+            let side = (width - min(width, height * pictureAspect)) / 2
+            if side >= 120 {
+                layoutInBands(side: side)
+                return
+            }
+        }
 
         let shoulder = CGSize(width: 84, height: 38)
         let top: CGFloat = 12
@@ -180,8 +202,75 @@ final class PadView: UIView {
             button(key)?.frame = CGRect(x: center.x - diameter / 2, y: center.y - diameter / 2, width: diameter, height: diameter)
         }
 
-        for item in buttons {
-            item.view.layer.cornerRadius = item.view.bounds.height / 2
+    }
+
+    /// Sideways beside a narrower picture: the left band holds L, the D-pad, SELECT (and on a
+    /// DS COMPAGNON and MENU), the right one R, the face buttons, START (ÉCRANS, TACTILE).
+    private func layoutInBands(side: CGFloat) {
+        let width = bounds.width
+        let height = bounds.height
+        // Off the rounded corners and the camera, and a little over the picture's own edge.
+        let inset = max(safeAreaInsets.left, safeAreaInsets.right)
+        let overlap: CGFloat = 14
+        let margin: CGFloat = 4
+        let column = side - inset + overlap - 2 * margin
+        let leftX = inset + margin
+        let rightX = width - side - overlap + margin
+        let shoulder = CGSize(width: min(column, 96), height: 36)
+        let top: CGFloat = 10
+        button(PadKey.l)?.frame = CGRect(x: leftX + (column - shoulder.width) / 2, y: top,
+                                         width: shoulder.width, height: shoulder.height)
+        button(PadKey.r)?.frame = CGRect(x: rightX + (column - shoulder.width) / 2, y: top,
+                                         width: shoulder.width, height: shoulder.height)
+
+        // The bottom of each band: SELECT / START, and the DS shortcuts above them.
+        let pillHeight: CGFloat = 28
+        let pillWidth = min(column, 100)
+        let startY = height - pillHeight - 14
+        button(PadKey.select)?.frame = CGRect(x: leftX + (column - pillWidth) / 2, y: startY,
+                                              width: pillWidth, height: pillHeight)
+        button(PadKey.start)?.frame = CGRect(x: rightX + (column - pillWidth) / 2, y: startY,
+                                             width: pillWidth, height: pillHeight)
+        var lowest = startY
+        if isDS {
+            let rowHeight: CGFloat = 26
+            let leftItems = [Self.shortcuts[0].0, Self.shortcuts[1].0]
+            let rightItems = [Self.shortcuts[2].0, Self.shortcuts[3].0]
+            for (row, title) in leftItems.reversed().enumerated() {
+                shortcut(title)?.frame = CGRect(x: leftX + (column - pillWidth) / 2,
+                                                y: startY - CGFloat(row + 1) * (rowHeight + 6),
+                                                width: pillWidth, height: rowHeight)
+            }
+            for (row, title) in rightItems.reversed().enumerated() {
+                shortcut(title)?.frame = CGRect(x: rightX + (column - pillWidth) / 2,
+                                                y: startY - CGFloat(row + 1) * (rowHeight + 6),
+                                                width: pillWidth, height: rowHeight)
+            }
+            lowest = startY - 2 * (rowHeight + 6)
+        }
+
+        // The D-pad and the face buttons in the room left between the shoulders and the bottom rows.
+        let clusterTop = top + shoulder.height + 8
+        let clusterHeight = max(lowest - 8 - clusterTop, 80)
+        let centerY = clusterTop + clusterHeight / 2
+
+        let dpadSize = min(column, clusterHeight, 160)
+        dpad.frame = CGRect(x: leftX + (column - dpadSize) / 2, y: centerY - dpadSize / 2, width: dpadSize, height: dpadSize)
+        let arm = dpadSize / 3
+        dpadHorizontal.frame = CGRect(x: 0, y: (dpadSize - arm) / 2, width: dpadSize, height: arm)
+        dpadVertical.frame = CGRect(x: (dpadSize - arm) / 2, y: 0, width: arm, height: dpadSize)
+
+        let diameter = min(column / 2.9, clusterHeight / 2.9, 58)
+        let gap = diameter * 0.95
+        let center = CGPoint(x: rightX + column / 2, y: centerY)
+        let places: [(UInt32, CGPoint)] = [
+            (PadKey.x, CGPoint(x: center.x, y: center.y - gap)),
+            (PadKey.a, CGPoint(x: center.x + gap, y: center.y)),
+            (PadKey.b, CGPoint(x: center.x, y: center.y + gap)),
+            (PadKey.y, CGPoint(x: center.x - gap, y: center.y)),
+        ]
+        for (key, point) in places {
+            button(key)?.frame = CGRect(x: point.x - diameter / 2, y: point.y - diameter / 2, width: diameter, height: diameter)
         }
     }
 
@@ -271,6 +360,7 @@ final class PadView: UIView {
 struct PadRepresentable: UIViewRepresentable {
     var showsShoulders = true
     var isDS = false
+    var pictureAspect: CGFloat = 1.5
     let onKeys: (UInt32) -> Void
 
     func makeUIView(context: Context) -> PadView {
@@ -278,6 +368,7 @@ struct PadRepresentable: UIViewRepresentable {
         view.onKeys = onKeys
         view.showsShoulders = showsShoulders
         view.isDS = isDS
+        view.pictureAspect = pictureAspect
         return view
     }
 
@@ -285,6 +376,7 @@ struct PadRepresentable: UIViewRepresentable {
         uiView.onKeys = onKeys
         uiView.showsShoulders = showsShoulders
         uiView.isDS = isDS
+        uiView.pictureAspect = pictureAspect
     }
 
     static func dismantleUIView(_ uiView: PadView, coordinator: ()) {
