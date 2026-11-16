@@ -305,7 +305,7 @@ struct MonDetails: Codable, Equatable {
         let generation = Int(mon.generation)
         let dex = Int(mon.dex)
         let dvs = bytes(of: mon.dvs, count: 5).map(Int.init)
-        let statExp = withUnsafeBytes(of: mon.statExp) { Array($0.bindMemory(to: UInt16.self).prefix(5)) }.map(Int.init)
+        let statExp = words(of: mon.statExp, count: 5)
         var baseStats = [UInt8](repeating: 0, count: 6)
         var type1: UInt8 = 0
         var type2: UInt8 = 0
@@ -368,7 +368,7 @@ struct MonDetails: Codable, Equatable {
         // Generation 2 uses the Special DV and stat experience for both special stats.
         ivs = Array((dvs + [dvs[4]]).prefix(rows))
         evs = Array((statExp + [statExp[4]]).prefix(rows))
-        let partyStats = withUnsafeBytes(of: mon.stats) { Array($0.bindMemory(to: UInt16.self).prefix(6)) }.map(Int.init)
+        let partyStats = words(of: mon.stats, count: 6)
         if mon.hasPartyData && partyStats[0] > 0 {
             stats = Array(partyStats.prefix(rows))
             currentHP = Int(mon.hp)
@@ -445,5 +445,13 @@ struct MonDetails: Codable, Equatable {
 private func bytes<T>(of tuple: T, count: Int) -> [UInt8] {
     withUnsafeBytes(of: tuple) { raw in
         Array(raw.prefix(count))
+    }
+}
+
+/// Reads the first `count` 16-bit values of a C array field (imported as a tuple).
+private func words<T>(of tuple: T, count: Int) -> [Int] {
+    withUnsafeBytes(of: tuple) { raw -> [Int] in
+        let values = raw.bindMemory(to: UInt16.self)
+        return (0..<min(count, values.count)).map { Int(values[$0]) }
     }
 }
