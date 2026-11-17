@@ -20,19 +20,21 @@ struct GameView: View {
     var body: some View {
         GeometryReader { geometry in
             let isLandscape = geometry.size.width > geometry.size.height
-            let pictureArea = Self.portraitPictureArea(geometry.size)
+            let topInset = geometry.safeAreaInsets.top
+            let pictureArea = Self.portraitPictureArea(geometry.size, topInset: topInset)
             Group {
                 if isLandscape {
                     landscapeLayout(bandsBeside: picturesLeavesBands(geometry))
                 } else {
                     portraitLayout(pictureArea: pictureArea)
+                        .ignoresSafeArea(edges: .top)
                 }
             }
             .onAppear { session.start(landscape: isLandscape, pictureArea: isLandscape ? nil : pictureArea) }
             .onChange(of: isLandscape) { session.setLandscape($0) }
             .onChange(of: geometry.size) { size in
                 if size.width <= size.height {
-                    session.setPictureArea(Self.portraitPictureArea(size))
+                    session.setPictureArea(Self.portraitPictureArea(size, topInset: geometry.safeAreaInsets.top))
                 }
             }
         }
@@ -86,9 +88,10 @@ struct GameView: View {
         min(max(height * 0.42, 300), 380)
     }
 
-    /// Upright, the picture's room: the width of the screen, above the controls.
-    private static func portraitPictureArea(_ size: CGSize) -> CGSize {
-        CGSize(width: size.width, height: max(size.height - controlZoneHeight(size.height), 100))
+    /// Upright, the picture's room: the width of the screen, from its top edge (under the
+    /// Dynamic Island too) down to the controls.
+    private static func portraitPictureArea(_ size: CGSize, topInset: CGFloat) -> CGSize {
+        CGSize(width: size.width, height: max(size.height + topInset - controlZoneHeight(size.height), 100))
     }
 
     /// Upright: the picture on top, in its own room (PokeDaisy's EXPAND fills it, its HUD
