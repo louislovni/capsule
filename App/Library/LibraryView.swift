@@ -64,6 +64,10 @@ struct LibraryView: View {
                     } label: {
                         Label("Réglages PokeDaisy", systemImage: "slider.horizontal.3")
                     }
+                } footer: {
+                    Text("Capsule \(Self.version)")
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 12)
                 }
             }
             .navigationTitle("Capsule")
@@ -134,6 +138,12 @@ struct LibraryView: View {
                 }
             }
         }
+    }
+
+    /// "0.1.36", the number AltStore shows too.
+    private static var version: String {
+        let info = Bundle.main.infoDictionary
+        return (info?["CFBundleShortVersionString"] as? String) ?? "?"
     }
 
     private var bankSummary: String {
