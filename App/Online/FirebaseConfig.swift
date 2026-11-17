@@ -9,6 +9,9 @@ struct FirebaseConfig {
     /// Google's OAuth client for iOS (Firebase made it when the iOS app was added).
     let clientID: String
     let reversedClientID: String
+    /// The bundle ID the project knows the app by: sent with the API key, which Google may
+    /// keep to that iOS app (the installed app's own ID can differ once re-signed).
+    let bundleID: String
 
     static let shared: FirebaseConfig? = {
         guard let url = Bundle.main.url(forResource: "GoogleService-Info", withExtension: "plist"),
@@ -20,7 +23,8 @@ struct FirebaseConfig {
               let reversed = plist["REVERSED_CLIENT_ID"] as? String else {
             return nil
         }
-        return FirebaseConfig(apiKey: apiKey, projectID: projectID, clientID: clientID, reversedClientID: reversed)
+        return FirebaseConfig(apiKey: apiKey, projectID: projectID, clientID: clientID, reversedClientID: reversed,
+                              bundleID: (plist["BUNDLE_ID"] as? String) ?? Bundle.main.bundleIdentifier ?? "")
     }()
 }
 
@@ -80,6 +84,9 @@ enum HTTP {
     static func json(_ url: URL, method: String = "POST", body: Any? = nil, form: [String: String]? = nil,
                      bearer: String? = nil) async throws -> (Int, Any?) {
         var request = URLRequest(url: url)
+        if let config = FirebaseConfig.shared {
+            request.setValue(config.bundleID, forHTTPHeaderField: "X-Ios-Bundle-Identifier")
+        }
         request.httpMethod = method
         request.timeoutInterval = 20
         if let bearer = bearer {
