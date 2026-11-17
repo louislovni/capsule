@@ -121,10 +121,10 @@ index 38cba3a..012243b 100644
  // is the same ROM as, so every digest check downstream sees one id per game.
  const char* ds_canonical_sha1(const char* sha1);
 diff --git a/linux/libretro-ds/pd_ds_libretro.cpp b/linux/libretro-ds/pd_ds_libretro.cpp
-index 83555ce..5489869 100644
+index 83555ce..d511464 100644
 --- a/linux/libretro-ds/pd_ds_libretro.cpp
 +++ b/linux/libretro-ds/pd_ds_libretro.cpp
-@@ -109,6 +109,181 @@ int layout=0; // 0 top, 1 bottom, 2 side by side, 3 stacked
+@@ -109,6 +109,187 @@ int layout=0; // 0 top, 1 bottom, 2 side by side, 3 stacked
  uint16_t pixels[512*384];
  uint32_t ui_pixels[341*256];
  
@@ -230,7 +230,14 @@ index 83555ce..5489869 100644
 +  geometry(W,H);
 +  field3D=field3D&&(mx?ready(0)&&ready(1):ready(2)&&ready(3));
 +  uint16_t mb=0;
-+  for(const auto& e:nds->gpu.engine)if(e.screen()==0)mb=e.master_bright();
++  bool engineA=true;
++  for(int e=0;e<2;++e)if(nds->gpu.engine[e].screen()==0){mb=nds->gpu.engine[e].master_bright();engineA=e==0;}
++  // Where no 3D is drawn: the top screen's backdrop (its palette's colour 0), as the 2D engine shows it.
++  uint16_t back;
++  {
++    const uint32_t c=nds->bus.dma_read32(ds::Cpu::ARM9,engineA?0x05000000:0x05000400)&0x7FFF;
++    back=shade(((c&31)<<1)|(((c>>5)&31)<<9)|(((c>>10)&31)<<17),mb);
++  }
 +  auto near=[](uint16_t a,uint16_t b){
 +    const int dr=int(a>>11)-int(b>>11),dg=int((a>>5)&63)-int((b>>5)&63),db=int(a&31)-int(b&31);
 +    return std::abs(dr)<=4&&std::abs(dg)<=8&&std::abs(db)<=4;
@@ -246,7 +253,7 @@ index 83555ce..5489869 100644
 +    }
 +    if(mx){
 +      const int y=sy/2;
-+      const uint16_t edgeL=px[sy*512],edgeR=px[sy*512+511];
++      const uint16_t edgeL=back,edgeR=back;
 +      for(unsigned X=0;X<X0;++X){
 +        const uint32_t c=at(0,int(X/2)-mx,y);
 +        row[X]=lit(c)?shade(c,mb):edgeL;
@@ -263,10 +270,9 @@ index 83555ce..5489869 100644
 +    }else if(sy<0||sy>=384){
 +      const int y=sy<0?-((-sy+1)/2):sy/2;   // DS row, floor
 +      const int k=sy<0?2:3;
-+      const uint16_t* edge=px+(sy<0?0:383*512);
 +      for(unsigned X=0;X<W;++X){
 +        const uint32_t c=at(k,int(X/2),y);
-+        row[X]=lit(c)?shade(c,mb):edge[X];
++        row[X]=lit(c)?shade(c,mb):back;
 +      }
 +    }
 +  }
@@ -306,7 +312,7 @@ index 83555ce..5489869 100644
  uint32_t read32(uint32_t a) {
    if (!nds || a<0x02000000 || a>0x023ffffc) return 0;
    return nds->bus.dma_read32(ds::Cpu::ARM9,a);
-@@ -197,7 +372,7 @@ bool env(unsigned cmd,void* data) {
+@@ -197,7 +378,7 @@ bool env(unsigned cmd,void* data) {
  void geometry(unsigned w,unsigned h) {
    if(width==w && height==h)return;
    width=w;height=h;
@@ -315,7 +321,7 @@ index 83555ce..5489869 100644
    environment(RETRO_ENVIRONMENT_SET_GEOMETRY,&g);
  }
  void refresh() {
-@@ -600,7 +775,6 @@ void draw_quick() {
+@@ -600,7 +781,6 @@ void draw_quick() {
      ds_compose(stage,arrangement,nds->gpu.framebuffer(0),nds->gpu.framebuffer(1));
      stageReady=true;
    }
@@ -323,7 +329,7 @@ index 83555ce..5489869 100644
    for(unsigned y=0;y<384;++y)for(unsigned x=0;x<512;++x){
      uint32_t base=stage[y*512+x]&0xffffff;
      base=(base&0xfefefe)>>1;
-@@ -613,7 +787,7 @@ void draw_quick() {
+@@ -613,7 +793,7 @@ void draw_quick() {
      }
      pixels[y*512+x]=ds_rgb565(base);
    }
@@ -332,7 +338,7 @@ index 83555ce..5489869 100644
  }
  void draw_strip(uint32_t* out){
    const int focus=drawnBattle.panel==DsBattlePanel::Moves?battleStrip.moveFocus:battleStrip.actionFocus;
-@@ -633,7 +807,6 @@ void present(const void* data,unsigned,unsigned,size_t) {
+@@ -633,7 +813,6 @@ void present(const void* data,unsigned,unsigned,size_t) {
    ds_compose(stage,arrangement,nds->gpu.framebuffer(0),nds->gpu.framebuffer(1),
               fieldValid?fieldFrame:nullptr,showStrip?draw_strip:nullptr);
    stageReady=true;
@@ -340,7 +346,7 @@ index 83555ce..5489869 100644
    for(unsigned i=0;i<w*h;++i)pixels[i]=ds_rgb565(stage[i]);
    if(hudCursor<0&&(buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_SELECT))&&arrangement.touch.w>0){
      int cx=arrangement.touch.x+cursor_x*arrangement.touch.w/256;
-@@ -648,7 +821,11 @@ void present(const void* data,unsigned,unsigned,size_t) {
+@@ -648,7 +827,11 @@ void present(const void* data,unsigned,unsigned,size_t) {
       (!game || field_free()) && !fieldMenuFlow &&
       top.w>0 && top.h>0 && !arrangement.floating && !arrangement.modal) {
      if(tick%12==0 || !snapshot.valid)refresh();
@@ -353,7 +359,7 @@ index 83555ce..5489869 100644
      pd_snapshot party{};party.valid=snapshot.valid;party.partyCount=std::min(6,int(snapshot.party.size()));
      for(int i=0;i<party.partyCount;++i){
        const auto& m=snapshot.party[i];auto& d=party.party[i];
-@@ -680,7 +857,7 @@ void present(const void* data,unsigned,unsigned,size_t) {
+@@ -680,7 +863,7 @@ void present(const void* data,unsigned,unsigned,size_t) {
      hud_state state{steps,repelFull,pc,wild,-1};
      state.mini=shell.settings.hudSize!=PD_HUD_LARGE;
      const bool pip=arrangement.touch.w>0 && arrangement.touch.x>top.x && arrangement.touch.x<top.x+top.w;
@@ -362,7 +368,7 @@ index 83555ce..5489869 100644
      struct HudIcons {const pd_snapshot& party;bool small;};
      HudIcons hudIcons{party,pip&&!state.mini};
      hud_ds_draw(&c,&party,&state,&shell.settings,&hudIcons,[](pd_canvas* c,void* ctx,const pd_mon* m,int x,int y,bool){
-@@ -717,9 +894,10 @@ void present(const void* data,unsigned,unsigned,size_t) {
+@@ -717,9 +900,10 @@ void present(const void* data,unsigned,unsigned,size_t) {
          ds_draw_minimap(c,snapshot,map,x,y,w,h);
        },&hudHits);
      hud_focus_draw(&c,&hudHits,hudCursor);
@@ -374,7 +380,7 @@ index 83555ce..5489869 100644
        const auto* row=ui_pixels+(doubled?y/2:y*192/top.h)*256;
        for(int x=0;x<top.w;++x){
          const uint32_t p=row[doubled?x/2:x*256/top.w];
-@@ -735,7 +913,11 @@ void present(const void* data,unsigned,unsigned,size_t) {
+@@ -735,7 +919,11 @@ void present(const void* data,unsigned,unsigned,size_t) {
        }
      }
    }
@@ -387,7 +393,7 @@ index 83555ce..5489869 100644
  }
  int16_t filtered_input(unsigned p,unsigned d,unsigned i,unsigned id) {
    if(flyCallJob)return 0;
-@@ -773,7 +955,9 @@ int16_t filtered_input(unsigned p,unsigned d,unsigned i,unsigned id) {
+@@ -773,7 +961,9 @@ int16_t filtered_input(unsigned p,unsigned d,unsigned i,unsigned id) {
        if(id==RETRO_DEVICE_ID_POINTER_Y)return (battleTap.y*32768+191)/192;
      }
      int x=input(p,d,i,RETRO_DEVICE_ID_POINTER_X),y=input(p,d,i,RETRO_DEVICE_ID_POINTER_Y);
@@ -398,7 +404,7 @@ index 83555ce..5489869 100644
      if(id==RETRO_DEVICE_ID_POINTER_PRESSED)return pen.valid?input(p,d,i,id):0;
      if(id==RETRO_DEVICE_ID_POINTER_X)return pen.valid?(pen.x*65535+255)/256-32767:0;
      if(id==RETRO_DEVICE_ID_POINTER_Y)return pen.valid?(pen.y*32768+191)/192:0;
-@@ -975,7 +1159,7 @@ RETRO_API void retro_set_input_state(retro_input_state_t cb){pd_ds::input=cb;ds_
+@@ -975,7 +1165,7 @@ RETRO_API void retro_set_input_state(retro_input_state_t cb){pd_ds::input=cb;ds_
  RETRO_API void retro_get_system_info(retro_system_info* info){ds_get_system_info(info);info->library_name="PokeDaisy DS";info->library_version="0.4-one-screen";}
  RETRO_API void retro_get_system_av_info(retro_system_av_info* info){
    ds_get_system_av_info(info);
@@ -407,7 +413,7 @@ index 83555ce..5489869 100644
  }
  RETRO_API bool retro_load_game(const retro_game_info* info){
    pd_ds::clear();pd_ds::width=512;pd_ds::height=384;
-@@ -999,6 +1183,19 @@ RETRO_API bool retro_load_game(const retro_game_info* info){
+@@ -999,6 +1189,19 @@ RETRO_API bool retro_load_game(const retro_game_info* info){
      pd_ds::companionGame=ds_companion_game(hex);
      pd_ds::soulSilver=!std::strcmp(hex,pd_ds_data::soulSilverSha1);
      pd_ds::battleStyle=ds_battle_style(hex);
@@ -427,7 +433,7 @@ index 83555ce..5489869 100644
      ds_battle_set_base_pp({});
      if(pd_ds::battleStyle)
        pd_ds::game=pk_nds_field_game(reinterpret_cast<const char*>(rom.data()+12),rom[30]);
-@@ -1017,6 +1214,8 @@ RETRO_API bool retro_load_game(const retro_game_info* info){
+@@ -1017,6 +1220,8 @@ RETRO_API bool retro_load_game(const retro_game_info* info){
    pd_ds::set_wild_rates();
    pd_ds::shell.dexArt=std::move(dexArt);
    log(RETRO_LOG_INFO,"PokeDaisy DS: companion %s\n",pd_ds::companionGame!=DsGame::Unsupported?"enabled":"unavailable for this ROM");
@@ -436,7 +442,7 @@ index 83555ce..5489869 100644
    return true;
  }
  RETRO_API void retro_reset(){
-@@ -1042,10 +1241,11 @@ RETRO_API bool retro_unserialize(const void* data,size_t n){
+@@ -1042,10 +1247,11 @@ RETRO_API bool retro_unserialize(const void* data,size_t n){
    if(ok){pd_ds::clear_hud_focus();pd_ds::clear_field_actions();pd_ds::flyJob={};pd_ds::flyPicker=pd_ds::heldQuickConfirm=false;pd_ds::companion=pd_ds::quickOpen=false;pd_ds::shell.picker=-1;pd_ds::shell.summary=false;pd_ds::shell.details=false;pd_ds::shell.dexEntry=0;pd_ds::shell.guideLoadedPage=-1;pd_ui_guide_reset(&pd_ds::shell.frame);pd_ds::shell.placeRow=pd_ds::shell.mapAction=-1;pd_ds::screen_override=0;pd_ds::snapshot={};pd_ds::repelFull=0;pd_ds::tick=0;pd_ds::scene.reset();pd_ds::arrangement={};pd_ds::manualTouch=pd_ds::fieldValid=pd_ds::fieldMenuFlow=false;pd_ds::companionHold=0;}
    return ok;
  }
