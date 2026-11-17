@@ -67,6 +67,11 @@ struct LibraryView: View {
                     } label: {
                         Label("Réglages PokeDaisy", systemImage: "slider.horizontal.3")
                     }
+                    NavigationLink {
+                        GamepadSettingsView()
+                    } label: {
+                        Label("Manette Bluetooth", systemImage: "gamecontroller")
+                    }
                 } footer: {
                     Text("Capsule \(Self.version)")
                         .frame(maxWidth: .infinity)

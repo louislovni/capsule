@@ -223,9 +223,24 @@ final class EmulatorSession: ObservableObject {
 
     // MARK: - Controls (main thread)
 
+    private var touchKeys: UInt32 = 0
+    private var controllerKeys: UInt32 = 0
+
+    /// The on-screen buttons held.
     func setKeys(_ keys: UInt32) {
+        touchKeys = keys
+        sendKeys()
+    }
+
+    /// A Bluetooth controller's buttons held (added to the on-screen ones).
+    func setControllerKeys(_ keys: UInt32) {
+        controllerKeys = keys
+        sendKeys()
+    }
+
+    private func sendKeys() {
         guard let core = core else { return }
-        lr_set_keys(core, keys)
+        lr_set_keys(core, touchKeys | controllerKeys)
     }
 
     /// A touch on the frame, in its own coordinates (0...1 on both axes), or nil when lifted.

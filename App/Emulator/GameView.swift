@@ -3,6 +3,7 @@ import SwiftUI
 /// The playing screen: picture on top, controller below, a thin bar of tools above.
 struct GameView: View {
     @StateObject private var session: EmulatorSession
+    @ObservedObject private var gamepad = GamepadInput.shared
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
 
@@ -31,6 +32,8 @@ struct GameView: View {
                 }
             }
             .onAppear {
+                gamepad.onKeys = { [weak session] keys in session?.setControllerKeys(keys) }
+                gamepad.onSpeed = { [weak session] in session?.cycleSpeed() }
                 session.start(landscape: isLandscape, pictureArea: isLandscape ? nil : pictureArea,
                               screenHeight: isLandscape ? nil : screenHeight, topInset: topInset)
             }
@@ -48,7 +51,13 @@ struct GameView: View {
         .preferredColorScheme(.dark)
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
+        .onChange(of: gamepad.controllerName) { name in
+            session.setControllerKeys(0)
+            session.notice = name.map { "\($0) connectée" } ?? "Manette déconnectée"
+        }
         .onDisappear {
+            gamepad.onKeys = nil
+            gamepad.onSpeed = nil
             session.stop()
             if forcedLandscape {
                 Orientation.force(landscape: false)
@@ -134,7 +143,7 @@ struct GameView: View {
             Color.clear
                 .frame(height: pictureArea.height)
             ZStack(alignment: .top) {
-                if !session.loadFailed {
+                if !session.loadFailed && gamepad.controllerName == nil {
                     pad
                 }
                 toolbar(compact: true)
@@ -196,8 +205,10 @@ struct GameView: View {
                 screen
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .ignoresSafeArea()
-                pad
-                    .ignoresSafeArea(edges: bandsBeside ? .all : .vertical)
+                if gamepad.controllerName == nil {
+                    pad
+                        .ignoresSafeArea(edges: bandsBeside ? .all : .vertical)
+                }
             }
             VStack {
                 toolbar(compact: false)
