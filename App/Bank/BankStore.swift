@@ -185,14 +185,17 @@ final class BankStore: ObservableObject {
     /// A trade with another phone: `outgoing` leaves the bank, `incoming` takes its place.
     /// What leaves is first copied to Bank/Echanges (a bank file of one, which the import
     /// takes back), so a trade cut short on the other side never loses a Pokémon.
-    func trade(giving outgoing: BankEntry, receiving incoming: BankEntry) throws -> BankEntry {
+    /// The received Pokémon evolves as it would in the games (Kadabra, Onix holding a Metal Coat…).
+    /// Returns it as kept, with its name before the trade when it evolved.
+    func trade(giving outgoing: BankEntry, receiving incoming: BankEntry) throws -> (entry: BankEntry, evolvedFrom: String?) {
         guard let index = entries.firstIndex(where: { $0.id == outgoing.id }) else {
             throw TradeError.notInBank
         }
         guard incoming.data.count == BankEntry.dataSize(generation: incoming.effectiveGeneration) else {
             throw TradeError.unreadable
         }
-        var received = incoming
+        var received = TradeEvolution.apply(to: incoming, tradedFor: outgoing)
+        let evolvedFrom = received.species != incoming.species ? incoming.displayName : nil
         if entries.contains(where: { $0.id == received.id && $0.id != outgoing.id }) {
             received.id = UUID()
         }
@@ -214,7 +217,7 @@ final class BankStore: ObservableObject {
             (entries, removedIDs) = before
             throw error
         }
-        return received
+        return (received, evolvedFrom)
     }
 
     /// Adds the entries of an exported bank file that are not here yet.

@@ -158,8 +158,8 @@ final class TradeSession: NSObject, ObservableObject {
         guard !committed, iConfirmed, theyConfirmed, let mine = myOffer, let theirs = theirOffer else { return }
         committed = true
         do {
-            let received = try bank.trade(giving: mine, receiving: theirs)
-            phase = .finished(received: received.displayName, given: mine.displayName)
+            let outcome = try bank.trade(giving: mine, receiving: theirs)
+            phase = .finished(received: TradeEvolution.describe(outcome), given: mine.displayName)
             send(.done)
         } catch {
             phase = .failed(error.localizedDescription)

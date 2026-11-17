@@ -99,6 +99,14 @@ final class RomData {
         }
     }
 
+    /// A species name as the game stores it (its own charset, 0xFF-terminated), for nicknames.
+    func rawSpeciesName(_ index: Int) -> [UInt8]? {
+        let stride = Int(PK_SPECIES_NAME_STRIDE)
+        guard speciesNames >= 0, index > 0, speciesNames + (index + 1) * stride <= data.count else { return nil }
+        let start = speciesNames + index * stride
+        return Array(data[data.startIndex + start ..< data.startIndex + start + stride])
+    }
+
     func speciesName(_ index: Int) -> String? { tableName(speciesNames, stride: Int(PK_SPECIES_NAME_STRIDE), index: index) }
     func moveName(_ index: Int) -> String? { tableName(moveNames, stride: Int(PK_MOVE_NAME_STRIDE), index: index) }
     func abilityName(_ index: Int) -> String? { tableName(abilityNames, stride: Int(PK_ABILITY_NAME_STRIDE), index: index) }

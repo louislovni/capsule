@@ -545,3 +545,82 @@ size_t pk_nds_save_write(const PKNDSSave* s, uint8_t* out, size_t outSize) {
 	}
 	return s->size;
 }
+
+/* ---------- Changes ---------- */
+
+/* Shuffles plain A, B, C, D blocks back into the stored order and encrypts them. */
+static void pack(const uint8_t* plain, uint8_t* raw) {
+	unsigned order = ((rd32(plain) & 0x3E000u) >> 13) % 24;
+	memcpy(raw, plain, 8);
+	for (int pos = 0; pos < 4; ++pos) {
+		int block = kOrders[order][pos] - 'A';
+		memcpy(raw + 8 + 32 * pos, plain + 8 + 32 * block, 32);
+	}
+	pk_nds_crypt(raw);
+}
+
+static int utf8_next(const char** s) {
+	const unsigned char* p = (const unsigned char*) *s;
+	if (!*p) return -1;
+	int cp, extra;
+	if (p[0] < 0x80) { cp = p[0]; extra = 0; }
+	else if ((p[0] & 0xE0) == 0xC0) { cp = p[0] & 0x1F; extra = 1; }
+	else if ((p[0] & 0xF0) == 0xE0) { cp = p[0] & 0x0F; extra = 2; }
+	else { cp = p[0] & 0x07; extra = 3; }
+	++p;
+	for (int i = 0; i < extra; ++i, ++p) {
+		if ((*p & 0xC0) != 0x80) return -2;
+		cp = (cp << 6) | (*p & 0x3F);
+	}
+	*s = (const char*) p;
+	return cp;
+}
+
+static bool encode_text(int generation, const char* text, uint8_t* out, size_t chars) {
+	uint16_t buf[11];
+	size_t n = 0;
+	const char* s = text;
+	int cp;
+	while ((cp = utf8_next(&s)) >= 0) {
+		if (n + 1 >= chars) return false;
+		uint16_t value = 0;
+		if (generation == 4) {
+			if (cp == 0x2642) cp = 0x246D; /* stored as the games' own signs, see decode_text */
+			if (cp == 0x2640) cp = 0x246E;
+			for (size_t i = 1; i < pk_nds_charset_count; ++i) {
+				if (pk_nds_charset[i] == (uint32_t) cp) {
+					value = (uint16_t) i;
+					break;
+				}
+			}
+			if (value == 0) return false;
+		} else {
+			if (cp > 0xFFFF) return false;
+			value = (uint16_t) cp;
+		}
+		buf[n++] = value;
+	}
+	if (cp == -2 || n == 0) return false;
+	for (size_t i = 0; i < chars; ++i) {
+		wr16(out + 2 * i, i < n ? buf[i] : 0xFFFF);
+	}
+	return true;
+}
+
+bool pk_nds_set_species(int generation, uint8_t* raw, uint16_t species, uint16_t heldItem, int ability,
+                        const char* nickname) {
+	PKNDSMon mon;
+	if (!raw || species == 0 || species > (generation == 4 ? 493 : 649) ||
+	    !pk_nds_mon_decode(generation, raw, PK_NDS_MON_SIZE, &mon)) {
+		return false;
+	}
+	uint8_t u[PK_NDS_MON_SIZE];
+	unpack(raw, u);
+	wr16(u + 0x08, species);
+	wr16(u + 0x0A, heldItem);
+	if (ability >= 0 && ability < 256) u[0x15] = (uint8_t) ability;
+	if (nickname && !encode_text(generation, nickname, u + 0x48, 11)) return false;
+	wr16(u + 6, data_checksum(u));
+	pack(u, raw);
+	return true;
+}

@@ -160,3 +160,21 @@ bool pk_party_heal(uint8_t* raw100) {
 	wr16(raw100 + 86, mon.maxHp);
 	return true;
 }
+
+bool pk_mon_set_species(uint8_t* raw, size_t rawSize, uint16_t species, uint16_t heldItem) {
+	PKMon mon;
+	if (!raw || rawSize < PK_BOX_MON_SIZE || !pk_mon_decode(raw, rawSize, &mon) || species == 0) {
+		return false;
+	}
+	uint8_t data[48];
+	decrypt_block(raw, data);
+	uint8_t* growth = data + kOrder[mon.personality % 24][0] * 12;
+	wr16(growth, species);
+	wr16(growth + 2, heldItem);
+	wr16(raw + 28, block_checksum(data));
+	uint32_t key = rd32(raw) ^ rd32(raw + 4);
+	for (int i = 0; i < 48; i += 4) {
+		wr32(raw + 32 + i, rd32(data + i) ^ key);
+	}
+	return true;
+}

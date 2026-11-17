@@ -708,3 +708,54 @@ size_t pk_gb_save_write(const PKGBSave* save, uint8_t* out, size_t outSize) {
 	 * (which is) is never changed here. */
 	return save->size;
 }
+
+/* ---------- Changes ---------- */
+
+static bool gb_encode_name(const char* text, uint8_t out[PK_GB_NAME_LENGTH]) {
+	size_t n = 0;
+	for (const unsigned char* p = (const unsigned char*) text; *p; ++p) {
+		uint8_t c;
+		if (*p >= 'A' && *p <= 'Z') c = (uint8_t) (0x80 + (*p - 'A'));
+		else if (*p >= 'a' && *p <= 'z') c = (uint8_t) (0xA0 + (*p - 'a'));
+		else if (*p >= '0' && *p <= '9') c = (uint8_t) (0xF6 + (*p - '0'));
+		else if (*p == ' ') c = 0x7F;
+		else if (*p == '-') c = 0xE3;
+		else if (*p == '.') c = 0xE8;
+		else return false;
+		if (n + 1 >= PK_GB_NAME_LENGTH) return false;
+		out[n++] = c;
+	}
+	if (n == 0) return false;
+	for (size_t i = n; i < PK_GB_NAME_LENGTH; ++i) out[i] = 0x50;
+	return true;
+}
+
+bool pk_gb_blob_set_species(int generation, uint8_t* blob, size_t size, unsigned dex, int heldItem,
+                            const char* nickname) {
+	PKGBMon mon;
+	if (!pk_gb_blob_decode(generation, blob, size, &mon) || dex == 0) return false;
+	size_t box = generation == 1 ? PK_GB1_BOX_MON : PK_GB2_BOX_MON;
+	uint8_t species;
+	if (generation == 1) {
+		if (dex > 151) return false;
+		unsigned index = 0;
+		for (unsigned i = 1; i < 256 && !index; ++i) {
+			if (pk_gb1_index_to_dex[i] == dex) index = i;
+		}
+		if (!index) return false;
+		species = (uint8_t) index;
+		/* types live in the structure; catch rate stays as it is */
+		blob[5] = pk_gb1_base[dex][5];
+		blob[6] = pk_gb1_base[dex][6];
+	} else {
+		if (dex > 251) return false;
+		species = (uint8_t) dex;
+		if (heldItem >= 0 && heldItem < 256) blob[1] = (uint8_t) heldItem;
+	}
+	uint8_t name[PK_GB_NAME_LENGTH];
+	if (nickname && !gb_encode_name(nickname, name)) return false;
+	blob[0] = species;
+	blob[box + 2 * PK_GB_NAME_LENGTH] = species;
+	if (nickname) memcpy(blob + box + PK_GB_NAME_LENGTH, name, PK_GB_NAME_LENGTH);
+	return true;
+}

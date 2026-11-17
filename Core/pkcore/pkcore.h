@@ -70,6 +70,10 @@ typedef struct {
 /* Decodes an 80-byte (boxed) or 100-byte (party) structure. Returns out->valid. */
 bool pk_mon_decode(const uint8_t* raw, size_t rawSize, PKMon* out);
 
+/* Changes the species and held item of a valid structure (checksum and encryption kept right).
+ * The nickname bytes (raw + 8, 10 bytes) are not touched. */
+bool pk_mon_set_species(uint8_t* raw, size_t rawSize, uint16_t species, uint16_t heldItem);
+
 /* True when the 80-byte slot holds nothing. */
 bool pk_mon_is_empty(const uint8_t* raw80);
 
@@ -275,6 +279,12 @@ bool pk_gb_mon_decode(int generation, const uint8_t* mon, size_t monSize, const 
 /* Decodes a bank blob (PK_GB1_BLOB / PK_GB2_BLOB bytes). */
 bool pk_gb_blob_decode(int generation, const uint8_t* blob, size_t size, PKGBMon* out);
 
+/* Changes the species (National Pokedex number) of a bank blob. heldItem < 0 keeps it
+ * (generation 2 only). nickname, when not NULL, is written in the game's charset
+ * (letters, digits, space, '-' and '.'); false when it can't be. */
+bool pk_gb_blob_set_species(int generation, uint8_t* blob, size_t size, unsigned dex, int heldItem,
+                            const char* nickname);
+
 /* Base stats from the built-in tables, by National Pokedex number.
  * Order: HP, Atk, Def, Spe, SpA, SpD (generation 1: Special twice). */
 bool pk_gb_base_stats(int generation, unsigned dex, uint8_t stats[6], uint8_t* type1, uint8_t* type2,
@@ -390,6 +400,10 @@ bool pk_nds_mon_decode(int generation, const uint8_t* raw, size_t size, PKNDSMon
 bool pk_nds_mon_is_empty(const uint8_t* raw136);
 /* Encrypts / decrypts a 136-byte structure in place (shuffled order kept as stored). */
 void pk_nds_crypt(uint8_t* raw136);
+/* Changes species, held item, ability (< 0 keeps it) and, when not NULL, the nickname
+ * (UTF-8) of a valid 136-byte structure; checksum and encryption are kept right. */
+bool pk_nds_set_species(int generation, uint8_t* raw136, uint16_t species, uint16_t heldItem, int ability,
+                        const char* nickname);
 /* Builds the stored form of an empty slot (what the games write). */
 void pk_nds_empty_slot(uint8_t* raw136);
 

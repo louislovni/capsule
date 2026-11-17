@@ -105,7 +105,8 @@ final class RemoteTrade: ObservableObject {
                         // Swapped here before the app could say so: say it now.
                         committed = true
                         try? await db.update(path, fields: ["done_\(uid)": .bool(true), "updatedAt": .timestamp(Date())])
-                        phase = .finished(received: theirs.displayName, given: mine.displayName)
+                        let kept = bank.entries.first(where: { $0.id == theirs.id }) ?? theirs
+                        phase = .finished(received: kept.displayName, given: mine.displayName)
                         return
                     }
                 } else {
@@ -181,8 +182,8 @@ final class RemoteTrade: ObservableObject {
               let db = account.database, let uid = account.user?.uid else { return }
         committed = true
         do {
-            let received = try bank.trade(giving: mine, receiving: theirs)
-            phase = .finished(received: received.displayName, given: mine.displayName)
+            let outcome = try bank.trade(giving: mine, receiving: theirs)
+            phase = .finished(received: TradeEvolution.describe(outcome), given: mine.displayName)
             try? await db.update(path, fields: ["done_\(uid)": .bool(true), "updatedAt": .timestamp(Date())])
         } catch {
             committed = false
