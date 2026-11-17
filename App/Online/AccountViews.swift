@@ -4,6 +4,7 @@ import SwiftUI
 struct AccountView: View {
     @ObservedObject var account: AccountStore
     @ObservedObject var bank: BankStore
+    @ObservedObject var cloud: CloudSync
     @State private var friendCode = ""
     @State private var editingName = false
     @State private var newName = ""
@@ -59,7 +60,10 @@ struct AccountView: View {
     private var signedOut: some View {
         Section {
             Button {
-                Task { await account.signIn() }
+                Task {
+                    await account.signIn()
+                    await cloud.sync()
+                }
             } label: {
                 Label("Se connecter avec Google", systemImage: "person.crop.circle.badge.plus")
             }
@@ -100,6 +104,33 @@ struct AccountView: View {
             }
         } header: {
             Text("Ton profil")
+        }
+
+        Section {
+            Toggle("Sauvegarde dans le cloud", isOn: $cloud.enabled)
+            if cloud.enabled {
+                Button {
+                    Task { await cloud.sync() }
+                } label: {
+                    HStack {
+                        Label("Synchroniser maintenant", systemImage: "arrow.triangle.2.circlepath.icloud")
+                        Spacer()
+                        if cloud.syncing {
+                            ProgressView()
+                        }
+                    }
+                }
+                .disabled(cloud.syncing)
+            }
+        } header: {
+            Text("Cloud")
+        } footer: {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Les sauvegardes des jeux (.sav) et la banque vont sur ton compte, et reviennent sur tout appareil connecté avec lui. Les états instantanés restent sur l'iPhone.")
+                if let date = cloud.lastSync {
+                    Text("Dernière synchro : \(date.formatted(date: .abbreviated, time: .shortened)). \(cloud.lastReport)")
+                }
+            }
         }
 
         Section {

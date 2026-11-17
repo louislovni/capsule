@@ -137,6 +137,21 @@ struct Firestore {
         try check(status, object)
     }
 
+    /// Writes the whole document (made if missing, replaced if there).
+    func set(_ path: String, fields: [String: FieldValue]) async throws {
+        let (status, object) = try await call(url(path), method: "PATCH", body: ["fields": fields.mapValues { $0.json }])
+        try check(status, object)
+    }
+
+    /// The documents of a collection (up to 300).
+    func list(_ collection: String) async throws -> [FSDocument] {
+        let (status, object) = try await call(url(collection, [URLQueryItem(name: "pageSize", value: "300")]), method: "GET")
+        if status == 404 { return [] }
+        try check(status, object)
+        let docs = ((object as? [String: Any])?["documents"] as? [[String: Any]]) ?? []
+        return docs.map { FSDocument(json: $0) }
+    }
+
     func delete(_ path: String) async throws {
         let (status, object) = try await call(url(path), method: "DELETE")
         if status == 404 { return }

@@ -73,6 +73,10 @@ final class BankStore: ObservableObject {
     @Published var lastError: String?
 
     let fileURL = Storage.bank.appendingPathComponent("banque.json")
+    /// Pokémon that left the bank (withdrawn, traded): the cloud's merge keeps them out, so one
+    /// another device still holds doesn't come back.
+    private(set) var removedIDs: Set<UUID> = []
+    private let removedURL = Storage.bank.appendingPathComponent("retires.json")
 
     init() {
         load()
@@ -92,6 +96,9 @@ final class BankStore: ObservableObject {
     }
 
     func load() {
+        if let data = try? Data(contentsOf: removedURL), let ids = try? JSONDecoder().decode([UUID].self, from: data) {
+            removedIDs = Set(ids)
+        }
         guard let data = try? Data(contentsOf: fileURL) else {
             entries = []
             return
@@ -111,10 +118,49 @@ final class BankStore: ObservableObject {
         try FileManager.default.createDirectory(at: Storage.bank, withIntermediateDirectories: true)
         let data = try Self.makeEncoder().encode(entries)
         try data.write(to: fileURL, options: .atomic)
+        let removed = try JSONEncoder().encode(removedIDs.map { $0 }.sorted { $0.uuidString < $1.uuidString })
+        try removed.write(to: removedURL, options: .atomic)
+    }
+
+    // MARK: - Cloud
+
+    struct CloudPayload: Codable {
+        var entries: [BankEntry]
+        var removed: [UUID]
+    }
+
+    /// The bank as the cloud keeps it (the same bytes for the same bank).
+    func cloudPayload() throws -> Data {
+        let payload = CloudPayload(entries: entries.sorted { $0.id.uuidString < $1.id.uuidString },
+                                   removed: removedIDs.sorted { $0.uuidString < $1.uuidString })
+        return try Self.makeEncoder().encode(payload)
+    }
+
+    /// Another device's bank merged in: every Pokémon either holds, but none that left either.
+    func mergeCloud(_ data: Data) throws {
+        let cloud = try Self.makeDecoder().decode(CloudPayload.self, from: data)
+        let removed = removedIDs.union(cloud.removed)
+        var merged = entries.filter { !removed.contains($0.id) }
+        let known = Set(merged.map { $0.id })
+        merged += cloud.entries.filter {
+            !known.contains($0.id) && !removed.contains($0.id)
+                && $0.data.count == BankEntry.dataSize(generation: $0.effectiveGeneration)
+        }
+        guard merged != entries || removed != removedIDs else { return }
+        let before = (entries, removedIDs)
+        entries = merged
+        removedIDs = removed
+        do {
+            try persist()
+        } catch {
+            (entries, removedIDs) = before
+            throw error
+        }
     }
 
     func add(_ entry: BankEntry) throws {
         entries.append(entry)
+        removedIDs.remove(entry.id)
         do {
             try persist()
         } catch {
@@ -126,10 +172,12 @@ final class BankStore: ObservableObject {
     func remove(_ entry: BankEntry) throws {
         guard let index = entries.firstIndex(where: { $0.id == entry.id }) else { return }
         let removed = entries.remove(at: index)
+        removedIDs.insert(removed.id)
         do {
             try persist()
         } catch {
             entries.insert(removed, at: index)
+            removedIDs.remove(removed.id)
             throw error
         }
     }
@@ -156,12 +204,14 @@ final class BankStore: ObservableObject {
         let backup = folder.appendingPathComponent("envoye-\(stamp)-\(outgoing.id.uuidString.prefix(8)).json")
         try Self.makeEncoder().encode([outgoing]).write(to: backup, options: .atomic)
 
-        let before = entries
+        let before = (entries, removedIDs)
         entries[index] = received
+        removedIDs.insert(outgoing.id)
+        removedIDs.remove(received.id)
         do {
             try persist()
         } catch {
-            entries = before
+            (entries, removedIDs) = before
             throw error
         }
         return received
@@ -173,6 +223,8 @@ final class BankStore: ObservableObject {
         let data = try Data(contentsOf: url)
         let incoming = try Self.makeDecoder().decode([BankEntry].self, from: data)
         let known = Set(entries.map { $0.id })
+        // Brought back on purpose (a file kept from a trade, say): no longer counted as gone.
+        removedIDs.subtract(incoming.map { $0.id })
         let fresh = incoming.filter {
             !known.contains($0.id) && $0.data.count == BankEntry.dataSize(generation: $0.effectiveGeneration)
         }

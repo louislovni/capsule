@@ -47,6 +47,11 @@ service cloud.firestore {
       allow delete: if signedIn() && me() in resource.data.members;
     }
 
+    // users/UID/...: the player's cloud saves and bank (files/ID, chunks/ID_VERSION_N); theirs alone.
+    match /users/{uid}/{rest=**} {
+      allow read, write: if signedIn() && me() == uid;
+    }
+
     // trades/ID: between two accepted friends; each writes only its own fields.
     match /trades/{trade} {
       function friendship(id) {

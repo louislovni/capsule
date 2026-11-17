@@ -5,6 +5,8 @@ struct LibraryView: View {
     @StateObject private var library = GameLibrary()
     @StateObject private var bank = BankStore()
     @StateObject private var account = AccountStore()
+    @StateObject private var cloud = CloudSync()
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var importing = false
     @State private var playing: Game?
@@ -46,7 +48,7 @@ struct LibraryView: View {
                         Label(bankSummary, systemImage: "tray.full")
                     }
                     NavigationLink {
-                        AccountView(account: account, bank: bank)
+                        AccountView(account: account, bank: bank, cloud: cloud)
                     } label: {
                         Label("Amis et échanges en ligne", systemImage: "person.2")
                     }
@@ -77,7 +79,13 @@ struct LibraryView: View {
             .fileImporter(isPresented: $importing, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
                 handleImport(result)
             }
-            .fullScreenCover(item: $playing, onDismiss: { library.refresh() }) { game in
+            .fullScreenCover(item: $playing, onDismiss: {
+                library.refresh()
+                Task {
+                    await cloud.sync()
+                    library.refresh()
+                }
+            }) { game in
                 GameView(game: game)
             }
             .sheet(item: $transferGame) { game in
@@ -111,6 +119,19 @@ struct LibraryView: View {
             }
             .onAppear {
                 library.refresh()
+            }
+            .task {
+                cloud.attach(account: account, bank: bank)
+                await account.restore()
+                await cloud.sync()
+                library.refresh()
+            }
+            .onChange(of: scenePhase) { phase in
+                // Leaving the app from the games list: what changed goes up. (In a game, its
+                // own screen saves; the sync follows when it closes.)
+                if phase == .background && playing == nil {
+                    Task { await cloud.sync() }
+                }
             }
         }
     }
