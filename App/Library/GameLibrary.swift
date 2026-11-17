@@ -11,11 +11,34 @@ final class GameLibrary: ObservableObject {
 
     func refresh() {
         Storage.prepare()
+        tidyDocumentsRoot()
         let files = (try? FileManager.default.contentsOfDirectory(at: Storage.roms, includingPropertiesForKeys: nil)) ?? []
         games = files
             .filter { Game.romExtensions.contains($0.pathExtension.lowercased()) }
             .sorted { $0.lastPathComponent.localizedCaseInsensitiveCompare($1.lastPathComponent) == .orderedAscending }
             .map { Game(romURL: $0) }
+    }
+
+    /// ROMs and saves left at the top of the app's folder (where the PC's iTunes file sharing
+    /// puts them) go to ROMs and Saves. Nothing already there is overwritten.
+    private func tidyDocumentsRoot() {
+        let manager = FileManager.default
+        let files = (try? manager.contentsOfDirectory(at: Storage.documents, includingPropertiesForKeys: nil)) ?? []
+        for url in files {
+            let ext = url.pathExtension.lowercased()
+            let folder: URL
+            if Game.romExtensions.contains(ext) {
+                folder = Storage.roms
+            } else if ext == "sav" {
+                folder = Storage.saves
+            } else {
+                continue
+            }
+            let target = folder.appendingPathComponent(url.lastPathComponent)
+            if !manager.fileExists(atPath: target.path) {
+                try? manager.moveItem(at: url, to: target)
+            }
+        }
     }
 
     struct ImportResult {
