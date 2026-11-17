@@ -154,17 +154,25 @@ struct GameView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .ignoresSafeArea(edges: .top)
         .background(alignment: .top) {
-            ZStack(alignment: .top) {
+            Group {
                 if session.loadFailed {
                     loadFailure
-                        .frame(height: pictureArea.height)
+                        .frame(width: pictureArea.width, height: pictureArea.height)
+                        .frame(width: pictureArea.width, height: screenHeight, alignment: .top)
+                } else if let tall = session.tallCanvas {
+                    // A GBA / Game Boy canvas taller than the screen: its bottom part, to the bottom edge.
+                    let points = tall.height / UIScreen.main.scale
+                    screen
+                        .frame(width: pictureArea.width, height: points)
+                        .frame(width: pictureArea.width, height: screenHeight, alignment: .bottom)
                 } else {
                     screen
+                        .frame(width: pictureArea.width,
+                               height: session.game.isDS ? screenHeight : pictureArea.height,
+                               alignment: .top)
+                        .frame(width: pictureArea.width, height: screenHeight, alignment: .top)
                 }
             }
-            .frame(width: pictureArea.width,
-                   height: session.game.isDS ? screenHeight : pictureArea.height,
-                   alignment: .top)
             .clipped()
             .ignoresSafeArea()
         }

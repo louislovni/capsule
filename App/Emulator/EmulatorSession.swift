@@ -77,6 +77,26 @@ final class EmulatorSession: ObservableObject {
     /// Upright, the whole screen's height (pixels): a DS game's picture runs on under the
     /// controls ("WxH:V", V the clear part on top). Not a GBA one's: its HUD keeps to its panel.
     private(set) var screenHeight: CGFloat?
+    /// Upright, a GBA / Game Boy game's canvas runs on under the controls too: PokeDaisy is told a
+    /// panel taller than the screen, whose middle (where it puts the game) is just above the
+    /// controls, and the rows its HUD keeps to (the part clear of the status bar and controls).
+    /// The frontend shows its bottom part, down to the screen's bottom edge. Pixels.
+    var tallCanvas: (height: CGFloat, hudTop: CGFloat, hudBottom: CGFloat)? {
+        guard !game.isDS, !landscape, let area = pictureArea, let full = screenHeight, full > area.height + 1 else {
+            return nil
+        }
+        let isGBA = game.romURL.pathExtension.lowercased() == "gba"
+        let gameW: CGFloat = isGBA ? 240 : 160, gameH: CGFloat = isGBA ? 160 : 144
+        let scale = max(floor(area.width / gameW), 1)
+        // The game's screen down against the controls (its text box just above L and R), not
+        // above the status bar.
+        let half = gameH * scale / 2
+        let middle = max(area.height - half - 4 * scale, topInset + half)
+        let height = 2 * (full - middle)
+        let hidden = height - full
+        return (height, topInset + hidden, area.height + hidden)
+    }
+
     /// Upright, the status bar's height (pixels): the HUD starts below it.
     private(set) var topInset: CGFloat = 0
 
@@ -86,6 +106,9 @@ final class EmulatorSession: ObservableObject {
             return fixed
         }
         if !landscape, let area = pictureArea, area.width >= 1, area.height >= 1 {
+            if let tall = tallCanvas {
+                return "\(Int(area.width.rounded()))x\(Int(tall.height.rounded())):\(Int(tall.hudTop.rounded())):\(Int(tall.hudBottom.rounded()))"
+            }
             if game.isDS, let full = screenHeight, full > area.height + 1 {
                 return "\(Int(area.width.rounded()))x\(Int(full.rounded())):\(Int(area.height.rounded())):\(Int(topInset.rounded()))"
             }
