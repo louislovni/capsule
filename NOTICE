@@ -10,16 +10,18 @@ PokeDaisy  -  https://pokedaisy.com  -  https://github.com/lidor30/pokedaisy
   The game runs on PokeDaisy's libretro core (pokedaisy_gbc_libretro): mGBA
   with PokeDaisy's companion, HUD, quick menu, EXPAND and field shortcuts built
   in. Copyright (c) PokeDaisy's authors. GNU GPL v3. It is not copied into this
-  repository: scripts/build_core.sh downloads a pinned revision at build time
-  and builds it unchanged, except as a static library. Its own NOTICE lists
-  what it bundles.
+  repository: scripts/build_core.sh downloads a pinned revision of our fork,
+  https://github.com/louislovni/pokedaisy (branch capsule: upstream PokeDaisy
+  plus Capsule's changes, listed in its CAPSULE.md, under the same GPL v3).
+  Its own NOTICE lists what it bundles.
   Core/pkcore/pk_profiles_gen.c (per-game memory addresses) is generated from
   PokeDaisy's gamedata by tools/gen_profiles.py.
   Capsule is not made or endorsed by PokeDaisy's authors.
 
 DSperate  -  https://github.com/lidor30/pokedaisy (third_party/dsperate-lr)
   The Nintendo DS emulator inside PokeDaisy's DS core (pokedaisy_ds_libretro),
-  built without its JIT. GNU GPL v3. Fetched by PokeDaisy's build.
+  built without its JIT. GNU GPL v3. Fetched by PokeDaisy's build; the fork
+  changes its 3D engine for EXPAND (third_party/patches/dsperate-capsule.patch).
 
 mGBA  -  https://mgba.io  -  https://github.com/mgba-emu/mgba
   The emulator inside PokeDaisy's core. Copyright (c) Jeffrey Pfau and

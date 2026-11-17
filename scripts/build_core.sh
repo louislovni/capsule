@@ -1,11 +1,12 @@
 #!/bin/sh
-# Fetches PokeDaisy (with the mGBA and DSperate it pins) and builds the C side of the app.
+# Fetches PokeDaisy - our fork's capsule branch, upstream plus Capsule's changes (CAPSULE.md there) -
+# with the mGBA and DSperate it pins, and builds the C side of the app.
 #   scripts/build_core.sh ios    -> build/core-ios/libcapsulecore.a
 #                                   build/frameworks/{pokedaisy_gbc,pokedaisy_ds}.framework
 #   scripts/build_core.sh host   -> build/core-host, then runs the tests (any Unix)
 set -eu
 
-POKEDAISY_COMMIT=0040e61fcb129d7313e3941771572c93d6722816
+POKEDAISY_COMMIT=beffadee9b25ee08b85890162d2329c4eb4f042d   # louislovni/pokedaisy, branch capsule
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TARGET="${1:-host}"
 SRC="$ROOT/Vendor/pokedaisy"
@@ -14,7 +15,7 @@ OUT="$ROOT/build/core-$TARGET"
 if [ ! -d "$SRC/.git" ]; then
 	mkdir -p "$ROOT/Vendor"
 	git init -q "$SRC"
-	git -C "$SRC" remote add origin https://github.com/lidor30/pokedaisy.git
+	git -C "$SRC" remote add origin https://github.com/louislovni/pokedaisy.git
 fi
 if [ "$(git -C "$SRC" rev-parse HEAD 2>/dev/null || true)" != "$POKEDAISY_COMMIT" ]; then
 	git -C "$SRC" fetch -q --depth 1 origin "$POKEDAISY_COMMIT"
@@ -23,35 +24,17 @@ fi
 git -C "$SRC" submodule update -q --init --depth 1 third_party/mgba
 git -C "$SRC" submodule update -q --init --recursive --depth 1 third_party/dsperate-lr
 
-# Start from PokeDaisy's files as published, then make the two changes below.
-git -C "$SRC" checkout -q -- libretro/CMakeLists.txt libretro/pd_libretro.c linux/libretro-ds/CMakeLists.txt \
-	linux/dsperate/companion.h linux/dsperate/companion.cpp linux/libretro-ds/pd_ds_libretro.cpp
+# Start from the files as committed: the fork's CMake applies its DSperate patch at configure time
+# (third_party/patches/dsperate-capsule.patch), and the steps below change a few more.
 git -C "$SRC/third_party/mgba" checkout -q -- CMakeLists.txt
 git -C "$SRC/third_party/dsperate-lr/DSperate" checkout -q -- \
 	src/core/crypto/aes.c src/core/cheat/analog_db.cpp src/core/io/dsi_font.cpp \
 	src/core/gpu/gpu3d.h src/core/gpu/gpu3d.cpp
-# 0. The DS shell (patches/pokedaisy-ds.patch): French carts in the companion (the
-#    addresses PokeDaisy's Android app uses for them, picked by the cart's header), and
-#    EXPAND, the overworld's 3D past the screen's sides to a wide phone's edges, drawn by
-#    slice engines DSperate's 3D engine feeds (patches/dsperate-expand.patch).
-git -C "$SRC" apply "$ROOT/patches/pokedaisy-ds.patch"
-git -C "$SRC/third_party/dsperate-lr/DSperate" apply "$ROOT/patches/dsperate-expand.patch"
-#    And the GBA canvas follows the phone's orientation (patches/pokedaisy-panel.patch):
-#    the core reads its panel option again when the app turns the phone.
-git -C "$SRC" apply "$ROOT/patches/pokedaisy-panel.patch"
-# 1. Their link options are GNU ld's (version scripts): Apple's linker has none of them.
-perl -pi -e 's/^(target_link_options\(pokedaisy_\w+_libretro PRIVATE -Wl,--.*\))$/if(NOT APPLE)\n  $1\nendif()/' \
-	"$SRC/libretro/CMakeLists.txt" "$SRC/linux/libretro-ds/CMakeLists.txt"
-# 2. DSperate asks Linux (getauxval) whether an ARM CPU has AES instructions: elsewhere
-#    it takes its plain C cipher instead, as it does on any other system.
-perl -0pi -e 's/#if defined\(__aarch64__\) && defined\(__GNUC__\)\n#include <arm_neon.h>\n#include <sys\/auxv.h>/#if defined(__aarch64__) && defined(__GNUC__) && defined(__linux__)\n#include <arm_neon.h>\n#include <sys\/auxv.h>/' \
-	"$SRC/third_party/dsperate-lr/DSperate/src/core/crypto/aes.c"
-grep -q 'defined(__GNUC__) && defined(__linux__)' "$SRC/third_party/dsperate-lr/DSperate/src/core/crypto/aes.c"
-# 3. Its data files are linked in with ELF assembly; Apple's needs Mach-O.
+# 1. DSperate's data files are linked in with ELF assembly; Apple's needs Mach-O.
 if [ "$TARGET" = ios ]; then
 	python3 "$ROOT/scripts/patch_dsperate_macho.py" "$SRC/third_party/dsperate-lr/DSperate"
 fi
-# 4. mGBA's CMake forces a macOS deployment target on every Apple platform, wrong for iOS.
+# 2. mGBA's CMake forces a macOS deployment target on every Apple platform, wrong for iOS.
 perl -pi -e 's/set\(CMAKE_OSX_DEPLOYMENT_TARGET "10.6"\)/# deployment target left to the caller/' \
 	"$SRC/third_party/mgba/CMakeLists.txt"
 
