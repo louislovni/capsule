@@ -121,7 +121,7 @@ index 38cba3a..012243b 100644
  // is the same ROM as, so every digest check downstream sees one id per game.
  const char* ds_canonical_sha1(const char* sha1);
 diff --git a/linux/libretro-ds/pd_ds_libretro.cpp b/linux/libretro-ds/pd_ds_libretro.cpp
-index 83555ce..d511464 100644
+index 83555ce..08a2301 100644
 --- a/linux/libretro-ds/pd_ds_libretro.cpp
 +++ b/linux/libretro-ds/pd_ds_libretro.cpp
 @@ -109,6 +109,187 @@ int layout=0; // 0 top, 1 bottom, 2 side by side, 3 stacked
@@ -388,7 +388,7 @@ index 83555ce..d511464 100644
 +  // The field on the one screen, whole: the margins go on with its 3D.
 +  const bool field3D=game && arrangement.top.x==0 && arrangement.top.y==0 && arrangement.top.w==512 &&
 +    arrangement.top.h==384 && arrangement.touch.w==0 && !arrangement.floating && !arrangement.modal &&
-+    !battleActive && !scene.dark && scene.hud;
++    !battleActive && !wasInBattle && !scene.dark && scene.hud;
 +  emit(pixels,field3D);
  }
  int16_t filtered_input(unsigned p,unsigned d,unsigned i,unsigned id) {
