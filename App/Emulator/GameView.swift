@@ -20,15 +20,21 @@ struct GameView: View {
     var body: some View {
         GeometryReader { geometry in
             let isLandscape = geometry.size.width > geometry.size.height
+            let pictureArea = Self.portraitPictureArea(geometry.size)
             Group {
                 if isLandscape {
                     landscapeLayout(bandsBeside: picturesLeavesBands(geometry))
                 } else {
-                    portraitLayout
+                    portraitLayout(pictureArea: pictureArea)
                 }
             }
-            .onAppear { session.start(landscape: isLandscape) }
+            .onAppear { session.start(landscape: isLandscape, pictureArea: isLandscape ? nil : pictureArea) }
             .onChange(of: isLandscape) { session.setLandscape($0) }
+            .onChange(of: geometry.size) { size in
+                if size.width <= size.height {
+                    session.setPictureArea(Self.portraitPictureArea(size))
+                }
+            }
         }
         .background(Color.black.ignoresSafeArea())
         .preferredColorScheme(.dark)
@@ -75,42 +81,38 @@ struct GameView: View {
 
     // MARK: - Layouts
 
-    /// Upright. A tall picture (EXPAND on a GBA game: PokeDaisy draws the map down the
-    /// whole screen) fills the screen with the controller over it; any other picture sits
-    /// across the width with the controller below it.
-    @ViewBuilder
-    private var portraitLayout: some View {
-        if !session.loadFailed && session.screenAspect < 0.75 {
+    /// Upright, the controls' own zone under the picture (points, without the home indicator's).
+    private static func controlZoneHeight(_ height: CGFloat) -> CGFloat {
+        min(max(height * 0.42, 300), 380)
+    }
+
+    /// Upright, the picture's room: the width of the screen, above the controls.
+    private static func portraitPictureArea(_ size: CGSize) -> CGSize {
+        CGSize(width: size.width, height: max(size.height - controlZoneHeight(size.height), 100))
+    }
+
+    /// Upright: the picture on top, in its own room (PokeDaisy's EXPAND fills it, its HUD
+    /// stays in it), and the controller in a zone of its own below, never over the game.
+    private func portraitLayout(pictureArea: CGSize) -> some View {
+        VStack(spacing: 0) {
             ZStack {
-                screen
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .ignoresSafeArea()
-                GeometryReader { geometry in
-                    VStack(spacing: 0) {
-                        Spacer(minLength: 0)
-                        pad
-                            .frame(height: geometry.size.height * 0.5)
-                    }
-                }
-                .ignoresSafeArea(edges: .bottom)
-                VStack {
-                    toolbar
-                        .background(Color.black.opacity(0.35), in: Capsule())
-                        .fixedSize()
-                    Spacer()
-                }
-            }
-        } else {
-            VStack(spacing: 0) {
-                toolbar
                 if session.loadFailed {
                     loadFailure
                 } else {
                     screen
-                    pad
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
+            .frame(width: pictureArea.width, height: pictureArea.height)
+            .clipped()
+            ZStack(alignment: .top) {
+                if !session.loadFailed {
+                    pad
+                }
+                toolbar(compact: true)
+                    .padding(.top, 10)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color(white: 0.09).ignoresSafeArea(edges: .bottom))
         }
     }
 
@@ -136,7 +138,7 @@ struct GameView: View {
                     .ignoresSafeArea(edges: bandsBeside ? .all : .vertical)
             }
             VStack {
-                toolbar
+                toolbar(compact: false)
                     .background(Color.black.opacity(0.35), in: Capsule())
                     .fixedSize()
                 Spacer()
@@ -158,8 +160,9 @@ struct GameView: View {
 
     // MARK: - Pieces
 
-    private var toolbar: some View {
-        HStack(spacing: 18) {
+    /// Quit, plein écran, pause, speed and the menu. Compact upright: between L and R.
+    private func toolbar(compact: Bool) -> some View {
+        HStack(spacing: compact ? 14 : 18) {
             Button {
                 dismiss()
             } label: {
@@ -167,7 +170,9 @@ struct GameView: View {
                     .labelStyle(.iconOnly)
             }
 
-            Spacer()
+            if !compact {
+                Spacer()
+            }
 
             Button {
                 forcedLandscape.toggle()
@@ -227,10 +232,11 @@ struct GameView: View {
                     .labelStyle(.iconOnly)
             }
         }
-        .font(.title3)
+        .font(compact ? .body : .title3)
         .tint(.white)
-        .padding(.horizontal, 18)
-        .padding(.vertical, 8)
+        .padding(.horizontal, compact ? 0 : 18)
+        .padding(.vertical, compact ? 6 : 8)
+        .fixedSize()
     }
 
     @ViewBuilder

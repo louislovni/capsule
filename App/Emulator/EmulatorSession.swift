@@ -2,6 +2,7 @@ import Combine
 import CoreGraphics
 import Foundation
 import QuartzCore
+import UIKit
 
 /// Buttons, as the libretro core expects them (bits of RETRO_DEVICE_ID_JOYPAD_*).
 enum PadKey {
@@ -70,9 +71,19 @@ final class EmulatorSession: ObservableObject {
         UserDefaults.standard.string(forKey: "pokedaisyPanel")
     }
 
+    /// Upright, the part of the screen the picture gets (above the controls), in pixels; nil
+    /// for the whole screen.
+    private(set) var pictureArea: CGSize?
+
     /// The screen size the core is told about: it places its picture and companion to fit.
     var panel: String {
-        Self.panelOverride ?? Orientation.panel(landscape: landscape)
+        if let fixed = Self.panelOverride {
+            return fixed
+        }
+        if !landscape, let area = pictureArea, area.width >= 1, area.height >= 1 {
+            return "\(Int(area.width.rounded()))x\(Int(area.height.rounded()))"
+        }
+        return Orientation.panel(landscape: landscape)
     }
 
     /// PokeDaisy's companion settings start with EXPAND (the map drawn to the edges of
@@ -90,7 +101,26 @@ final class EmulatorSession: ObservableObject {
     func setLandscape(_ value: Bool) {
         guard value != landscape else { return }
         landscape = value
-        guard Self.panelOverride == nil else { return }
+        sendPanel()
+    }
+
+    /// Upright, the room the picture has above the controls (points): EXPAND fills it, and
+    /// PokeDaisy keeps its HUD inside it, clear of the controls.
+    func setPictureArea(_ points: CGSize?) {
+        let scale = UIScreen.main.scale
+        let area = points.map { CGSize(width: $0.width * scale, height: $0.height * scale) }
+        if let old = pictureArea, let new = area,
+           abs(old.width - new.width) < 2, abs(old.height - new.height) < 2 {
+            return
+        }
+        pictureArea = area
+        if !landscape {
+            sendPanel()
+        }
+    }
+
+    private func sendPanel() {
+        guard Self.panelOverride == nil, core != nil else { return }
         let panel = self.panel
         perform { core in
             lr_set_panel(core, panel)
@@ -103,9 +133,13 @@ final class EmulatorSession: ObservableObject {
 
     // MARK: - Lifecycle (main thread)
 
-    func start(landscape: Bool) {
+    func start(landscape: Bool, pictureArea: CGSize? = nil) {
         guard thread == nil, !loadFailed else { return }
         self.landscape = landscape
+        if let points = pictureArea {
+            let scale = UIScreen.main.scale
+            self.pictureArea = CGSize(width: points.width * scale, height: points.height * scale)
+        }
         Storage.prepare()
         try? FileManager.default.createDirectory(at: Self.dataDirectory, withIntermediateDirectories: true)
         guard let coreURL = game.coreURL else {

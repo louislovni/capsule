@@ -62,8 +62,10 @@ final class PadView: UIView {
     private var currentKeys: UInt32 = 0
     private let feedback = UIImpactFeedbackGenerator(style: .light)
 
-    private let buttonColor = UIColor(white: 1.0, alpha: 0.16)
-    private let pressedColor = UIColor(white: 1.0, alpha: 0.42)
+    /// Dark with a light outline: readable over a light game picture as over a dark one.
+    private let buttonColor = UIColor(white: 0.18, alpha: 0.55)
+    private let pressedColor = UIColor(white: 1.0, alpha: 0.45)
+    private let outlineColor = UIColor(white: 1.0, alpha: 0.4).cgColor
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -83,6 +85,8 @@ final class PadView: UIView {
         for bar in [dpadHorizontal, dpadVertical] {
             bar.backgroundColor = buttonColor
             bar.layer.cornerRadius = 10
+            bar.layer.borderWidth = 1
+            bar.layer.borderColor = outlineColor
             bar.isUserInteractionEnabled = false
             dpad.addSubview(bar)
         }
@@ -97,9 +101,11 @@ final class PadView: UIView {
             let label = UILabel()
             label.text = title
             label.textAlignment = .center
-            label.textColor = UIColor(white: 1.0, alpha: 0.85)
+            label.textColor = UIColor(white: 1.0, alpha: 0.92)
             label.font = .systemFont(ofSize: title.count > 1 ? 11 : 22, weight: .semibold)
             label.backgroundColor = buttonColor
+            label.layer.borderWidth = 1
+            label.layer.borderColor = outlineColor
             label.layer.masksToBounds = true
             label.isUserInteractionEnabled = false
             label.isAccessibilityElement = true
@@ -111,9 +117,13 @@ final class PadView: UIView {
             let label = UILabel()
             label.text = title
             label.textAlignment = .center
-            label.textColor = UIColor(white: 1.0, alpha: 0.85)
+            label.textColor = UIColor(white: 1.0, alpha: 0.92)
             label.font = .systemFont(ofSize: 10, weight: .semibold)
+            label.adjustsFontSizeToFitWidth = true
+            label.minimumScaleFactor = 0.7
             label.backgroundColor = buttonColor
+            label.layer.borderWidth = 1
+            label.layer.borderColor = outlineColor
             label.layer.masksToBounds = true
             label.isUserInteractionEnabled = false
             label.isAccessibilityElement = true
@@ -150,36 +160,39 @@ final class PadView: UIView {
             }
         }
 
-        let shoulder = CGSize(width: 84, height: 38)
-        let top: CGFloat = 12
+        // Held sideways the pad lies over the game; upright it has a zone of its own, its top
+        // row shared with the toolbar (in the middle, between L and R).
+        let landscape = width > height
+        let shoulder = landscape ? CGSize(width: 84, height: 38) : CGSize(width: 70, height: 34)
+        let top: CGFloat = landscape ? 12 : 10
         button(PadKey.l)?.frame = CGRect(x: 16, y: top, width: shoulder.width, height: shoulder.height)
         button(PadKey.r)?.frame = CGRect(x: width - 16 - shoulder.width, y: top, width: shoulder.width, height: shoulder.height)
 
         let pill = CGSize(width: 76, height: 30)
-        let bottom = height - pill.height - 18
-        // Held sideways the pad lies over the game: the top centre is left to the toolbar.
-        let landscape = width > height
+        let bottom = height - pill.height - (landscape ? 18 : 10)
 
-        // DS: the shortcut row sits between L and R (above START / SELECT when sideways).
+        // DS: the shortcut row sits just above START / SELECT, off the picture's middle.
+        var lowest = bottom
         if isDS {
             let count = CGFloat(Self.shortcuts.count)
             let spacing: CGFloat = 6
-            let rowHeight = shoulder.height - 8
-            let available = landscape ? min(width * 0.5, 380) : width - 2 * (16 + shoulder.width + 8)
+            let rowHeight: CGFloat = 28
+            let available = landscape ? min(width * 0.5, 380) : width - 32
             let left = (width - available) / 2
-            let y = landscape ? bottom - rowHeight - 10 : top + 4
+            let y = bottom - rowHeight - 8
             let pillWidth = max((available - spacing * (count - 1)) / count, 40)
             for (index, item) in Self.shortcuts.enumerated() {
                 shortcut(item.0)?.frame = CGRect(x: left + CGFloat(index) * (pillWidth + spacing), y: y,
                                                  width: pillWidth, height: rowHeight)
             }
+            lowest = y
         }
         button(PadKey.select)?.frame = CGRect(x: width / 2 - pill.width - 10, y: bottom, width: pill.width, height: pill.height)
         button(PadKey.start)?.frame = CGRect(x: width / 2 + 10, y: bottom, width: pill.width, height: pill.height)
 
-        // The main cluster sits between the shoulder row and the START/SELECT row.
+        // The main cluster sits between the shoulder row and the bottom rows.
         let clusterTop = top + shoulder.height + 10
-        let clusterHeight = max(bottom - 10 - clusterTop, 80)
+        let clusterHeight = max((landscape ? bottom : lowest) - 10 - clusterTop, 80)
         let centerY = clusterTop + clusterHeight / 2
 
         let dpadSize = min(width * 0.42, clusterHeight, 170)
