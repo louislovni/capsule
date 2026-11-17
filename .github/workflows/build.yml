@@ -31,6 +31,17 @@ jobs:
       - name: Build the C core for iOS
         run: sh scripts/build_core.sh ios
 
+      - name: Firebase config (online accounts)
+        # App/GoogleService-Info.plist turns the online accounts on. It can be committed (its
+        # values aren't secrets: the database's rules guard the data) or come from this secret,
+        # the file's contents in base64.
+        env:
+          GOOGLE_SERVICE_INFO: ${{ secrets.GOOGLE_SERVICE_INFO }}
+        run: |
+          if [ -n "$GOOGLE_SERVICE_INFO" ]; then
+            echo "$GOOGLE_SERVICE_INFO" | base64 --decode > App/GoogleService-Info.plist
+          fi
+          if [ -f App/GoogleService-Info.plist ]; then echo "online accounts: on"; else echo "online accounts: off (no GoogleService-Info.plist)"; fi
       - name: Generate the Xcode project
         run: |
           brew install xcodegen

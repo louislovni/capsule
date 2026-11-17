@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 struct LibraryView: View {
     @StateObject private var library = GameLibrary()
     @StateObject private var bank = BankStore()
+    @StateObject private var account = AccountStore()
 
     @State private var importing = false
     @State private var playing: Game?
@@ -43,6 +44,11 @@ struct LibraryView: View {
                         BankView(bank: bank)
                     } label: {
                         Label(bankSummary, systemImage: "tray.full")
+                    }
+                    NavigationLink {
+                        AccountView(account: account, bank: bank)
+                    } label: {
+                        Label("Amis et échanges en ligne", systemImage: "person.2")
                     }
                 } header: {
                     Text("Banque")

@@ -1,0 +1,69 @@
+rules_version = '2';
+
+// Capsule's online part: profiles with a friend code, friendships, trades between friends.
+// Paste into Firebase console > Firestore Database > Rules, then Publish.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+    function me() {
+      return request.auth.uid;
+    }
+
+    // profiles/UID: the name friends see and the friend code. Anyone signed in may read one
+    // (adding a friend shows their name); only its owner writes it.
+    match /profiles/{uid} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && me() == uid
+        && request.resource.data.keys().hasOnly(['name', 'code', 'updatedAt'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 40
+        && request.resource.data.code is string && request.resource.data.code.size() == 6;
+    }
+
+    // codes/CODE -> { uid }: the friend code's lookup. Made once, never changed.
+    match /codes/{code} {
+      allow read: if signedIn();
+      allow create: if signedIn() && code.size() == 6
+        && request.resource.data.keys().hasOnly(['uid'])
+        && request.resource.data.uid == me();
+    }
+
+    // friendships/UIDA_UIDB (the two uids in order): asked by one, accepted by the other.
+    match /friendships/{pair} {
+      allow read: if signedIn() && me() in resource.data.members;
+      allow create: if signedIn()
+        && request.resource.data.requester == me()
+        && request.resource.data.members.size() == 2
+        && me() in request.resource.data.members
+        && request.resource.data.accepted == false
+        && (pair == request.resource.data.members[0] + '_' + request.resource.data.members[1]
+            || pair == request.resource.data.members[1] + '_' + request.resource.data.members[0]);
+      allow update: if signedIn() && me() in resource.data.members
+        && me() != resource.data.requester
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['accepted'])
+        && request.resource.data.accepted == true;
+      allow delete: if signedIn() && me() in resource.data.members;
+    }
+
+    // trades/ID: between two accepted friends; each writes only its own fields.
+    match /trades/{trade} {
+      function friendship(id) {
+        return get(/databases/$(database)/documents/friendships/$(id)).data;
+      }
+      allow read: if signedIn() && me() in resource.data.members;
+      allow create: if signedIn()
+        && request.resource.data.starter == me()
+        && request.resource.data.members.size() == 2
+        && me() in request.resource.data.members
+        && friendship(request.resource.data.pair).accepted == true
+        && request.resource.data.members.hasAll(friendship(request.resource.data.pair).members);
+      allow update: if signedIn() && me() in resource.data.members
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+             'offer_' + me(), 'confirm_' + me(), 'done_' + me(), 'cancel_' + me(), 'updatedAt'])
+        && (!('offer_' + me() in request.resource.data) || request.resource.data['offer_' + me()].size() < 400000);
+      allow delete: if signedIn() && me() in resource.data.members;
+    }
+  }
+}
