@@ -6,7 +6,7 @@
 #   scripts/build_core.sh host   -> build/core-host, then runs the tests (any Unix)
 set -eu
 
-POKEDAISY_COMMIT=a0066660b09c99ea505cbd59690c445957e77e0a   # louislovni/pokedaisy, branch capsule
+POKEDAISY_COMMIT=84d8e58e2c4e6f098457d8256134a834be0fcc79   # louislovni/pokedaisy, branch capsule
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TARGET="${1:-host}"
 SRC="$ROOT/Vendor/pokedaisy"

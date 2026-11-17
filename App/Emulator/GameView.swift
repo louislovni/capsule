@@ -32,14 +32,15 @@ struct GameView: View {
             }
             .onAppear {
                 session.start(landscape: isLandscape, pictureArea: isLandscape ? nil : pictureArea,
-                              screenHeight: isLandscape ? nil : screenHeight)
+                              screenHeight: isLandscape ? nil : screenHeight, topInset: topInset)
             }
             .onChange(of: isLandscape) { session.setLandscape($0) }
             .onChange(of: geometry.size) { size in
                 if size.width <= size.height {
                     let insets = geometry.safeAreaInsets
                     session.setPictureArea(Self.portraitPictureArea(size, topInset: insets.top),
-                                           screenHeight: size.height + insets.top + insets.bottom)
+                                           screenHeight: size.height + insets.top + insets.bottom,
+                                           topInset: insets.top)
                 }
             }
         }
@@ -127,7 +128,32 @@ struct GameView: View {
     /// controls (PokeDaisy is told that part); a DS game's EXPAND runs on under the controls to
     /// the screen's bottom edge. The controls lie over it on a shade that darkens downwards.
     private func portraitLayout(pictureArea: CGSize, screenHeight: CGFloat) -> some View {
-        ZStack(alignment: .top) {
+        // The controls set the layout (the clear part, then their zone, within the screen); the
+        // picture lies behind as a background, so its height (the whole screen) can't push them out.
+        VStack(spacing: 0) {
+            Color.clear
+                .frame(height: pictureArea.height)
+            ZStack(alignment: .top) {
+                if !session.loadFailed {
+                    pad
+                }
+                toolbar(compact: true)
+                    .padding(.top, 10)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(alignment: .top) {
+                // A shade that comes in gradually from above the controls, darkest at the bottom.
+                LinearGradient(stops: [.init(color: .black.opacity(0), location: 0),
+                                       .init(color: .black.opacity(0.35), location: 0.3),
+                                       .init(color: .black.opacity(0.6), location: 1)],
+                               startPoint: .top, endPoint: .bottom)
+                    .padding(.top, -60)
+                    .ignoresSafeArea(edges: .bottom)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .ignoresSafeArea(edges: .top)
+        .background(alignment: .top) {
             ZStack(alignment: .top) {
                 if session.loadFailed {
                     loadFailure
@@ -141,25 +167,6 @@ struct GameView: View {
                    alignment: .top)
             .clipped()
             .ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                Color.clear
-                    .frame(height: pictureArea.height)
-                ZStack(alignment: .top) {
-                    if !session.loadFailed {
-                        pad
-                    }
-                    toolbar(compact: true)
-                        .padding(.top, 10)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(
-                    LinearGradient(colors: [Color.black.opacity(0.15), Color.black.opacity(0.6)],
-                                   startPoint: .top, endPoint: .bottom)
-                        .ignoresSafeArea(edges: .bottom)
-                )
-            }
-            .ignoresSafeArea(edges: .top)
         }
     }
 

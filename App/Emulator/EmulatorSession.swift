@@ -77,6 +77,8 @@ final class EmulatorSession: ObservableObject {
     /// Upright, the whole screen's height (pixels): a DS game's picture runs on under the
     /// controls ("WxH:V", V the clear part on top). Not a GBA one's: its HUD keeps to its panel.
     private(set) var screenHeight: CGFloat?
+    /// Upright, the status bar's height (pixels): the HUD starts below it.
+    private(set) var topInset: CGFloat = 0
 
     /// The screen size the core is told about: it places its picture and companion to fit.
     var panel: String {
@@ -85,7 +87,7 @@ final class EmulatorSession: ObservableObject {
         }
         if !landscape, let area = pictureArea, area.width >= 1, area.height >= 1 {
             if game.isDS, let full = screenHeight, full > area.height + 1 {
-                return "\(Int(area.width.rounded()))x\(Int(full.rounded())):\(Int(area.height.rounded()))"
+                return "\(Int(area.width.rounded()))x\(Int(full.rounded())):\(Int(area.height.rounded())):\(Int(topInset.rounded()))"
             }
             return "\(Int(area.width.rounded()))x\(Int(area.height.rounded()))"
         }
@@ -112,8 +114,9 @@ final class EmulatorSession: ObservableObject {
 
     /// Upright, the room the picture has above the controls (points): EXPAND fills it, and
     /// PokeDaisy keeps its HUD inside it, clear of the controls.
-    func setPictureArea(_ points: CGSize?, screenHeight fullPoints: CGFloat? = nil) {
+    func setPictureArea(_ points: CGSize?, screenHeight fullPoints: CGFloat? = nil, topInset insetPoints: CGFloat = 0) {
         let scale = UIScreen.main.scale
+        topInset = insetPoints * scale
         let area = points.map { CGSize(width: $0.width * scale, height: $0.height * scale) }
         let full = fullPoints.map { $0 * scale }
         if let old = pictureArea, let new = area,
@@ -142,13 +145,14 @@ final class EmulatorSession: ObservableObject {
 
     // MARK: - Lifecycle (main thread)
 
-    func start(landscape: Bool, pictureArea: CGSize? = nil, screenHeight fullPoints: CGFloat? = nil) {
+    func start(landscape: Bool, pictureArea: CGSize? = nil, screenHeight fullPoints: CGFloat? = nil, topInset insetPoints: CGFloat = 0) {
         guard thread == nil, !loadFailed else { return }
         self.landscape = landscape
         if let points = pictureArea {
             let scale = UIScreen.main.scale
             self.pictureArea = CGSize(width: points.width * scale, height: points.height * scale)
             self.screenHeight = fullPoints.map { $0 * scale }
+            self.topInset = insetPoints * scale
         }
         Storage.prepare()
         try? FileManager.default.createDirectory(at: Self.dataDirectory, withIntermediateDirectories: true)
