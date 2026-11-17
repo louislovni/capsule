@@ -64,6 +64,16 @@ jobs:
             otool -l "$f/$n" | grep -A4 LC_BUILD_VERSION | head -5
             file "$f/$n"
           done
+          # Ad-hoc signature (no certificate): sideloading tools re-sign with the user's account, but
+          # AltStore reads the app's entitlements from an existing signature and refuses an unsigned
+          # binary ("The data couldn't be read because it isn't in the correct format").
+          printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>' \
+            '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' \
+            '<plist version="1.0"><dict><key>get-task-allow</key><true/></dict></plist>' > build/entitlements.plist
+          for f in "$APP"/Frameworks/*.framework; do codesign --force --sign - "$f"; done
+          codesign --force --sign - --entitlements build/entitlements.plist "$APP"
+          codesign -d --entitlements - "$APP"
+          codesign --verify --deep --strict "$APP"
           rm -rf build/ipa && mkdir -p build/ipa/Payload
           cp -R "$APP" build/ipa/Payload/
           (cd build/ipa && zip -qry ../Capsule.ipa Payload)
