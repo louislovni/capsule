@@ -44,7 +44,9 @@ source = {
                 }
             ],
             "appPermissions": {
-                "entitlements": [],
+                # Exactly the app's: AltStore checks the downloaded app against them (the ad-hoc
+                # signature's entitlements file, .github/workflows/build.yml).
+                "entitlements": ["get-task-allow"],
                 "privacy": {
                     "NSLocalNetworkUsageDescription":
                         "Capsule cherche les iPhones proches pour échanger des Pokémon entre banques.",
