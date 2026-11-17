@@ -133,6 +133,11 @@ select { background: var(--panel); border: 1px solid var(--line); border-radius:
   background: radial-gradient(ellipse at 50% 75%, var(--t1, #444) 0%, transparent 62%);
 }
 .stage img { width: 160px; height: 160px; object-fit: contain; }
+.stage.unknown img { filter: brightness(0); opacity: .85; }
+@media (max-width: 520px) {
+  .leds, h1 small { display: none; }
+  .account .pill { padding: 7px 11px; }
+}
 .stage .toggle { position: absolute; right: 18px; bottom: 10px; }
 .title { text-align: center; }
 .title .no { color: var(--dim); font-size: 14px; font-variant-numeric: tabular-nums; }
@@ -393,9 +398,9 @@ function openSpecies(n) {
   const labels = ["PV", "Attaque", "Défense", "Vitesse", "Atq. Spé.", "Déf. Spé."];
   const html = () => `
     <div class="grab"></div><button class="close" data-close>✕</button>
-    <div class="stage" style="--t1:${TYPE_COLORS[t1]}55">
+    <div class="stage ${list.length ? "" : "unknown"}" style="--t1:${list.length ? TYPE_COLORS[t1] + "55" : "#ffffff14"}">
       <img class="sprite" alt="" src="${sprite(n, shiny, true)}" onerror="this.onerror=null;this.src='${sprite(n, shiny)}'">
-      <button class="pill toggle" data-shiny>${shiny ? "★ Chromatique" : "☆ Normal"}</button>
+      ${list.length ? `<button class="pill toggle" data-shiny>${shiny ? "★ Chromatique" : "☆ Normal"}</button>` : ""}
     </div>
     <div class="title"><div class="no">${pad(n)}</div><h3>${esc(name)}</h3><div class="types">${typeBadges(t1, t2)}</div></div>
     <h4>Statistiques de base · ${total}</h4>
