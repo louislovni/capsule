@@ -3,6 +3,7 @@ import SwiftUI
 /// What the bank holds, across all games.
 struct BankView: View {
     @ObservedObject var bank: BankStore
+    @State private var trading = false
 
     var body: some View {
         List {
@@ -24,7 +25,17 @@ struct BankView: View {
             }
         }
         .navigationTitle("Banque")
+        .sheet(isPresented: $trading) {
+            TradeView(bank: bank)
+        }
         .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    trading = true
+                } label: {
+                    Label("Échanger", systemImage: "arrow.left.arrow.right")
+                }
+            }
             ToolbarItem(placement: .primaryAction) {
                 if !bank.entries.isEmpty {
                     ShareLink(item: bank.fileURL) {

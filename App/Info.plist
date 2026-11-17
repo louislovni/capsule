@@ -24,6 +24,13 @@
 	<true/>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Capsule cherche les iPhones proches pour échanger des Pokémon entre banques.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_capsule-trade._tcp</string>
+		<string>_capsule-trade._udp</string>
+	</array>
 	<key>UIFileSharingEnabled</key>
 	<true/>
 	<key>LSSupportsOpeningDocumentsInPlace</key>

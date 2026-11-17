@@ -55,6 +55,17 @@ struct BankEntry: Codable, Identifiable, Equatable {
     }
 }
 
+enum TradeError: LocalizedError {
+    case notInBank, unreadable
+
+    var errorDescription: String? {
+        switch self {
+        case .notInBank: return "Ce Pokémon n'est plus dans ta banque."
+        case .unreadable: return "Le Pokémon reçu est illisible."
+        }
+    }
+}
+
 /// The bank: a JSON file in Documents/Bank. It can be exported and merged back,
 /// which is how it travels between devices for now.
 final class BankStore: ObservableObject {
@@ -121,6 +132,39 @@ final class BankStore: ObservableObject {
             entries.insert(removed, at: index)
             throw error
         }
+    }
+
+    /// A trade with another phone: `outgoing` leaves the bank, `incoming` takes its place.
+    /// What leaves is first copied to Bank/Echanges (a bank file of one, which the import
+    /// takes back), so a trade cut short on the other side never loses a Pokémon.
+    func trade(giving outgoing: BankEntry, receiving incoming: BankEntry) throws -> BankEntry {
+        guard let index = entries.firstIndex(where: { $0.id == outgoing.id }) else {
+            throw TradeError.notInBank
+        }
+        guard incoming.data.count == BankEntry.dataSize(generation: incoming.effectiveGeneration) else {
+            throw TradeError.unreadable
+        }
+        var received = incoming
+        if entries.contains(where: { $0.id == received.id && $0.id != outgoing.id }) {
+            received.id = UUID()
+        }
+        received.depositedAt = Date()
+
+        let folder = Storage.bank.appendingPathComponent("Echanges", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let stamp = Int(Date().timeIntervalSince1970)
+        let backup = folder.appendingPathComponent("envoye-\(stamp)-\(outgoing.id.uuidString.prefix(8)).json")
+        try Self.makeEncoder().encode([outgoing]).write(to: backup, options: .atomic)
+
+        let before = entries
+        entries[index] = received
+        do {
+            try persist()
+        } catch {
+            entries = before
+            throw error
+        }
+        return received
     }
 
     /// Adds the entries of an exported bank file that are not here yet.
