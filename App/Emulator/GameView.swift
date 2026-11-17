@@ -22,19 +22,24 @@ struct GameView: View {
             let isLandscape = geometry.size.width > geometry.size.height
             let topInset = geometry.safeAreaInsets.top
             let pictureArea = Self.portraitPictureArea(geometry.size, topInset: topInset)
+            let screenHeight = geometry.size.height + topInset + geometry.safeAreaInsets.bottom
             Group {
                 if isLandscape {
                     landscapeLayout(bandsBeside: picturesLeavesBands(geometry))
                 } else {
-                    portraitLayout(pictureArea: pictureArea)
-                        .ignoresSafeArea(edges: .top)
+                    portraitLayout(pictureArea: pictureArea, screenHeight: screenHeight)
                 }
             }
-            .onAppear { session.start(landscape: isLandscape, pictureArea: isLandscape ? nil : pictureArea) }
+            .onAppear {
+                session.start(landscape: isLandscape, pictureArea: isLandscape ? nil : pictureArea,
+                              screenHeight: isLandscape ? nil : screenHeight)
+            }
             .onChange(of: isLandscape) { session.setLandscape($0) }
             .onChange(of: geometry.size) { size in
                 if size.width <= size.height {
-                    session.setPictureArea(Self.portraitPictureArea(size, topInset: geometry.safeAreaInsets.top))
+                    let insets = geometry.safeAreaInsets
+                    session.setPictureArea(Self.portraitPictureArea(size, topInset: insets.top),
+                                           screenHeight: size.height + insets.top + insets.bottom)
                 }
             }
         }
@@ -70,6 +75,30 @@ struct GameView: View {
         }
     }
 
+    /// When the state in this slot was saved (nil: none yet).
+    private func stateDate(_ slot: Int) -> Date? {
+        let url = session.game.stateURL(slot: slot)
+        return (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
+    }
+
+    /// "Emplacement 2" over "17 nov. à 17:32", or "vide".
+    private func slotLabel(_ slot: Int) -> some View {
+        let subtitle: String
+        if let date = stateDate(slot) {
+            subtitle = Calendar.current.isDateInToday(date)
+                ? "Aujourd'hui à \(date.formatted(date: .omitted, time: .shortened))"
+                : date.formatted(date: .abbreviated, time: .shortened)
+        } else {
+            subtitle = "vide"
+        }
+        return Label {
+            Text("Emplacement \(slot)")
+            Text(subtitle)
+        } icon: {
+            Image(systemName: stateDate(slot) == nil ? "square.dashed" : "clock.arrow.circlepath")
+        }
+    }
+
     private var staleAlertBinding: Binding<Bool> {
         Binding(
             get: { staleStateSlot != nil },
@@ -94,28 +123,43 @@ struct GameView: View {
         CGSize(width: size.width, height: max(size.height + topInset - controlZoneHeight(size.height), 100))
     }
 
-    /// Upright: the picture on top, in its own room (PokeDaisy's EXPAND fills it, its HUD
-    /// stays in it), and the controller in a zone of its own below, never over the game.
-    private func portraitLayout(pictureArea: CGSize) -> some View {
-        VStack(spacing: 0) {
-            ZStack {
+    /// Upright: the picture from the top, its HUD and the player in the part clear of the
+    /// controls (PokeDaisy is told that part); a DS game's EXPAND runs on under the controls to
+    /// the screen's bottom edge. The controls lie over it on a shade that darkens downwards.
+    private func portraitLayout(pictureArea: CGSize, screenHeight: CGFloat) -> some View {
+        ZStack(alignment: .top) {
+            ZStack(alignment: .top) {
                 if session.loadFailed {
                     loadFailure
+                        .frame(height: pictureArea.height)
                 } else {
                     screen
                 }
             }
-            .frame(width: pictureArea.width, height: pictureArea.height)
+            .frame(width: pictureArea.width,
+                   height: session.game.isDS ? screenHeight : pictureArea.height,
+                   alignment: .top)
             .clipped()
-            ZStack(alignment: .top) {
-                if !session.loadFailed {
-                    pad
+            .ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                Color.clear
+                    .frame(height: pictureArea.height)
+                ZStack(alignment: .top) {
+                    if !session.loadFailed {
+                        pad
+                    }
+                    toolbar(compact: true)
+                        .padding(.top, 10)
                 }
-                toolbar(compact: true)
-                    .padding(.top, 10)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(
+                    LinearGradient(colors: [Color.black.opacity(0.15), Color.black.opacity(0.6)],
+                                   startPoint: .top, endPoint: .bottom)
+                        .ignoresSafeArea(edges: .bottom)
+                )
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color(white: 0.09).ignoresSafeArea(edges: .bottom))
+            .ignoresSafeArea(edges: .top)
         }
     }
 
@@ -213,16 +257,21 @@ struct GameView: View {
                 }
                 Section("Enregistrer un état") {
                     ForEach(Self.stateSlots, id: \.self) { slot in
-                        Button("Emplacement \(slot)") {
+                        Button {
                             session.saveState(slot: slot)
+                        } label: {
+                            slotLabel(slot)
                         }
                     }
                 }
                 Section("Charger un état") {
                     ForEach(Self.stateSlots, id: \.self) { slot in
-                        Button("Emplacement \(slot)") {
+                        Button {
                             requestLoad(slot: slot)
+                        } label: {
+                            slotLabel(slot)
                         }
+                        .disabled(stateDate(slot) == nil)
                     }
                 }
                 Section {

@@ -74,6 +74,9 @@ final class EmulatorSession: ObservableObject {
     /// Upright, the part of the screen the picture gets (above the controls), in pixels; nil
     /// for the whole screen.
     private(set) var pictureArea: CGSize?
+    /// Upright, the whole screen's height (pixels): a DS game's picture runs on under the
+    /// controls ("WxH:V", V the clear part on top). Not a GBA one's: its HUD keeps to its panel.
+    private(set) var screenHeight: CGFloat?
 
     /// The screen size the core is told about: it places its picture and companion to fit.
     var panel: String {
@@ -81,6 +84,9 @@ final class EmulatorSession: ObservableObject {
             return fixed
         }
         if !landscape, let area = pictureArea, area.width >= 1, area.height >= 1 {
+            if game.isDS, let full = screenHeight, full > area.height + 1 {
+                return "\(Int(area.width.rounded()))x\(Int(full.rounded())):\(Int(area.height.rounded()))"
+            }
             return "\(Int(area.width.rounded()))x\(Int(area.height.rounded()))"
         }
         return Orientation.panel(landscape: landscape)
@@ -106,14 +112,17 @@ final class EmulatorSession: ObservableObject {
 
     /// Upright, the room the picture has above the controls (points): EXPAND fills it, and
     /// PokeDaisy keeps its HUD inside it, clear of the controls.
-    func setPictureArea(_ points: CGSize?) {
+    func setPictureArea(_ points: CGSize?, screenHeight fullPoints: CGFloat? = nil) {
         let scale = UIScreen.main.scale
         let area = points.map { CGSize(width: $0.width * scale, height: $0.height * scale) }
+        let full = fullPoints.map { $0 * scale }
         if let old = pictureArea, let new = area,
-           abs(old.width - new.width) < 2, abs(old.height - new.height) < 2 {
+           abs(old.width - new.width) < 2, abs(old.height - new.height) < 2,
+           abs((screenHeight ?? 0) - (full ?? 0)) < 2 {
             return
         }
         pictureArea = area
+        screenHeight = full
         if !landscape {
             sendPanel()
         }
@@ -133,12 +142,13 @@ final class EmulatorSession: ObservableObject {
 
     // MARK: - Lifecycle (main thread)
 
-    func start(landscape: Bool, pictureArea: CGSize? = nil) {
+    func start(landscape: Bool, pictureArea: CGSize? = nil, screenHeight fullPoints: CGFloat? = nil) {
         guard thread == nil, !loadFailed else { return }
         self.landscape = landscape
         if let points = pictureArea {
             let scale = UIScreen.main.scale
             self.pictureArea = CGSize(width: points.width * scale, height: points.height * scale)
+            self.screenHeight = fullPoints.map { $0 * scale }
         }
         Storage.prepare()
         try? FileManager.default.createDirectory(at: Self.dataDirectory, withIntermediateDirectories: true)
