@@ -28,10 +28,14 @@ git -C "$SRC" checkout -q -- libretro/CMakeLists.txt libretro/pd_libretro.c linu
 	linux/dsperate/companion.h linux/dsperate/companion.cpp linux/libretro-ds/pd_ds_libretro.cpp
 git -C "$SRC/third_party/mgba" checkout -q -- CMakeLists.txt
 git -C "$SRC/third_party/dsperate-lr/DSperate" checkout -q -- \
-	src/core/crypto/aes.c src/core/cheat/analog_db.cpp src/core/io/dsi_font.cpp
-# 0. French DS carts in the DS companion (patches/pokedaisy-french-ds.patch): the
-#    addresses PokeDaisy's Android app uses for them, picked by the cart's header.
-git -C "$SRC" apply "$ROOT/patches/pokedaisy-french-ds.patch"
+	src/core/crypto/aes.c src/core/cheat/analog_db.cpp src/core/io/dsi_font.cpp \
+	src/core/gpu/gpu3d.h src/core/gpu/gpu3d.cpp
+# 0. The DS shell (patches/pokedaisy-ds.patch): French carts in the companion (the
+#    addresses PokeDaisy's Android app uses for them, picked by the cart's header), and
+#    EXPAND, the overworld's 3D past the screen's sides to a wide phone's edges, drawn by
+#    slice engines DSperate's 3D engine feeds (patches/dsperate-expand.patch).
+git -C "$SRC" apply "$ROOT/patches/pokedaisy-ds.patch"
+git -C "$SRC/third_party/dsperate-lr/DSperate" apply "$ROOT/patches/dsperate-expand.patch"
 #    And the GBA canvas follows the phone's orientation (patches/pokedaisy-panel.patch):
 #    the core reads its panel option again when the app turns the phone.
 git -C "$SRC" apply "$ROOT/patches/pokedaisy-panel.patch"

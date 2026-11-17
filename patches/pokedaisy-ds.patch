@@ -1,0 +1,422 @@
+diff --git a/linux/dsperate/companion.cpp b/linux/dsperate/companion.cpp
+index 406db3d..23ea88a 100644
+--- a/linux/dsperate/companion.cpp
++++ b/linux/dsperate/companion.cpp
+@@ -35,6 +35,38 @@ std::string utf16_text(const uint8_t* p,int count){
+ }
+ }
+ bool ds_unova(DsGame game){return game==DsGame::Black||game==DsGame::White||ds_unova_sequel(game);}
++
++// Capsule: the globals the companion reads, the US carts' unless a French cart is loaded.
++// French values from PokeDaisy's Android ports (Gen4Reader.kt GEN4_*_FR, Gen5Reader.kt
++// GEN5_*_FR, gamedata/nds/ports.toml SaveControl); every structure offset is shared.
++namespace cart {
++uint32_t platinumSave=pd_ds_data::saveDataPtr, platinumField=pd_ds_data::fieldSystemPtr;
++uint32_t johtoSave=pd_ds_data::johto_saveDataPtr, johtoField=uint32_t(pd_ds_data::pg_fieldSystemPtr);
++uint32_t unovaControl[4]={pd_ds_data::unova_saveControlPtr,0x020a72b8,0x0209a338,0x0209a378};
++const char* unovaCode[4]={"IRBO","IRAO","IREO","IRDO"};
++int unovaIndex(DsGame g){return g==DsGame::Black?0:g==DsGame::White?1:g==DsGame::Black2?2:3;}
++}
++DsGame ds_select_cart(const char code[4],int revision,bool* soulSilver){
++  cart::platinumSave=pd_ds_data::saveDataPtr;cart::platinumField=pd_ds_data::fieldSystemPtr;
++  cart::johtoSave=pd_ds_data::johto_saveDataPtr;cart::johtoField=uint32_t(pd_ds_data::pg_fieldSystemPtr);
++  const uint32_t usControl[4]={pd_ds_data::unova_saveControlPtr,0x020a72b8,0x0209a338,0x0209a378};
++  static const char* usCode[4]={"IRBO","IRAO","IREO","IRDO"};
++  for(int i=0;i<4;++i){cart::unovaControl[i]=usControl[i];cart::unovaCode[i]=usCode[i];}
++  if(soulSilver)*soulSilver=false;
++  if(!code||revision!=0)return DsGame::Unsupported;
++  auto is=[&](const char* c){return std::memcmp(code,c,4)==0;};
++  if(is("CPUF")){cart::platinumSave=0x021C0974;cart::platinumField=0x021C09BC;return DsGame::Platinum;}
++  if(is("IPKF")||is("IPGF")){
++    cart::johtoSave=0x021D2248;cart::johtoField=0x021D4178;
++    if(soulSilver)*soulSilver=is("IPGF");
++    return DsGame::Johto;
++  }
++  if(is("IRBF")){cart::unovaControl[0]=0x020A7218;cart::unovaCode[0]="IRBF";return DsGame::Black;}
++  if(is("IRAF")){cart::unovaControl[1]=0x020A7238;cart::unovaCode[1]="IRAF";return DsGame::White;}
++  if(is("IREF")){cart::unovaControl[2]=0x0209A358;cart::unovaCode[2]="IREF";return DsGame::Black2;}
++  if(is("IRDF")){cart::unovaControl[3]=0x0209A378;cart::unovaCode[3]="IRDF";return DsGame::White2;}
++  return DsGame::Unsupported;
++}
+ bool ds_unova_sequel(DsGame game){return game==DsGame::Black2||game==DsGame::White2;}
+ int ds_egg_icon(DsGame game){return ds_unova(game)?650:pd_ds_data::iconEgg;}
+ const char* ds_canonical_sha1(const char* digest){
+@@ -147,8 +179,7 @@ void read_dex(const Ram& ram,uint32_t address,DsCompanion& out,unsigned national
+ 
+ uint32_t unova_save(const Ram& ram,DsGame game){
+   using namespace pd_ds_data;
+-  const uint32_t controlPtr=game==DsGame::Black?unova_saveControlPtr:
+-    game==DsGame::White?0x020a72b8:game==DsGame::Black2?0x0209a338:0x0209a378;
++  const uint32_t controlPtr=cart::unovaControl[cart::unovaIndex(game)];
+   const uint32_t control=ram.word(controlPtr);
+   if(!ram.at(control,unova_offBackupSystem+4))return 0;
+   const uint32_t backup=ram.word(control+unova_offBackupSystem);
+@@ -161,7 +192,7 @@ DsCompanion read_other_companion(const Ram& ram,DsGame game){
+   DsCompanion out;
+   out.game=game;
+   if(game==DsGame::Johto){
+-    const uint32_t save=ram.word(johto_saveDataPtr);
++    const uint32_t save=ram.word(cart::johtoSave);
+     if(!ram.at(save,johto_locationOff+johto_bodyOff+4))return out;
+     const uint32_t body=save+johto_bodyOff;
+     const auto* trainer=ram.at(body+johto_trainerOff,johto_kantoBadgesOff+1);
+@@ -182,7 +213,7 @@ DsCompanion read_other_companion(const Ram& ram,DsGame game){
+     }
+     const auto point=std::find_if(std::begin(pgWorld),std::end(pgWorld),[&](const auto& p){return p[0]==out.map;});
+     const bool main=std::find(std::begin(pgHeaders),std::end(pgHeaders),out.map)!=std::end(pgHeaders);
+-    const uint32_t field=ram.word(pg_fieldSystemPtr), avatar=ram.word(field+pg_offPlayerAvatar);
++    const uint32_t field=ram.word(cart::johtoField), avatar=ram.word(field+pg_offPlayerAvatar);
+     const uint32_t object=ram.word(avatar+pg_offAvatarMapObject);
+     if(main&&ram.at(object,pg_offObjectZ+4)){
+       out.mapX=ram.word(object+pg_offObjectX)/32;out.mapY=ram.word(object+pg_offObjectZ)/32+2;
+@@ -201,7 +232,7 @@ DsCompanion read_other_companion(const Ram& ram,DsGame game){
+     out.trainer=utf16_text(trainer+4,8);out.money=ram.word(save+(sequel?0x21100:unova_moneyOff));
+     out.badges=ram.word(save+(sequel?0x21104:unova_badgesOff))&255;
+     out.playerGender=trainer[0x21];out.map=ram.word(save+unova_locationOff+4)&0xffff;
+-    const char* code=game==DsGame::Black?"IRBO":game==DsGame::White?"IRAO":game==DsGame::Black2?"IREO":"IRDO";
++    const char* code=cart::unovaCode[cart::unovaIndex(game)];
+     const auto* field=pk_nds_field_game(code,0);
+     if(field){
+       const uint32_t system=ram.word(field->fieldSystemPtr);
+@@ -249,7 +280,7 @@ DsCompanion ds_read_companion(const uint8_t* ram,size_t size,DsGame game) {
+   if(game!=DsGame::Platinum)return read_other_companion(memory,game);
+   DsCompanion out;
+   auto at=[&](uint32_t a,size_t n){return memory.at(a,n);};
+-  const uint8_t* ptr=at(pd_ds_data::saveDataPtr,4);if(!ptr)return out;
++  const uint8_t* ptr=at(cart::platinumSave,4);if(!ptr)return out;
+   uint32_t base=u32(ptr);if(base<0x02000000 || base>=0x023e0000)return out;base+=pd_ds_data::bodyOff;
+   if(!read_party(memory,base+pd_ds_data::partyOff,out))return {};
+   auto trainer=at(base+pd_ds_data::trainerOff,28);if(!trainer)return {};out.trainer=text(trainer,8);out.money=u32(trainer+20);out.badges=trainer[26];
+@@ -259,7 +290,7 @@ DsCompanion ds_read_companion(const uint8_t* ram,size_t size,DsGame game) {
+   read_dex(memory,base+pd_ds_data::pokedexOff,out,pd_ds_data::nationalDexOff);
+   out.playerGender=trainer[24];
+   auto read=[&](uint32_t addr)->uint32_t{auto p=at(addr,4);return p?u32(p):0;};
+-  uint32_t fs=read(pd_ds_data::fieldSystemPtr),header=out.map;
++  uint32_t fs=read(cart::platinumField),header=out.map;
+   uint32_t x=read(base+pd_ds_data::locationOff+8),z=read(base+pd_ds_data::locationOff+12);
+   if(at(fs,4)){
+     uint32_t location=read(fs+pd_ds_data::map_offLocation),avatar=read(fs+pd_ds_data::map_offPlayerAvatar);
+@@ -347,7 +378,7 @@ DsRepelResult ds_use_repel(const uint8_t* bytes,size_t size,DsGame game,int item
+     slots=unovaPockets[0];
+   }else{
+     const bool johto=game==DsGame::Johto;
+-    const uint32_t save=ram.word(johto?johto_saveDataPtr:saveDataPtr);
++    const uint32_t save=ram.word(johto?cart::johtoSave:cart::platinumSave);
+     if(save<0x02000000||save>=0x023e0000)return R::NotAvailable;
+     const uint32_t body=save+(johto?johto_bodyOff:bodyOff);
+     bag=body+(johto?johto_bagOff:bagOff);counter=body+(johto?johto_repelStepsOff:repelStepsOff);
+diff --git a/linux/dsperate/companion.h b/linux/dsperate/companion.h
+index 38cba3a..012243b 100644
+--- a/linux/dsperate/companion.h
++++ b/linux/dsperate/companion.h
+@@ -10,6 +10,10 @@ enum class DsGame { Unsupported, Platinum, Johto, Black, White, Black2, White2 }
+ bool ds_unova(DsGame game);
+ bool ds_unova_sequel(DsGame game);
+ DsGame ds_companion_game(const char* sha1);
++// Capsule (iOS): the French carts the Android app's ports cover, by header code
++// and revision. Sets the addresses the companion reads (US ones for anything
++// else) and returns the cart's game, or Unsupported. *soulSilver is set for SoulSilver.
++DsGame ds_select_cart(const char code[4],int revision,bool* soulSilver);
+ // Maps the digest of a known decrypted dump to the digest of the retail dump it
+ // is the same ROM as, so every digest check downstream sees one id per game.
+ const char* ds_canonical_sha1(const char* sha1);
+diff --git a/linux/libretro-ds/pd_ds_libretro.cpp b/linux/libretro-ds/pd_ds_libretro.cpp
+index 83555ce..1d22f98 100644
+--- a/linux/libretro-ds/pd_ds_libretro.cpp
++++ b/linux/libretro-ds/pd_ds_libretro.cpp
+@@ -109,6 +109,154 @@ int layout=0; // 0 top, 1 bottom, 2 side by side, 3 stacked
+ uint16_t pixels[512*384];
+ uint32_t ui_pixels[341*256];
+ 
++void geometry(unsigned w,unsigned h);
++// ---- EXPAND (Capsule): the overworld's 3D drawn past the top screen's sides, to a wide phone's edges ----
++// The frontend's panel ("pokedaisy_panel", WxH) sets the frame: 384 rows, as wide as the panel's shape, the one-screen
++// stage (512 x 384, the DS's 2x) in the middle. On the field the margins are the 3D of two slice engines - the left and
++// right neighbours of the screen, fed every polygon the game submits (Gpu3D::wide); elsewhere they are black.
++namespace wide {
++constexpr int OVERLAP=4;      // a slice reaches this far into the screen (its own edge isn't shown)
++constexpr int MAX_MARGIN=248; // DS pixels each side
++int margin=0;                 // DS pixels each side; 0 = off
++unsigned outW=512;            // the frame's width
++std::unique_ptr<ds::gpu::Gpu3D> slices[2];   // left, right
++std::string panel;
++uint16_t out[(512+4*MAX_MARGIN)*384];
++// The HUD over the whole wide frame (DS pixels, 2x on the frame): drawn by present, laid on by emit; 0 = none.
++uint32_t hud[(256+2*MAX_MARGIN)*192];
++int hudW=0;
++
++void submit(ds::gpu::Gpu3D& g,const ds::gpu::Vertex* const* v,int n,bool facing,void*){
++  for(int k=0;k<2;++k){
++    if(!slices[k])continue;
++    const int sx=k?1:-1;
++    ds::gpu::Vertex cv[4];
++    bool allL=true,allR=true,allT=true,allB=true;
++    for(int i=0;i<n;++i){
++      cv[i]=*v[i];
++      const int64_t w=cv[i].pos[3]&0x00FFFFFF;
++      // The slice left of the screen is clip-space x in [-3w,-w]: moved by +2w (a little less: OVERLAP pixels) it's [-w,w].
++      const int64_t x=int64_t(cv[i].pos[0])-sx*(w*(256-OVERLAP)/128);
++      cv[i].pos[0]=int32_t(x);
++      allL&=x<-w; allR&=x>w; allB&=cv[i].pos[1]<-w; allT&=cv[i].pos[1]>w;
++      if(w<=0)allL=allR=allT=allB=false;
++    }
++    if(allL||allR||allT||allB)continue;
++    // Only what the margin shows: the slice's columns past [256 - OVERLAP - margin] (left) or before [OVERLAP + margin]
++    // (right), a few more for edge marking. Clip-space x = (2 sx / 256 - 1) w.
++    bool unseen=true;
++    const int64_t limit=k?OVERLAP+margin+4:256-OVERLAP-margin-4;
++    for(int i=0;i<n&&unseen;++i){
++      const int64_t w=cv[i].pos[3]&0x00FFFFFF,x=cv[i].pos[0];
++      if(w<=0){unseen=false;break;}
++      unseen=k?x*128>(limit-128)*w:x*128<(limit-128)*w;
++    }
++    if(unseen)continue;
++    slices[k]->wide_add(g,cv,n,facing);
++  }
++}
++void swap(ds::gpu::Gpu3D& g,void*){for(auto& s:slices)if(s)s->wide_swap(g);}
++void latched(ds::gpu::Gpu3D& g,void*){for(auto& s:slices)if(s)s->wide_render(g);}
++
++void stop(){
++  if(nds){auto& g=nds->gpu3d;g.wide=ds::gpu::Gpu3D::WideHooks{};}
++  for(auto& s:slices)s.reset();
++}
++void start(){
++  if(!nds||margin<=0)return;
++  for(auto& s:slices)if(!s)s=std::make_unique<ds::gpu::Gpu3D>(*nds);
++  auto& g=nds->gpu3d;
++  g.wide.submit=submit;g.wide.swap=swap;g.wide.latched=latched;g.wide.user=nullptr;
++  g.wide.box[0]=g.wide.box[1]=margin+4;g.wide.box[2]=g.wide.box[3]=0;
++}
++// The panel asked for now: the frame's width and the margins, the slices on or off.
++void read_panel(bool force){
++  retro_variable var{"pokedaisy_panel",nullptr};
++  const std::string value=environment(RETRO_ENVIRONMENT_GET_VARIABLE,&var)&&var.value?var.value:"";
++  if(!force&&value==panel)return;
++  panel=value;
++  int w=0,h=0,m=0;
++  if(std::sscanf(value.c_str(),"%dx%d",&w,&h)==2&&w>0&&h>0&&w*3>h*4){
++    // 384 rows; the width the panel's shape gives, in whole DS pixels each side.
++    const int want=384*w/h;
++    m=std::clamp((want-512)/4,0,MAX_MARGIN);
++  }
++  if(m==margin&&!force)return;
++  margin=m;outW=512+4*m;
++  stop();
++  if(margin>0&&game)start();
++}
++// A 3D colour (RGB666, alpha in bits 24-28) as the top screen shows it: through engine A's master brightness.
++uint16_t shade(uint32_t c,uint16_t mb){
++  uint32_t r=c&63,g=(c>>8)&63,b=(c>>16)&63;
++  const uint32_t mode=mb>>14,f=std::min<uint32_t>(mb&31,16);
++  if(mode==1){r+=((63-r)*f)>>4;g+=((63-g)*f)>>4;b+=((63-b)*f)>>4;}
++  else if(mode==2){r-=(r*f+15)>>4;g-=(g*f+15)>>4;b-=(b*f+15)>>4;}
++  return uint16_t(((r>>1)<<11)|(g<<5)|(b>>1));
++}
++}
++
++// The frame out: as it is, or in the middle of the wide one.
++void emit(const uint16_t* px,bool field3D){
++  if(wide::margin<=0){geometry(512,384);video(px,512,384,512*2);return;}
++  const unsigned W=wide::outW,M2=2*wide::margin;
++  geometry(W,384);
++  field3D=field3D&&wide::slices[0]&&wide::slices[1]&&wide::slices[0]->wide_ready()&&wide::slices[1]->wide_ready();
++  uint16_t mb=0;
++  for(const auto& e:nds->gpu.engine)if(e.screen()==0)mb=e.master_bright();
++  for(unsigned y=0;y<384;++y){
++    uint16_t* row=wide::out+y*W;
++    std::memcpy(row+M2,px+y*512,512*2);
++    if(!field3D){std::memset(row,0,M2*2);std::memset(row+M2+512,0,M2*2);continue;}
++    const uint32_t* left=wide::slices[0]->wide_line(y/2);
++    const uint32_t* right=wide::slices[1]->wide_line(y/2);
++    const uint16_t edgeL=px[y*512],edgeR=px[y*512+511];
++    // The DS outlines the 3D where the screen cuts it (edge marking): a dark line once the picture goes on past it.
++    // The screen's outer column takes the slice's own pixel there - where the next one in shows the slice's colour
++    // too, so it's the 3D and not a text box or the HUD over it.
++    auto near=[](uint16_t a,uint16_t b){
++      const int dr=int(a>>11)-int(b>>11),dg=int((a>>5)&63)-int((b>>5)&63),db=int(a&31)-int(b&31);
++      return std::abs(dr)<=4&&std::abs(dg)<=8&&std::abs(db)<=4;
++    };
++    {
++      const uint32_t in=left[256-wide::OVERLAP+1],edge=left[256-wide::OVERLAP];
++      if(((in>>24)&31)&&((edge>>24)&31)&&near(px[y*512+2],wide::shade(in,mb)))
++        row[M2]=row[M2+1]=wide::shade(edge,mb);
++      const uint32_t inR=right[wide::OVERLAP-2],edgeRc=right[wide::OVERLAP-1];
++      if(((inR>>24)&31)&&((edgeRc>>24)&31)&&near(px[y*512+509],wide::shade(inR,mb)))
++        row[M2+510]=row[M2+511]=wide::shade(edgeRc,mb);
++    }
++    for(unsigned X=0;X<M2;++X){
++      // Left margin: DS x = X/2 - margin, the left slice's pixel x + 252.
++      const int x=int(X/2)-wide::margin+(256-wide::OVERLAP);
++      const uint32_t c=left[std::clamp(x,0,255)];
++      row[X]=(c>>24)&31?wide::shade(c,mb):edgeL;
++      const int xr=int(X/2)+256-(256-wide::OVERLAP);
++      const uint32_t cr=right[std::clamp(xr,0,255)];
++      row[M2+512+X]=(cr>>24)&31?wide::shade(cr,mb):edgeR;
++    }
++  }
++  if(wide::hudW==int(W/2)){
++    for(unsigned y=0;y<384;++y){
++      const uint32_t* src=wide::hud+(y/2)*wide::hudW;
++      uint16_t* row=wide::out+y*W;
++      for(unsigned x=0;x<W;++x){
++        const uint32_t p=src[x/2];
++        if(p==QUICK_CLEAR)continue;
++        const unsigned a=p>>24?p>>24:255;
++        const uint16_t old=row[x];
++        unsigned r=(old>>11&31)*255/31,g=(old>>5&63)*255/63,b=(old&31)*255/31;
++        r=(((p>>16)&255)*a+r*(255-a))/255;
++        g=(((p>>8)&255)*a+g*(255-a))/255;
++        b=((p&255)*a+b*(255-a))/255;
++        row[x]=ds_rgb565((r<<16)|(g<<8)|b);
++      }
++    }
++  }
++  wide::hudW=0;
++  video(wide::out,W,384,W*2);
++}
++
+ uint32_t read32(uint32_t a) {
+   if (!nds || a<0x02000000 || a>0x023ffffc) return 0;
+   return nds->bus.dma_read32(ds::Cpu::ARM9,a);
+@@ -197,7 +345,7 @@ bool env(unsigned cmd,void* data) {
+ void geometry(unsigned w,unsigned h) {
+   if(width==w && height==h)return;
+   width=w;height=h;
+-  retro_game_geometry g{w,h,512,384,float(w)/h};
++  retro_game_geometry g{w,h,512+4*248,384,float(w)/h};
+   environment(RETRO_ENVIRONMENT_SET_GEOMETRY,&g);
+ }
+ void refresh() {
+@@ -600,7 +748,6 @@ void draw_quick() {
+     ds_compose(stage,arrangement,nds->gpu.framebuffer(0),nds->gpu.framebuffer(1));
+     stageReady=true;
+   }
+-  geometry(512,384);
+   for(unsigned y=0;y<384;++y)for(unsigned x=0;x<512;++x){
+     uint32_t base=stage[y*512+x]&0xffffff;
+     base=(base&0xfefefe)>>1;
+@@ -613,7 +760,7 @@ void draw_quick() {
+     }
+     pixels[y*512+x]=ds_rgb565(base);
+   }
+-  video(pixels,512,384,512*2);
++  emit(pixels,false);
+ }
+ void draw_strip(uint32_t* out){
+   const int focus=drawnBattle.panel==DsBattlePanel::Moves?battleStrip.moveFocus:battleStrip.actionFocus;
+@@ -633,7 +780,6 @@ void present(const void* data,unsigned,unsigned,size_t) {
+   ds_compose(stage,arrangement,nds->gpu.framebuffer(0),nds->gpu.framebuffer(1),
+              fieldValid?fieldFrame:nullptr,showStrip?draw_strip:nullptr);
+   stageReady=true;
+-  geometry(w,h);
+   for(unsigned i=0;i<w*h;++i)pixels[i]=ds_rgb565(stage[i]);
+   if(hudCursor<0&&(buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_SELECT))&&arrangement.touch.w>0){
+     int cx=arrangement.touch.x+cursor_x*arrangement.touch.w/256;
+@@ -648,7 +794,10 @@ void present(const void* data,unsigned,unsigned,size_t) {
+      (!game || field_free()) && !fieldMenuFlow &&
+      top.w>0 && top.h>0 && !arrangement.floating && !arrangement.modal) {
+     if(tick%12==0 || !snapshot.valid)refresh();
+-    pd_canvas c;pd_canvas_init(&c,256,192,ui_pixels);
++    // On a wide frame (EXPAND) with the top screen whole on the stage, the HUD spans the frame, to the phone's edges.
++    const bool wideHud=wide::margin>0 && top.x==0 && top.y==0 && top.w==512 && top.h==384 && arrangement.touch.w==0;
++    const int hudW=wideHud?256+2*wide::margin:256;
++    pd_canvas c;pd_canvas_init(&c,hudW,192,wideHud?wide::hud:ui_pixels);
+     pd_snapshot party{};party.valid=snapshot.valid;party.partyCount=std::min(6,int(snapshot.party.size()));
+     for(int i=0;i<party.partyCount;++i){
+       const auto& m=snapshot.party[i];auto& d=party.party[i];
+@@ -680,7 +829,7 @@ void present(const void* data,unsigned,unsigned,size_t) {
+     hud_state state{steps,repelFull,pc,wild,-1};
+     state.mini=shell.settings.hudSize!=PD_HUD_LARGE;
+     const bool pip=arrangement.touch.w>0 && arrangement.touch.x>top.x && arrangement.touch.x<top.x+top.w;
+-    const int hudRight=pip?(arrangement.touch.x-top.x)*256/top.w:256;
++    const int hudRight=wideHud?hudW:pip?(arrangement.touch.x-top.x)*256/top.w:256;
+     struct HudIcons {const pd_snapshot& party;bool small;};
+     HudIcons hudIcons{party,pip&&!state.mini};
+     hud_ds_draw(&c,&party,&state,&shell.settings,&hudIcons,[](pd_canvas* c,void* ctx,const pd_mon* m,int x,int y,bool){
+@@ -717,9 +866,10 @@ void present(const void* data,unsigned,unsigned,size_t) {
+         ds_draw_minimap(c,snapshot,map,x,y,w,h);
+       },&hudHits);
+     hud_focus_draw(&c,&hudHits,hudCursor);
++    if(wideHud)wide::hudW=hudW;   // laid on the wide frame by emit
+     // Scale with the top screen and keep the picture-in-picture touch screen clear.
+     const bool doubled=top.w==512 && top.h==384;
+-    for(int y=0;y<top.h;++y){
++    for(int y=0;y<top.h && !wideHud;++y){
+       const auto* row=ui_pixels+(doubled?y/2:y*192/top.h)*256;
+       for(int x=0;x<top.w;++x){
+         const uint32_t p=row[doubled?x/2:x*256/top.w];
+@@ -735,7 +885,11 @@ void present(const void* data,unsigned,unsigned,size_t) {
+       }
+     }
+   }
+-  video(pixels,w,h,w*2);
++  // The field on the one screen, whole: the margins go on with its 3D.
++  const bool field3D=game && arrangement.top.x==0 && arrangement.top.y==0 && arrangement.top.w==512 &&
++    arrangement.top.h==384 && arrangement.touch.w==0 && !arrangement.floating && !arrangement.modal &&
++    !battleActive && !scene.dark && scene.hud;
++  emit(pixels,field3D);
+ }
+ int16_t filtered_input(unsigned p,unsigned d,unsigned i,unsigned id) {
+   if(flyCallJob)return 0;
+@@ -773,7 +927,8 @@ int16_t filtered_input(unsigned p,unsigned d,unsigned i,unsigned id) {
+       if(id==RETRO_DEVICE_ID_POINTER_Y)return (battleTap.y*32768+191)/192;
+     }
+     int x=input(p,d,i,RETRO_DEVICE_ID_POINTER_X),y=input(p,d,i,RETRO_DEVICE_ID_POINTER_Y);
+-    auto pen=ds_pen(arrangement,(x+32767)*512/65535,(y+32767)*384/65535);
++    // Over the wide frame (EXPAND), the stage is its middle 512 columns.
++    auto pen=ds_pen(arrangement,int((x+32767)*int64_t(wide::outW)/65535)-2*wide::margin,(y+32767)*384/65535);
+     if(id==RETRO_DEVICE_ID_POINTER_PRESSED)return pen.valid?input(p,d,i,id):0;
+     if(id==RETRO_DEVICE_ID_POINTER_X)return pen.valid?(pen.x*65535+255)/256-32767:0;
+     if(id==RETRO_DEVICE_ID_POINTER_Y)return pen.valid?(pen.y*32768+191)/192:0;
+@@ -975,7 +1130,7 @@ RETRO_API void retro_set_input_state(retro_input_state_t cb){pd_ds::input=cb;ds_
+ RETRO_API void retro_get_system_info(retro_system_info* info){ds_get_system_info(info);info->library_name="PokeDaisy DS";info->library_version="0.4-one-screen";}
+ RETRO_API void retro_get_system_av_info(retro_system_av_info* info){
+   ds_get_system_av_info(info);
+-  info->geometry={512,384,512,384,4.f/3.f};
++  info->geometry={512,384,512+4*248,384,4.f/3.f};
+ }
+ RETRO_API bool retro_load_game(const retro_game_info* info){
+   pd_ds::clear();pd_ds::width=512;pd_ds::height=384;
+@@ -999,6 +1154,19 @@ RETRO_API bool retro_load_game(const retro_game_info* info){
+     pd_ds::companionGame=ds_companion_game(hex);
+     pd_ds::soulSilver=!std::strcmp(hex,pd_ds_data::soulSilverSha1);
+     pd_ds::battleStyle=ds_battle_style(hex);
++    // Capsule: a French cart (or any other the checksums don't name) is matched by its header.
++    bool frenchSilver=false;
++    const DsGame byHeader=ds_select_cart(reinterpret_cast<const char*>(rom.data()+12),rom[30],&frenchSilver);
++    if(pd_ds::companionGame==DsGame::Unsupported&&byHeader!=DsGame::Unsupported){
++      pd_ds::companionGame=byHeader;pd_ds::soulSilver=frenchSilver;
++      // The battle strip, by family. Platinum's copies the cart's own command art when it matches the US layout and
++      // draws its plates otherwise: either way the commands stay on the one screen.
++      pd_ds::battleStyle=byHeader==DsGame::Johto?ds_battle_style(frenchSilver?pd_ds_data::soulSilverSha1:pd_ds_data::heartGoldSha1):
++        byHeader==DsGame::Black||byHeader==DsGame::White?ds_battle_style(pd_ds_data::blackSha1):
++        byHeader==DsGame::Black2||byHeader==DsGame::White2?ds_battle_style(pd_ds_data::black2Sha1):
++        &ds_platinum_battle_style;
++      pd_ds::game=pk_nds_field_game(reinterpret_cast<const char*>(rom.data()+12),rom[30]);
++    }
+     ds_battle_set_base_pp({});
+     if(pd_ds::battleStyle)
+       pd_ds::game=pk_nds_field_game(reinterpret_cast<const char*>(rom.data()+12),rom[30]);
+@@ -1017,6 +1185,8 @@ RETRO_API bool retro_load_game(const retro_game_info* info){
+   pd_ds::set_wild_rates();
+   pd_ds::shell.dexArt=std::move(dexArt);
+   log(RETRO_LOG_INFO,"PokeDaisy DS: companion %s\n",pd_ds::companionGame!=DsGame::Unsupported?"enabled":"unavailable for this ROM");
++  pd_ds::wide::panel="?";pd_ds::wide::margin=0;
++  pd_ds::wide::read_panel(true);
+   return true;
+ }
+ RETRO_API void retro_reset(){
+@@ -1042,10 +1212,11 @@ RETRO_API bool retro_unserialize(const void* data,size_t n){
+   if(ok){pd_ds::clear_hud_focus();pd_ds::clear_field_actions();pd_ds::flyJob={};pd_ds::flyPicker=pd_ds::heldQuickConfirm=false;pd_ds::companion=pd_ds::quickOpen=false;pd_ds::shell.picker=-1;pd_ds::shell.summary=false;pd_ds::shell.details=false;pd_ds::shell.dexEntry=0;pd_ds::shell.guideLoadedPage=-1;pd_ui_guide_reset(&pd_ds::shell.frame);pd_ds::shell.placeRow=pd_ds::shell.mapAction=-1;pd_ds::screen_override=0;pd_ds::snapshot={};pd_ds::repelFull=0;pd_ds::tick=0;pd_ds::scene.reset();pd_ds::arrangement={};pd_ds::manualTouch=pd_ds::fieldValid=pd_ds::fieldMenuFlow=false;pd_ds::companionHold=0;}
+   return ok;
+ }
+-RETRO_API void retro_unload_game(){ds_unload_game();pd_ds::clear();}
++RETRO_API void retro_unload_game(){pd_ds::wide::stop();pd_ds::wide::margin=0;pd_ds::wide::outW=512;ds_unload_game();pd_ds::clear();}
+ RETRO_API void retro_run(){
+   if(!nds)return;
+   input_poll_cb();
++  if(pd_ds::tick%30==0)pd_ds::wide::read_panel(false);   // the phone turned
+   const unsigned previous=pd_ds::old_buttons;
+   const bool menuWasOpen=pd_ds::companion || pd_ds::quickOpen || pd_ds::hudCursor>=0;
+   pd_ds::controls();

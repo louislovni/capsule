@@ -90,7 +90,7 @@ final class EmulatorSession: ObservableObject {
     func setLandscape(_ value: Bool) {
         guard value != landscape else { return }
         landscape = value
-        guard !game.isDS, Self.panelOverride == nil else { return }
+        guard Self.panelOverride == nil else { return }
         let panel = self.panel
         perform { core in
             lr_set_panel(core, panel)
