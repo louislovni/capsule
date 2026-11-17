@@ -29,8 +29,9 @@ Capsule n'est ni fait ni approuvé par les auteurs de PokeDaisy.
   et EXPAND ne marchent que sur les ROM que PokeDaisy reconnaît à leur empreinte exacte : au lancement,
   Capsule affiche son verdict (aussi dans le menu « … »), et le journal des cœurs est dans
   `PokeDaisy/journal.txt`.
-- **DS en plein écran** : en paysage, PokeDaisy dessine la 3D de la carte au-delà des bords de l'écran DS,
-  jusqu'aux bords du téléphone, avec le HUD dans les coins (Platine, HeartGold / SoulSilver, Noire /
+- **DS en plein écran** : PokeDaisy dessine la 3D de la carte au-delà des bords de l'écran DS, jusqu'aux
+  bords du téléphone - sur les côtés en paysage, au-dessus et en dessous debout (la manette se pose
+  alors sur le bas de la carte) -, avec le HUD dans les coins (Platine, HeartGold / SoulSilver, Noire /
   Blanche). Hors de la carte (menus, combats), les côtés restent noirs.
 - **DS en combat** : en mode un seul écran, les commandes et les attaques s'affichent sous le combat
   (Platine, HeartGold / SoulSilver, Noire / Blanche 1 et 2, y compris en français).
