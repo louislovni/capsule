@@ -52,6 +52,9 @@ struct LibraryView: View {
                     } label: {
                         Label("Amis et échanges en ligne", systemImage: "person.2")
                     }
+                    Link(destination: URL(string: "https://louislovni.github.io/capsule/")!) {
+                        Label("Pokédex en ligne", systemImage: "globe")
+                    }
                 } header: {
                     Text("Banque")
                 } footer: {
