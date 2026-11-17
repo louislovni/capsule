@@ -6,6 +6,7 @@ struct LibraryView: View {
     @StateObject private var bank = BankStore()
     @StateObject private var account = AccountStore()
     @StateObject private var cloud = CloudSync()
+    @StateObject private var pokedex = PokedexStore()
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var importing = false
@@ -42,6 +43,11 @@ struct LibraryView: View {
                 }
 
                 Section {
+                    NavigationLink {
+                        PokedexView(pokedex: pokedex, refresh: refreshPokedex)
+                    } label: {
+                        Label("Pokédex · \(pokedex.caught) / \(PokedexStore.maxDex)", systemImage: "book.closed")
+                    }
                     NavigationLink {
                         BankView(bank: bank)
                     } label: {
@@ -96,6 +102,7 @@ struct LibraryView: View {
                 Task {
                     await cloud.sync()
                     library.refresh()
+                    await refreshPokedex()
                 }
             }) { game in
                 GameView(game: game)
@@ -137,6 +144,7 @@ struct LibraryView: View {
                 await account.restore()
                 await cloud.sync()
                 library.refresh()
+                await refreshPokedex()
             }
             .onChange(of: scenePhase) { phase in
                 // Leaving the app from the games list: what changed goes up. (In a game, its
@@ -176,6 +184,12 @@ struct LibraryView: View {
                 }
             }
         )
+    }
+
+    /// The Pokédex from the bank and the games' boxes, and its copy for the web page.
+    private func refreshPokedex() async {
+        await pokedex.refresh(bank: bank, games: library.games)
+        await pokedex.upload(account: account)
     }
 
     private func handleImport(_ result: Result<[URL], Error>) {

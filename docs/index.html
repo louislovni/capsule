@@ -295,7 +295,7 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": 
 const norm = s => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 const STAT_NAMES = ["PV", "Attaque", "Défense", "Vitesse", "Atq. Spé.", "Déf. Spé."];
 
-const state = { entries: [], byDex: new Map(), tab: "dex", gen: -1, own: "all", type: "", q: "", bq: "", sort: "date", bgame: "", source: null };
+const state = { entries: [], byDex: new Map(), inGames: { games: [], dex: {} }, tab: "dex", gen: -1, own: "all", type: "", q: "", bq: "", sort: "date", bgame: "", source: null };
 
 // ---------- Bank data ----------
 
@@ -341,17 +341,24 @@ function toast(text, ms = 3200) {
 
 // ---------- Pokédex ----------
 
+// Caught: in the bank, or in a PC box of a game (the app sends that list: users/UID/meta/pokedex).
+const gameRec = n => state.inGames.dex[n];
+const owned = n => state.byDex.has(n) || !!gameRec(n);
+const shinyOf = n => (state.byDex.get(n) || []).some(e => e.isShiny) || !!gameRec(n)?.s;
+const ownedCount = (from = 1, to = MAX) => { let c = 0; for (let d = from; d <= to; d++) if (owned(d)) c++; return c; };
+
 function renderDex() {
-  const have = state.byDex.size;
-  const shinies = [...state.byDex.values()].filter(l => l.some(e => e.isShiny)).length;
+  const have = ownedCount();
+  let shinies = 0;
+  for (let d = 1; d <= MAX; d++) if (shinyOf(d)) shinies++;
   $("ring").style.setProperty("--p", (have / MAX * 100).toFixed(1));
   $("ringN").textContent = have;
   $("heroSub").textContent = `${have} espèce${have > 1 ? "s" : ""} sur ${MAX} · ${state.entries.length} Pokémon dans la banque` +
+    (state.inGames.games.length ? ` et ${state.inGames.games.length} jeu${state.inGames.games.length > 1 ? "x" : ""}` : "") +
     (shinies ? ` · ${shinies} chromatique${shinies > 1 ? "s" : ""}` : "");
 
   $("gens").innerHTML = [{ name: "Tous", from: 1, to: MAX }, ...GENS].map((g, i) => {
-    let n = 0;
-    for (let d = g.from; d <= g.to; d++) if (state.byDex.has(d)) n++;
+    const n = ownedCount(g.from, g.to);
     const total = g.to - g.from + 1;
     return `<button class="gen ${state.gen === i - 1 ? "on" : ""}" data-gen="${i - 1}"><b>${g.name}</b><span>${n} / ${total}</span>
       <div class="bar"><i style="width:${(n / total * 100).toFixed(1)}%"></i></div></button>`;
@@ -365,20 +372,19 @@ function renderDex() {
     for (let n = g.from; n <= g.to; n++) {
       const [name, t1, t2] = DEX[n];
       const list = state.byDex.get(n);
-      const shiny = list && list.some(e => e.isShiny);
-      if (state.own === "have" && !list) continue;
-      if (state.own === "miss" && list) continue;
+      const have = owned(n), shiny = shinyOf(n), onlyGames = have && !list;
+      if (state.own === "have" && !have) continue;
+      if (state.own === "miss" && have) continue;
       if (state.own === "shiny" && !shiny) continue;
       if (state.type !== "" && t1 != state.type && t2 != state.type) continue;
       if (q && !norm(name).includes(q) && String(n) !== q.replace(/^#?0*/, "")) continue;
-      cells.push(`<button class="cell ${list ? "" : "missing"}" data-dex="${n}">
-        <span class="no">${pad(n)}</span>${list && list.length > 1 ? `<span class="cnt">×${list.length}</span>` : ""}
+      cells.push(`<button class="cell ${have ? "" : "missing"}" data-dex="${n}">
+        <span class="no">${pad(n)}</span>${list && list.length > 1 ? `<span class="cnt">×${list.length}</span>` : onlyGames ? '<span class="cnt" title="Dans tes jeux">🎮</span>' : ""}
         <img class="sprite" loading="lazy" alt="" src="${sprite(n, shiny)}">
-        ${shiny ? '<span class="star">★</span>' : ""}<div class="nm">${list ? esc(name) : (state.own === "miss" || q ? esc(name) : "???")}</div></button>`);
+        ${shiny ? '<span class="star">★</span>' : ""}<div class="nm">${have ? esc(name) : (state.own === "miss" || q ? esc(name) : "???")}</div></button>`);
     }
     if (!cells.length) continue;
-    let n = 0;
-    for (let d = g.from; d <= g.to; d++) if (state.byDex.has(d)) n++;
+    const n = ownedCount(g.from, g.to);
     parts.push(`<div class="section"><span>${g.name}</span><span>${n} / ${g.to - g.from + 1}</span></div><div class="grid">${cells.join("")}</div>`);
   }
   $("dexGrid").innerHTML = parts.join("") || '<div class="empty">Aucun Pokémon ne correspond.</div>';
@@ -392,21 +398,24 @@ function typeBadges(t1, t2) {
 function openSpecies(n) {
   const [name, t1, t2, base] = DEX[n];
   const list = state.byDex.get(n) || [];
-  let shiny = list.some(e => e.isShiny);
+  const games = (gameRec(n)?.g || []).map(([i, c]) => `${state.inGames.games[i] || "?"}${c > 1 ? " ×" + c : ""}`);
+  const have = owned(n);
+  let shiny = shinyOf(n);
   const total = base.reduce((a, b) => a + b, 0);
   const order = [0, 1, 2, 4, 5, 3]; // HP, Atk, Def, SpA, SpD, Spe as the games show them
   const labels = ["PV", "Attaque", "Défense", "Vitesse", "Atq. Spé.", "Déf. Spé."];
   const html = () => `
     <div class="grab"></div><button class="close" data-close>✕</button>
-    <div class="stage ${list.length ? "" : "unknown"}" style="--t1:${list.length ? TYPE_COLORS[t1] + "55" : "#ffffff14"}">
+    <div class="stage ${have ? "" : "unknown"}" style="--t1:${have ? TYPE_COLORS[t1] + "55" : "#ffffff14"}">
       <img class="sprite" alt="" src="${sprite(n, shiny, true)}" onerror="this.onerror=null;this.src='${sprite(n, shiny)}'">
-      ${list.length ? `<button class="pill toggle" data-shiny>${shiny ? "★ Chromatique" : "☆ Normal"}</button>` : ""}
+      ${have ? `<button class="pill toggle" data-shiny>${shiny ? "★ Chromatique" : "☆ Normal"}</button>` : ""}
     </div>
     <div class="title"><div class="no">${pad(n)}</div><h3>${esc(name)}</h3><div class="types">${typeBadges(t1, t2)}</div></div>
     <h4>Statistiques de base · ${total}</h4>
     ${order.map(i => `<div class="stat"><span>${labels[i]}</span><b>${base[i]}</b><div class="bar"><i style="width:${Math.min(100, base[i] / 180 * 100)}%;background:${base[i] >= 100 ? "#5fd36a" : base[i] >= 70 ? "#f5c542" : "#ff8a5c"}"></i></div></div>`).join("")}
-    <h4>${list.length ? `Dans ta banque · ${list.length}` : "Pas encore dans ta banque"}</h4>
-    <div class="copies">${list.map(monCell).join("") || '<p class="note" style="margin:0">Attrape-le dans un de tes jeux, puis dépose-le dans la banque depuis l\'app.</p>'}</div>`;
+    ${games.length ? `<h4>Dans tes jeux</h4><p style="margin:0">🎮 ${games.map(esc).join(" · ")}</p>` : ""}
+    <h4>${list.length ? `Dans ta banque · ${list.length}` : "Pas dans ta banque"}</h4>
+    <div class="copies">${list.map(monCell).join("") || `<p class="note" style="margin:0">${games.length ? "Dépose-le dans la banque depuis l'app pour voir sa fiche ici." : "Attrape-le dans un de tes jeux : il apparaît ici dès qu'il est dans une boîte du PC ou dans la banque."}</p>`}</div>`;
   openSheet(html());
   $("sheet").onclick = ev => {
     if (ev.target.closest("[data-shiny]")) { shiny = !shiny; $("sheet").innerHTML = html(); return; }
@@ -510,7 +519,7 @@ function renderStats() {
   $("stats").innerHTML = `
     <div class="cards">
       <div class="card"><b>${es.length}</b><span>Pokémon dans la banque</span></div>
-      <div class="card"><b>${state.byDex.size}</b><span>espèces sur ${MAX}</span></div>
+      <div class="card"><b>${ownedCount()}</b><span>espèces sur ${MAX}</span></div>
       <div class="card"><b style="color:var(--gold)">${shinies.length}</b><span>chromatiques</span></div>
       <div class="card"><b>${levels.length ? Math.max(...levels) : "–"}</b><span>niveau le plus haut</span></div>
     </div>
@@ -610,7 +619,7 @@ function renderAccount(user) {
     $("refresh").onclick = () => loadCloud(user, true);
     $("signout").onclick = async () => {
       await fb.auth.signOut(fb.authApp);
-      try { localStorage.removeItem("capsule.bank"); } catch {}
+      try { localStorage.removeItem("capsule.bank"); localStorage.removeItem("capsule.games"); } catch {}
       location.reload();
     };
   } else if (state.source === "file") {
@@ -667,6 +676,15 @@ async function writeCloudBank(uid, file, payload) {
   return new TextDecoder().decode(bytes);
 }
 
+async function loadGamesDex(uid) {
+  try {
+    const snap = await fb.store.getDoc(fb.store.doc(fb.db, "users", uid, "meta", "pokedex"));
+    const json = snap.exists() ? JSON.parse(snap.data().json || "{}") : {};
+    state.inGames = { games: json.games || [], dex: json.dex || {} };
+    try { localStorage.setItem("capsule.games", JSON.stringify(state.inGames)); } catch {}
+  } catch { /* the bank alone, then */ }
+}
+
 async function loadCloud(user, manual) {
   const file = await readCloudBank(user.uid);
   if (!file) {
@@ -675,6 +693,7 @@ async function loadCloud(user, manual) {
     return;
   }
   const { text } = file, { updatedAt } = file.meta;
+  await loadGamesDex(user.uid);
   setBank(parseBank(text), "cloud");
   try { localStorage.setItem("capsule.bank", text); } catch {}
   if (manual) {
@@ -705,6 +724,8 @@ async function start() {
     return;
   }
   try {
+    const games = localStorage.getItem("capsule.games");
+    if (games) state.inGames = JSON.parse(games);
     const cached = localStorage.getItem("capsule.bank");
     if (cached) setBank(parseBank(cached), "cache");
   } catch {}
