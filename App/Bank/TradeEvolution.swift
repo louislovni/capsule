@@ -139,12 +139,11 @@ enum TradeEvolution {
     }
 
     /// The received Pokémon after the trade: evolved when it should, otherwise unchanged.
-    /// `partner` is the Pokémon given for it.
-    static func apply(to entry: BankEntry, tradedFor partner: BankEntry) -> BankEntry {
+    /// `partnerDex`: National Pokédex number of the Pokémon given for it.
+    static func apply(to entry: BankEntry, partnerDex: Int?) -> BankEntry {
         let generation = entry.effectiveGeneration
         guard !entry.isEgg, let dex = nationalDex(of: entry), let item = heldItem(of: entry) else { return entry }
         if let stone = everstone(generation: generation), item == stone { return entry }
-        let partnerDex = partner.isEgg ? nil : nationalDex(of: partner)
         guard let rule = rules.first(where: { rule in
             guard rule.from == dex, generation >= rule.since else { return false }
             if let needed = rule.item {

@@ -164,6 +164,31 @@ table.ivs td:first-child, table.ivs th:first-child { text-align: left; color: va
 .rows .row .bar { margin: 0; height: 9px; }
 .rows .row b { text-align: right; font-variant-numeric: tabular-nums; }
 
+/* ---------- Trades ---------- */
+.box { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
+.box h3 { margin: 0 0 10px; font-size: 16px; }
+.code { font: 700 26px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 4px; }
+.line { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); }
+.line:first-of-type { border-top: 0; }
+.line .who { flex: 1; min-width: 0; }
+.line .who small { display: block; color: var(--dim); font-size: 12px; }
+.btn { border: 0; background: var(--red); color: #fff; font-weight: 700; padding: 8px 14px; border-radius: 10px; font-size: 14px; }
+.btn.alt { background: var(--panel2); color: var(--text); font-weight: 600; }
+.btn:disabled { opacity: .45; cursor: default; }
+.inrow { display: flex; gap: 8px; }
+.inrow input { flex: 1; min-width: 0; background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; font-size: 16px; text-transform: uppercase; letter-spacing: 2px; outline: 0; }
+.side { margin: 6px 0 14px; }
+.side h4 { margin: 0 0 6px; }
+.side .cell { width: 100%; margin-bottom: 6px; }
+.slot { border: 2px dashed var(--line); border-radius: 12px; padding: 18px; text-align: center; color: var(--dim); font-size: 14px; width: 100%; background: none; }
+.ok { color: #5fd36a; font-weight: 600; font-size: 14px; margin-top: 6px; }
+.wait { color: var(--dim); font-size: 14px; margin-top: 6px; }
+.swap { text-align: center; font-size: 22px; color: var(--dim); margin: -4px 0 2px; }
+.actions { display: flex; gap: 8px; margin-top: 8px; }
+.actions .btn { flex: 1; padding: 12px; }
+.done { text-align: center; padding: 18px 6px; }
+.done .big-ico { font-size: 52px; }
+
 /* ---------- Welcome ---------- */
 .welcome { max-width: 460px; margin: 40px auto; text-align: center; }
 .welcome .ball {
@@ -192,6 +217,7 @@ table.ivs td:first-child, table.ivs th:first-child { text-align: left; color: va
     <button data-tab="dex" class="on">Pokédex</button>
     <button data-tab="bank">Banque</button>
     <button data-tab="stats">Stats</button>
+    <button data-tab="trades">Échanges</button>
   </nav>
 </header>
 
@@ -240,6 +266,7 @@ table.ivs td:first-child, table.ivs th:first-child { text-align: left; color: va
   </section>
 
   <section id="stats" class="hidden"></section>
+  <section id="trades" class="hidden"></section>
 </main>
 
 <div class="veil" id="veil"></div>
@@ -499,6 +526,7 @@ function openSheet(html) {
 function closeSheet() {
   $("sheet").classList.remove("on");
   $("veil").classList.remove("on");
+  $("sheet").onclick = sheetClick;
 }
 function sheetClick(ev) {
   if (ev.target.closest("[data-close]")) return closeSheet();
@@ -514,8 +542,10 @@ function show(tab) {
   state.tab = tab;
   for (const b of $("tabs").children) b.classList.toggle("on", b.dataset.tab === tab);
   const ready = state.source !== null;
-  for (const id of ["dex", "bank", "stats"]) $(id).classList.toggle("hidden", !ready || id !== tab);
+  for (const id of ["dex", "bank", "stats", "trades"]) $(id).classList.toggle("hidden", !ready || id !== tab);
+  if (tab !== "trades") leaveTrade();
   if (!ready) return;
+  if (tab === "trades") renderTrades();
   if (tab === "dex") renderDex();
   if (tab === "bank") renderBank();
   if (tab === "stats") renderStats();
@@ -586,21 +616,60 @@ function renderAccount(user) {
   }
 }
 
-async function loadCloud(user, manual) {
+let currentUser = null;
+
+// The bank file in the cloud, as the app writes it (users/UID/files + chunks, see CloudSync.swift).
+async function readCloudBank(uid) {
   const { store, db } = fb;
-  const files = await store.getDocs(store.collection(db, "users", user.uid, "files"));
+  const files = await store.getDocs(store.collection(db, "users", uid, "files"));
   const doc = files.docs.find(d => d.data().name === "#banque");
-  if (!doc) {
+  if (!doc) return null;
+  const meta = doc.data();
+  const pieces = await Promise.all(Array.from({ length: meta.chunks }, (_, i) =>
+    store.getDoc(store.doc(db, "users", uid, "chunks", `${doc.id}_${meta.version}_${i}`))));
+  const b64 = pieces.map(p => p.data()?.data || "").join("");
+  const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const text = new TextDecoder().decode(bytes);
+  return { id: doc.id, meta, text };
+}
+
+const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
+
+async function writeCloudBank(uid, file, payload) {
+  const { store, db } = fb;
+  const bytes = new TextEncoder().encode(JSON.stringify(payload));
+  const hash = hex(await crypto.subtle.digest("SHA-256", bytes));
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  const b64 = btoa(bin);
+  const pieces = [];
+  for (let i = 0; i < b64.length; i += 600000) pieces.push(b64.slice(i, i + 600000));
+  if (!pieces.length) pieces.push("");
+  const version = hash.slice(0, 12);
+  // The pieces first: the description, written last, points at them.
+  for (let i = 0; i < pieces.length; i++) {
+    await store.setDoc(store.doc(db, "users", uid, "chunks", `${file.id}_${version}_${i}`), { data: pieces[i] });
+  }
+  await store.setDoc(store.doc(db, "users", uid, "files", file.id), {
+    name: "#banque", hash, size: bytes.length, chunks: pieces.length, version,
+    updatedAt: store.Timestamp.now(), device: "Page web",
+  });
+  if (file.meta.version !== version) {
+    for (let i = 0; i < file.meta.chunks; i++) {
+      store.deleteDoc(store.doc(db, "users", uid, "chunks", `${file.id}_${file.meta.version}_${i}`)).catch(() => {});
+    }
+  }
+  return new TextDecoder().decode(bytes);
+}
+
+async function loadCloud(user, manual) {
+  const file = await readCloudBank(user.uid);
+  if (!file) {
     setBank([], "cloud");
     toast("Aucune banque dans le cloud : active la sauvegarde cloud dans l'app.", 5000);
     return;
   }
-  const { version, chunks, updatedAt } = doc.data();
-  const pieces = await Promise.all(Array.from({ length: chunks }, (_, i) =>
-    store.getDoc(store.doc(db, "users", user.uid, "chunks", `${doc.id}_${version}_${i}`))));
-  const b64 = pieces.map(p => p.data()?.data || "").join("");
-  const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-  const text = new TextDecoder().decode(bytes);
+  const { text } = file, { updatedAt } = file.meta;
   setBank(parseBank(text), "cloud");
   try { localStorage.setItem("capsule.bank", text); } catch {}
   if (manual) {
@@ -638,6 +707,7 @@ async function start() {
   try {
     const { auth, authApp } = await firebase();
     auth.onAuthStateChanged(authApp, async user => {
+      currentUser = user;
       renderAccount(user);
       if (!user) {
         try { localStorage.removeItem("capsule.bank"); } catch {}
@@ -655,6 +725,303 @@ async function start() {
   }
 }
 start();
+
+// ---------- Trades with friends (the app's online trades, see RemoteTrade.swift) ----------
+
+const T = { profile: null, friends: [], trades: [], room: null, unsub: null, busy: false };
+const nowISO = () => new Date().toISOString().replace(/\.\d{3}Z$/, "Z"); // the app reads dates without milliseconds
+const pairID = (a, b) => (a < b ? `${a}_${b}` : `${b}_${a}`);
+
+function needCloud() {
+  if (currentUser && fb) return null;
+  return `<div class="welcome"><div class="ball"></div><h2>Échanges en ligne</h2>
+    <p>Connecte-toi avec le compte Google de l'app pour échanger avec tes amis depuis ici.</p>
+    ${cfg.apiKey ? '<button class="big" data-act="signin">Se connecter avec Google</button>' : ""}</div>`;
+}
+
+async function loadSocial() {
+  const { store, db } = fb, uid = currentUser.uid;
+  const prof = await store.getDoc(store.doc(db, "profiles", uid));
+  T.profile = prof.exists() ? prof.data() : null;
+  const fr = await store.getDocs(store.query(store.collection(db, "friendships"), store.where("members", "array-contains", uid)));
+  T.friends = fr.docs.map(d => {
+    const x = d.data(), other = x.members.find(m => m !== uid);
+    return { id: d.id, uid: other, name: x.names?.[other] || "?", accepted: !!x.accepted, mine: x.requester === uid };
+  }).sort((a, b) => a.name.localeCompare(b.name));
+  const tr = await store.getDocs(store.query(store.collection(db, "trades"), store.where("members", "array-contains", uid)));
+  T.trades = tr.docs.map(d => ({ id: d.id, ...d.data() })).filter(x => {
+    const other = x.members.find(m => m !== uid);
+    const updated = x.updatedAt?.toDate ? x.updatedAt.toDate() : new Date(0);
+    return !x["done_" + uid] && !x["cancel_" + uid] && !x["cancel_" + other] && Date.now() - updated < 7 * 86400e3;
+  }).map(x => ({ id: x.id, friend: x.members.find(m => m !== uid), name: x.names?.[x.members.find(m => m !== uid)] || "?" }));
+}
+
+async function renderTrades() {
+  const el = $("trades");
+  const gate = needCloud();
+  if (gate) { el.innerHTML = gate; return; }
+  if (T.room) return renderRoom();
+  el.innerHTML = '<div class="empty">Chargement…</div>';
+  try { await loadSocial(); }
+  catch (err) { el.innerHTML = `<div class="empty">Impossible de charger tes amis : ${esc(err.message)}</div>`; return; }
+  if (!T.profile) {
+    el.innerHTML = `<div class="empty">Ouvre une fois « Amis et échanges en ligne » dans l'app : ton profil et ton code ami y sont créés.</div>`;
+    return;
+  }
+  const requests = T.friends.filter(f => !f.accepted && !f.mine);
+  const waiting = T.friends.filter(f => !f.accepted && f.mine);
+  const friends = T.friends.filter(f => f.accepted);
+  el.innerHTML = `
+    <div class="box"><h3>Ton code ami</h3><div class="code">${esc(T.profile.code)}</div>
+      <p class="note" style="margin:6px 0 0">${esc(T.profile.name)} · donne ce code à un ami pour qu'il t'ajoute.</p></div>
+    ${T.trades.length ? `<div class="box"><h3>Échanges en cours</h3>${T.trades.map(t => `<div class="line"><div class="who">Avec ${esc(t.name)}</div>
+      <button class="btn" data-act="open" data-trade="${esc(t.id)}">Reprendre</button></div>`).join("")}</div>` : ""}
+    ${requests.length ? `<div class="box"><h3>Demandes d'ami</h3>${requests.map(f => `<div class="line"><div class="who">${esc(f.name)}</div>
+      <button class="btn" data-act="accept" data-f="${esc(f.id)}">Accepter</button><button class="btn alt" data-act="drop" data-f="${esc(f.id)}">Refuser</button></div>`).join("")}</div>` : ""}
+    <div class="box"><h3>Amis</h3>
+      ${friends.map(f => `<div class="line"><div class="who">${esc(f.name)}</div><button class="btn" data-act="trade" data-f="${esc(f.id)}">Échanger</button></div>`).join("") || '<p class="note" style="margin:0">Pas encore d\'ami : ajoute-en un avec son code.</p>'}
+      ${waiting.map(f => `<div class="line"><div class="who">${esc(f.name)}<small>Demande envoyée, en attente</small></div><button class="btn alt" data-act="drop" data-f="${esc(f.id)}">Annuler</button></div>`).join("")}
+    </div>
+    <div class="box"><h3>Ajouter un ami</h3><div class="inrow"><input id="fcode" maxlength="6" placeholder="CODE" autocomplete="off"><button class="btn" data-act="add">Ajouter</button></div></div>`;
+}
+
+async function addFriend(raw) {
+  const { store, db } = fb, uid = currentUser.uid;
+  const code = raw.toUpperCase().replace(/\s/g, "");
+  if (code.length !== 6) throw new Error("Un code ami a 6 caractères.");
+  const entry = await store.getDoc(store.doc(db, "codes", code));
+  const other = entry.exists() ? entry.data().uid : null;
+  if (!other) throw new Error(`Aucun joueur avec le code ${code}.`);
+  if (other === uid) throw new Error("C'est ton propre code.");
+  const pair = pairID(uid, other);
+  const existing = await store.getDoc(store.doc(db, "friendships", pair)).catch(() => null);
+  if (existing && existing.exists()) {
+    const x = existing.data();
+    if (x.requester === other && !x.accepted) await store.updateDoc(existing.ref, { accepted: true });
+    return;
+  }
+  const prof = await store.getDoc(store.doc(db, "profiles", other));
+  await store.setDoc(store.doc(db, "friendships", pair), {
+    members: [uid, other], names: { [uid]: T.profile.name, [other]: prof.data()?.name || "?" },
+    requester: uid, accepted: false, createdAt: store.Timestamp.now(),
+  });
+}
+
+async function startTrade(friend) {
+  const open = T.trades.find(t => t.friend === friend.uid);
+  if (open) return open.id;
+  const { store, db } = fb, uid = currentUser.uid;
+  const ref = await store.addDoc(store.collection(db, "trades"), {
+    members: [uid, friend.uid], pair: friend.id, starter: uid,
+    names: { [uid]: T.profile.name, [friend.uid]: friend.name },
+    createdAt: store.Timestamp.now(), updatedAt: store.Timestamp.now(),
+  });
+  return ref.id;
+}
+
+$("trades").onclick = async ev => {
+  const b = ev.target.closest("[data-act]");
+  if (!b) return sheetClick(ev);
+  if (T.busy) return;
+  const act = b.dataset.act;
+  if (act === "signin") return $("signin").click();
+  const { store, db } = fb;
+  const friend = T.friends.find(f => f.id === b.dataset.f);
+  T.busy = true;
+  b.disabled = true;
+  try {
+    if (act === "add") { await addFriend($("fcode").value); toast("Demande envoyée."); }
+    if (act === "accept") await store.updateDoc(store.doc(db, "friendships", friend.id), { accepted: true });
+    if (act === "drop") await store.deleteDoc(store.doc(db, "friendships", friend.id));
+    if (act === "trade") return enterTrade(await startTrade(friend));
+    if (act === "open") return enterTrade(b.dataset.trade);
+    if (act === "pick") return pickOffer();
+    if (act === "confirm") return confirmTrade();
+    if (act === "cancel") return cancelTrade();
+    if (act === "back") { leaveTrade(); }
+  } catch (err) {
+    toast(err.message, 5000);
+  } finally {
+    T.busy = false;
+    b.disabled = false;
+  }
+  if (["add", "accept", "drop", "back"].includes(act)) renderTrades();
+};
+
+// ---------- Trade room ----------
+
+const parseOffer = json => { try { return json ? JSON.parse(json) : null; } catch { return null; } };
+
+function enterTrade(id) {
+  leaveTrade();
+  const { store, db } = fb, uid = currentUser.uid;
+  T.room = { id, phase: "loading", mine: null, theirs: null, iConfirmed: false, theirConfirm: "", name: "", committed: false, first: true };
+  renderRoom();
+  T.unsub = store.onSnapshot(store.doc(db, "trades", id), snap => onRoom(snap, uid), err => {
+    if (T.room) { T.room.phase = "failed"; T.room.reason = err.message; renderRoom(); }
+  });
+}
+
+function leaveTrade() {
+  if (T.unsub) T.unsub();
+  T.unsub = null;
+  T.room = null;
+}
+
+async function onRoom(snap, uid) {
+  const r = T.room;
+  if (!r || ["finished", "cancelled"].includes(r.phase)) return;
+  if (!snap.exists()) {
+    if (!r.committed) { r.phase = "cancelled"; r.reason = "Cet échange n'existe plus."; }
+    return renderRoom();
+  }
+  const x = snap.data(), other = x.members.find(m => m !== uid);
+  r.other = other;
+  r.name = x.names?.[other] || "?";
+  if (r.first) {
+    r.first = false;
+    const mine = parseOffer(x["offer_" + uid]), theirs = parseOffer(x["offer_" + other]);
+    if (x["done_" + uid]) { r.phase = "finished"; r.received = theirs; r.given = mine; return renderRoom(); }
+    r.mine = mine;
+    r.iConfirmed = !!(mine && theirs && x["confirm_" + uid] === `${mine.id}|${theirs.id}`);
+  }
+  if (x["cancel_" + other] && !r.committed) { r.phase = "cancelled"; r.reason = `${r.name} a annulé l'échange.`; return renderRoom(); }
+  const offer = parseOffer(x["offer_" + other]);
+  if (offer?.id !== r.theirs?.id) {
+    r.theirs = offer;
+    if (r.iConfirmed) { // their choice changed: my agreement was for the other one
+      r.iConfirmed = false;
+      fb.store.updateDoc(snap.ref, { ["confirm_" + uid]: "", updatedAt: fb.store.Timestamp.now() }).catch(() => {});
+    }
+  }
+  r.theirConfirm = x["confirm_" + other] || "";
+  if (r.phase === "loading") r.phase = "open";
+  renderRoom();
+  await commitIfReady();
+}
+
+const theyConfirmed = r => !!(r.mine && r.theirs && r.theirConfirm === `${r.theirs.id}|${r.mine.id}`);
+
+function renderRoom() {
+  const r = T.room, el = $("trades");
+  if (!r) return;
+  const back = '<button class="btn alt" data-act="back" style="margin-bottom:12px">‹ Amis</button>';
+  if (r.phase === "loading") { el.innerHTML = back + '<div class="empty">Ouverture de l\'échange…</div>'; return; }
+  if (r.phase === "finished") {
+    el.innerHTML = back + `<div class="box done"><div class="big-ico">✅</div><h3>Échange terminé !</h3>
+      <p>${r.received ? monCell(r.received) : ""}</p>
+      <p class="note">${esc(r.received?.speciesName || "Le Pokémon")} a rejoint ta banque${r.given ? `, à la place de ${esc(r.given.speciesName)}` : ""}.
+      S'il doit évoluer par échange, il le fera dans l'app à sa prochaine synchronisation.</p></div>`;
+    return;
+  }
+  if (r.phase === "cancelled" || r.phase === "failed") {
+    el.innerHTML = back + `<div class="box done"><div class="big-ico">${r.phase === "failed" ? "⚠️" : "✖️"}</div><h3>${r.phase === "failed" ? "Problème" : "Échange annulé"}</h3><p class="note">${esc(r.reason)}</p></div>`;
+    return;
+  }
+  const they = theyConfirmed(r);
+  el.innerHTML = back + `<div class="box">
+    <h3>Échange avec ${esc(r.name)}</h3>
+    <div class="side"><h4>Tu reçois</h4>
+      ${r.theirs ? monCell(r.theirs) : `<div class="slot">${esc(r.name)} n'a pas encore choisi.</div>`}
+      ${r.theirs ? (they ? `<div class="ok">✓ ${esc(r.name)} a validé</div>` : `<div class="wait">${esc(r.name)} n'a pas encore validé.</div>`) : ""}</div>
+    <div class="swap">⇅</div>
+    <div class="side"><h4>Tu donnes</h4>
+      ${r.mine ? monCell(r.mine) : ""}
+      <button class="slot" data-act="pick" ${r.iConfirmed ? "disabled" : ""}>${r.mine ? "Changer de Pokémon" : "Choisir un Pokémon de ta banque"}</button></div>
+    <div class="actions">
+      <button class="btn" data-act="confirm" ${!r.mine || !r.theirs || r.iConfirmed ? "disabled" : ""}>${r.iConfirmed ? (they ? "Échange…" : "Validé, on attend " + esc(r.name)) : "Valider l'échange"}</button>
+      <button class="btn alt" data-act="cancel">Annuler</button>
+    </div></div>`;
+}
+
+function pickOffer() {
+  const list = state.entries.slice().sort((a, b) => (dexOf(a) || 9999) - (dexOf(b) || 9999));
+  openSheet(`<div class="grab"></div><button class="close" data-close>✕</button>
+    <h4 style="margin-top:14px">Quel Pokémon proposer ?</h4>
+    <label class="search" style="margin-bottom:10px">🔎<input id="pq" placeholder="Rechercher" autocomplete="off"></label>
+    <div id="plist" class="copies">${list.map(monCell).join("")}</div>`);
+  $("pq").oninput = e => {
+    const q = norm(e.target.value);
+    $("plist").innerHTML = list.filter(x => [x.speciesName, x.nickname, x.sourceGame].some(v => norm(v).includes(q))).map(monCell).join("");
+  };
+  $("sheet").onclick = async ev => {
+    if (ev.target.closest("[data-close]")) return closeSheet();
+    const m = ev.target.closest("[data-id]");
+    if (!m) return;
+    const entry = state.entries.find(x => x.id === m.dataset.id);
+    closeSheet();
+    const r = T.room, uid = currentUser.uid;
+    if (!r || !entry) return;
+    r.mine = entry;
+    r.iConfirmed = false;
+    renderRoom();
+    try {
+      await fb.store.updateDoc(fb.store.doc(fb.db, "trades", r.id), {
+        ["offer_" + uid]: JSON.stringify(entry), ["confirm_" + uid]: "", updatedAt: fb.store.Timestamp.now(),
+      });
+    } catch (err) { toast(err.message, 5000); }
+  };
+}
+
+async function confirmTrade() {
+  const r = T.room, uid = currentUser.uid;
+  if (!r?.mine || !r.theirs || r.committed) return;
+  r.iConfirmed = true;
+  renderRoom();
+  try {
+    await fb.store.updateDoc(fb.store.doc(fb.db, "trades", r.id), {
+      ["confirm_" + uid]: `${r.mine.id}|${r.theirs.id}`, updatedAt: fb.store.Timestamp.now(),
+    });
+    await commitIfReady();
+  } catch (err) { r.iConfirmed = false; renderRoom(); toast(err.message, 5000); }
+}
+
+async function cancelTrade() {
+  const r = T.room, uid = currentUser.uid;
+  if (!r || r.committed) return;
+  await fb.store.updateDoc(fb.store.doc(fb.db, "trades", r.id), { ["cancel_" + uid]: true, updatedAt: fb.store.Timestamp.now() }).catch(() => {});
+  r.phase = "cancelled";
+  r.reason = "Échange annulé.";
+  renderRoom();
+}
+
+// Both sides agreed on the same pair: swap in the cloud bank (the app merges it at its next sync).
+async function commitIfReady() {
+  const r = T.room, uid = currentUser?.uid;
+  if (!r || r.committed || !r.iConfirmed || !theyConfirmed(r)) return;
+  r.committed = true;
+  try {
+    const file = await readCloudBank(uid);
+    if (!file) throw new Error("Ta banque n'est pas dans le cloud.");
+    const payload = JSON.parse(file.text);
+    const entries = Array.isArray(payload) ? payload : payload.entries;
+    const removed = Array.isArray(payload) ? [] : (payload.removed || []);
+    const at = entries.findIndex(e => e.id === r.mine.id);
+    if (at < 0) throw new Error("Ce Pokémon n'est plus dans ta banque.");
+    const received = JSON.parse(JSON.stringify(r.theirs));
+    // A Pokémon that once left this bank keeps its old id in the tombstones: a new one keeps it from being dropped.
+    if (entries.some(e => e.id === received.id) || removed.includes(received.id)) received.id = crypto.randomUUID().toUpperCase();
+    received.depositedAt = nowISO();
+    received.tradedFor = r.mine.isEgg ? 0 : (dexOf(r.mine) || 0);
+    entries[at] = received;
+    const gone = new Set(removed);
+    gone.add(r.mine.id);
+    gone.delete(received.id);
+    const text = await writeCloudBank(uid, file, { entries, removed: [...gone].sort() });
+    try { localStorage.setItem("capsule.bank", text); } catch {}
+    setBank(parseBank(text), "cloud");
+    await fb.store.updateDoc(fb.store.doc(fb.db, "trades", r.id), { ["done_" + uid]: true, updatedAt: fb.store.Timestamp.now() }).catch(() => {});
+    r.phase = "finished";
+    r.received = received;
+    r.given = r.mine;
+    renderRoom();
+  } catch (err) {
+    r.committed = false;
+    r.phase = "failed";
+    r.reason = err.message;
+    renderRoom();
+  }
+}
 </script>
 </body>
 </html>

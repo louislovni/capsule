@@ -19,6 +19,9 @@ struct BankEntry: Codable, Identifiable, Equatable {
     var details: MonDetails?
     /// 1 or 2 for Game Boy Pokémon, 4 or 5 for DS ones; nil for GBA ones (generation 3).
     var generation: Int?
+    /// Received in a trade made on the web page: it still has to evolve as a traded Pokémon would.
+    /// The National Pokédex number of the Pokémon given for it (0 when unknown).
+    var tradedFor: Int?
 
     var effectiveGeneration: Int { generation ?? 3 }
 
@@ -105,6 +108,7 @@ final class BankStore: ObservableObject {
         }
         do {
             entries = try Self.makeDecoder().decode([BankEntry].self, from: data)
+            applyPendingTradeEvolutions()
         } catch {
             // Never overwrite a file we could not read: keep it aside for recovery.
             let aside = Storage.bank.appendingPathComponent("banque-illisible-\(Int(Date().timeIntervalSince1970)).json")
@@ -156,6 +160,24 @@ final class BankStore: ObservableObject {
             (entries, removedIDs) = before
             throw error
         }
+        applyPendingTradeEvolutions()
+    }
+
+    /// Pokémon received through the web page evolve here, where the games' data is.
+    func applyPendingTradeEvolutions() {
+        guard entries.contains(where: { $0.tradedFor != nil }) else { return }
+        let before = entries
+        for index in entries.indices where entries[index].tradedFor != nil {
+            let partner = entries[index].tradedFor ?? 0
+            var evolved = TradeEvolution.apply(to: entries[index], partnerDex: partner == 0 ? nil : partner)
+            evolved.tradedFor = nil
+            entries[index] = evolved
+        }
+        do {
+            try persist()
+        } catch {
+            entries = before
+        }
     }
 
     func add(_ entry: BankEntry) throws {
@@ -194,7 +216,8 @@ final class BankStore: ObservableObject {
         guard incoming.data.count == BankEntry.dataSize(generation: incoming.effectiveGeneration) else {
             throw TradeError.unreadable
         }
-        var received = TradeEvolution.apply(to: incoming, tradedFor: outgoing)
+        var received = TradeEvolution.apply(to: incoming, partnerDex: outgoing.isEgg ? nil : TradeEvolution.nationalDex(of: outgoing))
+        received.tradedFor = nil
         let evolvedFrom = received.species != incoming.species ? incoming.displayName : nil
         if entries.contains(where: { $0.id == received.id && $0.id != outgoing.id }) {
             received.id = UUID()
