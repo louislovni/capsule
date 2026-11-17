@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#121216">
+<title>Capsule · Pokédex</title>
+<link rel="icon" href="icon.png">
+<style>
+:root {
+  --bg: #121216; --panel: #1b1b21; --panel2: #24242c; --line: #2f2f39;
+  --text: #f1f1f4; --dim: #9a9aa8; --red: #e5383b; --red2: #ff5a5f; --gold: #f5c542;
+  --radius: 14px;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font); -webkit-text-size-adjust: 100%; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+img.sprite { image-rendering: pixelated; image-rendering: crisp-edges; }
+
+/* ---------- Header ---------- */
+header {
+  position: sticky; top: 0; z-index: 20;
+  background: linear-gradient(180deg, #b3121b, #8c0d15);
+  padding: calc(env(safe-area-inset-top) + 10px) 16px 0;
+  box-shadow: 0 4px 18px #0008;
+}
+.top { display: flex; align-items: center; gap: 12px; max-width: 1200px; margin: 0 auto; }
+.lens {
+  width: 34px; height: 34px; border-radius: 50%; flex: none;
+  background: radial-gradient(circle at 35% 35%, #bfe9ff, #2aa9e0 45%, #0b5d8a 75%);
+  border: 3px solid #f4f4f4; box-shadow: 0 0 0 2px #0004, inset 0 -3px 6px #0005;
+}
+.leds { display: flex; gap: 5px; }
+.leds i { width: 9px; height: 9px; border-radius: 50%; border: 1px solid #0005; }
+.leds i:nth-child(1) { background: #ff6262; } .leds i:nth-child(2) { background: #ffd84a; } .leds i:nth-child(3) { background: #5fd36a; }
+h1 { font-size: 19px; margin: 0; letter-spacing: .3px; flex: 1; }
+h1 small { font-weight: 500; opacity: .75; font-size: 13px; margin-left: 6px; }
+.account { display: flex; align-items: center; gap: 8px; }
+.pill {
+  border: 0; background: #fff2; color: #fff; padding: 7px 13px; border-radius: 999px; font-size: 14px; font-weight: 600;
+  white-space: nowrap;
+}
+.pill:hover { background: #fff3; }
+.avatar { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #fff6; }
+nav { display: flex; gap: 4px; max-width: 1200px; margin: 10px auto 0; }
+nav button {
+  flex: 1; border: 0; background: none; color: #ffd6d6; padding: 10px 0 11px; font-weight: 600; font-size: 15px;
+  border-bottom: 3px solid transparent;
+}
+nav button.on { color: #fff; border-color: #fff; }
+
+main { max-width: 1200px; margin: 0 auto; padding: 16px 14px calc(env(safe-area-inset-bottom) + 40px); }
+.hidden { display: none !important; }
+
+/* ---------- Hero ---------- */
+.hero { display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; background: var(--panel); border-radius: var(--radius); padding: 16px; border: 1px solid var(--line); }
+.ring { --p: 0; width: 104px; height: 104px; border-radius: 50%; display: grid; place-items: center;
+  background: conic-gradient(var(--red2) calc(var(--p) * 1%), #2c2c35 0); }
+.ring div { width: 82px; height: 82px; border-radius: 50%; background: var(--panel); display: grid; place-items: center; text-align: center; line-height: 1.1; }
+.ring b { font-size: 22px; } .ring span { font-size: 12px; color: var(--dim); }
+.hero h2 { margin: 0 0 4px; font-size: 20px; }
+.hero p { margin: 0; color: var(--dim); font-size: 14px; }
+.chips { display: flex; gap: 8px; overflow-x: auto; margin: 14px -14px 0; padding: 0 14px 4px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.gen {
+  flex: none; min-width: 112px; text-align: left; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 12px; padding: 9px 11px;
+}
+.gen.on { border-color: var(--red2); background: #2a1719; }
+.gen b { display: block; font-size: 14px; } .gen span { font-size: 12px; color: var(--dim); }
+.bar { height: 5px; border-radius: 3px; background: #2c2c35; margin-top: 6px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--red2); border-radius: 3px; }
+
+/* ---------- Tools ---------- */
+.tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+.search { flex: 1 1 220px; display: flex; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 0 12px; }
+.search input { flex: 1; background: none; border: 0; outline: 0; padding: 11px 6px; font-size: 16px; }
+.seg { display: flex; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 3px; }
+.seg button { border: 0; background: none; padding: 7px 11px; border-radius: 9px; font-size: 14px; color: var(--dim); }
+.seg button.on { background: var(--panel2); color: var(--text); }
+select { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 9px 10px; font-size: 14px; }
+
+/* ---------- Grid ---------- */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 9px; }
+.cell {
+  position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  padding: 4px 4px 8px; text-align: center; transition: transform .12s, border-color .12s;
+}
+.cell:hover { transform: translateY(-2px); border-color: #4a4a57; }
+.cell img { width: 88px; height: 88px; display: block; margin: 0 auto; }
+.cell .no { position: absolute; top: 6px; left: 8px; font-size: 11px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.cell .nm { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cell .cnt { position: absolute; top: 5px; right: 7px; font-size: 11px; background: var(--panel2); border-radius: 8px; padding: 1px 6px; color: var(--dim); }
+.cell.missing img { filter: brightness(0) invert(.18); opacity: .7; }
+.cell.missing .nm { color: #5c5c68; }
+@media (max-width: 520px) {
+  .grid { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 7px; }
+  .cell img { width: 72px; height: 72px; }
+  .cell .nm { font-size: 12px; }
+  .cell .star { bottom: 26px !important; }
+}
+.cell .star { position: absolute; bottom: 30px; right: 8px; color: var(--gold); font-size: 15px; text-shadow: 0 0 6px #f5c54299; }
+.section { margin: 22px 2px 10px; font-size: 15px; color: var(--dim); font-weight: 600; display: flex; justify-content: space-between; }
+.empty { text-align: center; color: var(--dim); padding: 40px 10px; }
+
+/* ---------- Bank list ---------- */
+.mon { display: flex; gap: 10px; align-items: center; text-align: left; padding: 8px 10px 8px 6px; }
+.mon img { width: 64px; height: 64px; flex: none; margin: 0; }
+.mon .nm { font-size: 15px; }
+.mon .sub { font-size: 12px; color: var(--dim); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bankgrid { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+
+/* ---------- Sheet ---------- */
+.veil { position: fixed; inset: 0; background: #000a; z-index: 40; opacity: 0; pointer-events: none; transition: opacity .2s; }
+.veil.on { opacity: 1; pointer-events: auto; }
+.sheet {
+  position: fixed; z-index: 50; left: 50%; bottom: 0; width: min(560px, 100%); max-height: 92vh; overflow-y: auto;
+  transform: translate(-50%, 104%); transition: transform .26s cubic-bezier(.2,.8,.2,1);
+  background: var(--panel); border-radius: 22px 22px 0 0; border: 1px solid var(--line); border-bottom: 0;
+  padding: 0 18px calc(env(safe-area-inset-bottom) + 22px);
+}
+.sheet.on { transform: translate(-50%, 0); }
+@media (min-width: 700px) {
+  .sheet { bottom: auto; top: 50%; border-radius: 22px; border-bottom: 1px solid var(--line); transform: translate(-50%, -46%) scale(.97); opacity: 0; pointer-events: none; transition: transform .2s, opacity .2s; }
+  .sheet.on { transform: translate(-50%, -50%); opacity: 1; pointer-events: auto; }
+}
+.grab { width: 40px; height: 5px; border-radius: 3px; background: #444; margin: 9px auto 0; }
+.close { position: sticky; top: 8px; float: right; border: 0; background: var(--panel2); width: 32px; height: 32px; border-radius: 50%; font-size: 17px; margin-top: 4px; z-index: 2; }
+.stage {
+  height: 190px; display: grid; place-items: center; margin: 6px -18px 0; position: relative;
+  background: radial-gradient(ellipse at 50% 75%, var(--t1, #444) 0%, transparent 62%);
+}
+.stage img { width: 160px; height: 160px; object-fit: contain; }
+.stage .toggle { position: absolute; right: 18px; bottom: 10px; }
+.title { text-align: center; }
+.title .no { color: var(--dim); font-size: 14px; font-variant-numeric: tabular-nums; }
+.title h3 { margin: 2px 0 8px; font-size: 26px; }
+.types { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+.type { padding: 4px 12px; border-radius: 999px; font-size: 13px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px #0006; }
+h4 { margin: 20px 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .8px; color: var(--dim); }
+.stat { display: grid; grid-template-columns: 82px 34px 1fr; gap: 8px; align-items: center; font-size: 13px; margin: 5px 0; }
+.stat span:first-child { color: var(--dim); }
+.stat b { text-align: right; font-variant-numeric: tabular-nums; }
+.stat .bar { margin: 0; height: 7px; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 14px; }
+.kv span { color: var(--dim); }
+.moves { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.moves div { background: var(--panel2); border-radius: 10px; padding: 8px 10px; font-size: 14px; }
+.moves small { color: var(--dim); float: right; }
+table.ivs { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+table.ivs td, table.ivs th { padding: 5px 4px; text-align: right; border-bottom: 1px solid var(--line); }
+table.ivs th { color: var(--dim); font-weight: 500; }
+table.ivs td:first-child, table.ivs th:first-child { text-align: left; color: var(--dim); }
+.perfect { color: var(--gold); font-weight: 700; }
+.copies .cell { margin-bottom: 7px; }
+
+/* ---------- Stats ---------- */
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 9px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; }
+.card b { font-size: 26px; display: block; } .card span { color: var(--dim); font-size: 13px; }
+.rows .row { display: grid; grid-template-columns: 120px 1fr 40px; gap: 10px; align-items: center; font-size: 14px; margin: 8px 0; }
+.rows .row .bar { margin: 0; height: 9px; }
+.rows .row b { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---------- Welcome ---------- */
+.welcome { max-width: 460px; margin: 40px auto; text-align: center; }
+.welcome .ball {
+  width: 92px; height: 92px; margin: 0 auto 18px; border-radius: 50%; position: relative;
+  background: linear-gradient(180deg, var(--red) 0 46%, #111 46% 54%, #eee 54%);
+  box-shadow: inset 0 -6px 12px #0004, 0 8px 30px #e5383b44;
+}
+.welcome .ball::after { content: ""; position: absolute; inset: 33px; border-radius: 50%; background: #eee; border: 6px solid #111; }
+.welcome h2 { margin: 0 0 8px; }
+.welcome p { color: var(--dim); line-height: 1.5; }
+.big { border: 0; background: var(--red); color: #fff; font-weight: 700; padding: 13px 22px; border-radius: 14px; font-size: 16px; margin: 6px; }
+.ghost { border: 1px solid var(--line); background: var(--panel); padding: 12px 18px; border-radius: 14px; margin: 6px; font-size: 15px; }
+.note { font-size: 13px; color: var(--dim); margin-top: 14px; }
+.toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 18px); transform: translateX(-50%); background: #2b2b33; border: 1px solid var(--line); padding: 10px 16px; border-radius: 12px; font-size: 14px; z-index: 60; box-shadow: 0 8px 30px #0009; max-width: 92vw; }
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <div class="lens"></div>
+    <div class="leds"><i></i><i></i><i></i></div>
+    <h1>Capsule<small>Pokédex</small></h1>
+    <div class="account" id="account"></div>
+  </div>
+  <nav id="tabs">
+    <button data-tab="dex" class="on">Pokédex</button>
+    <button data-tab="bank">Banque</button>
+    <button data-tab="stats">Stats</button>
+  </nav>
+</header>
+
+<main>
+  <section id="welcome" class="welcome hidden">
+    <div class="ball"></div>
+    <h2>Ta banque Capsule, partout</h2>
+    <p>Connecte-toi avec le compte Google de l'app : ta banque arrive depuis le cloud, et ton Pokédex se remplit avec chaque Pokémon que tu y as déposé.</p>
+    <button class="big" id="signin">Se connecter avec Google</button>
+    <button class="ghost" id="openfile">Ouvrir un fichier de banque</button>
+    <input type="file" id="file" accept=".json,application/json" class="hidden">
+    <p class="note">Active « Sauvegarde cloud » dans l'app pour que la banque soit envoyée.</p>
+  </section>
+
+  <section id="dex" class="hidden">
+    <div class="hero">
+      <div class="ring" id="ring"><div><b id="ringN">0</b><span id="ringT">/ 649</span></div></div>
+      <div>
+        <h2 id="heroTitle">Pokédex national</h2>
+        <p id="heroSub"></p>
+      </div>
+    </div>
+    <div class="chips" id="gens"></div>
+    <div class="tools">
+      <label class="search">🔎<input id="q" placeholder="Nom ou numéro" autocomplete="off"></label>
+      <div class="seg" id="own">
+        <button data-v="all" class="on">Tous</button><button data-v="have">Obtenus</button><button data-v="miss">Manquants</button><button data-v="shiny">✨</button>
+      </div>
+      <select id="type"><option value="">Tous les types</option></select>
+    </div>
+    <div id="dexGrid"></div>
+  </section>
+
+  <section id="bank" class="hidden">
+    <div class="tools">
+      <label class="search">🔎<input id="bq" placeholder="Nom, surnom, jeu, dresseur" autocomplete="off"></label>
+      <select id="sort">
+        <option value="date">Plus récents</option>
+        <option value="dex">N° du Pokédex</option>
+        <option value="level">Niveau</option>
+        <option value="name">Nom</option>
+      </select>
+      <select id="bgame"><option value="">Tous les jeux</option></select>
+    </div>
+    <div id="bankGrid" class="grid bankgrid"></div>
+  </section>
+
+  <section id="stats" class="hidden"></section>
+</main>
+
+<div class="veil" id="veil"></div>
+<div class="sheet" id="sheet"></div>
+
+<script src="dex.js"></script>
+<script src="config.js"></script>
+<script type="module">
+const DEX = window.CAPSULE_DEX, TYPES = window.CAPSULE_TYPES;
+const MAX = 649;
+const GENS = [
+  { name: "Kanto", from: 1, to: 151 }, { name: "Johto", from: 152, to: 251 }, { name: "Hoenn", from: 252, to: 386 },
+  { name: "Sinnoh", from: 387, to: 493 }, { name: "Unys", from: 494, to: 649 },
+];
+const TYPE_COLORS = ["#9fa19f","#ff8000","#81b9ef","#9141cb","#915121","#afa981","#91a119","#704170","#60a1b8","#e62829","#2980ef","#3fa129","#fac000","#ef4179","#3dcef3","#5060e1","#624d4e"];
+const SPRITES = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/";
+const sprite = (n, shiny, animated) => SPRITES + (animated ? "animated/" : "") + (shiny ? "shiny/" : "") + n + (animated ? ".gif" : ".png");
+const pad = n => "#" + String(n).padStart(3, "0");
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const norm = s => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const STAT_NAMES = ["PV", "Attaque", "Défense", "Vitesse", "Atq. Spé.", "Déf. Spé."];
+
+const state = { entries: [], byDex: new Map(), tab: "dex", gen: -1, own: "all", type: "", q: "", bq: "", sort: "date", bgame: "", source: null };
+
+// ---------- Bank data ----------
+
+function dexOf(e) {
+  const d = e.details;
+  if (d && d.nationalDex) return d.nationalDex;
+  const g = e.generation;
+  if (g === 1 || g === 2 || g === 4 || g === 5) return e.species;
+  return e.species <= 251 ? e.species : null; // generation 3 numbers Hoenn its own way
+}
+
+function setBank(list, source) {
+  state.entries = list.filter(e => e && !e.isEgg);
+  state.eggs = list.filter(e => e && e.isEgg).length;
+  state.byDex = new Map();
+  for (const e of state.entries) {
+    const n = dexOf(e);
+    if (!n || n > MAX) continue;
+    if (!state.byDex.has(n)) state.byDex.set(n, []);
+    state.byDex.get(n).push(e);
+  }
+  state.source = source;
+  const games = [...new Set(state.entries.map(e => e.sourceGame))].sort();
+  $("bgame").innerHTML = '<option value="">Tous les jeux</option>' + games.map(g => `<option>${esc(g)}</option>`).join("");
+  $("welcome").classList.add("hidden");
+  show(state.tab);
+}
+
+function parseBank(text) {
+  const json = JSON.parse(text);
+  if (Array.isArray(json)) return json;
+  if (json && Array.isArray(json.entries)) return json.entries;
+  throw new Error("Ce fichier n'est pas une banque Capsule.");
+}
+
+function toast(text, ms = 3200) {
+  const t = document.createElement("div");
+  t.className = "toast";
+  t.textContent = text;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), ms);
+}
+
+// ---------- Pokédex ----------
+
+function renderDex() {
+  const have = state.byDex.size;
+  const shinies = [...state.byDex.values()].filter(l => l.some(e => e.isShiny)).length;
+  $("ring").style.setProperty("--p", (have / MAX * 100).toFixed(1));
+  $("ringN").textContent = have;
+  $("heroSub").textContent = `${have} espèce${have > 1 ? "s" : ""} sur ${MAX} · ${state.entries.length} Pokémon dans la banque` +
+    (shinies ? ` · ${shinies} chromatique${shinies > 1 ? "s" : ""}` : "");
+
+  $("gens").innerHTML = [{ name: "Tous", from: 1, to: MAX }, ...GENS].map((g, i) => {
+    let n = 0;
+    for (let d = g.from; d <= g.to; d++) if (state.byDex.has(d)) n++;
+    const total = g.to - g.from + 1;
+    return `<button class="gen ${state.gen === i - 1 ? "on" : ""}" data-gen="${i - 1}"><b>${g.name}</b><span>${n} / ${total}</span>
+      <div class="bar"><i style="width:${(n / total * 100).toFixed(1)}%"></i></div></button>`;
+  }).join("");
+
+  const q = norm(state.q.trim());
+  const parts = [];
+  const ranges = state.gen < 0 ? GENS : [GENS[state.gen]];
+  for (const g of ranges) {
+    const cells = [];
+    for (let n = g.from; n <= g.to; n++) {
+      const [name, t1, t2] = DEX[n];
+      const list = state.byDex.get(n);
+      const shiny = list && list.some(e => e.isShiny);
+      if (state.own === "have" && !list) continue;
+      if (state.own === "miss" && list) continue;
+      if (state.own === "shiny" && !shiny) continue;
+      if (state.type !== "" && t1 != state.type && t2 != state.type) continue;
+      if (q && !norm(name).includes(q) && String(n) !== q.replace(/^#?0*/, "")) continue;
+      cells.push(`<button class="cell ${list ? "" : "missing"}" data-dex="${n}">
+        <span class="no">${pad(n)}</span>${list && list.length > 1 ? `<span class="cnt">×${list.length}</span>` : ""}
+        <img class="sprite" loading="lazy" alt="" src="${sprite(n, shiny)}">
+        ${shiny ? '<span class="star">★</span>' : ""}<div class="nm">${list ? esc(name) : (state.own === "miss" || q ? esc(name) : "???")}</div></button>`);
+    }
+    if (!cells.length) continue;
+    let n = 0;
+    for (let d = g.from; d <= g.to; d++) if (state.byDex.has(d)) n++;
+    parts.push(`<div class="section"><span>${g.name}</span><span>${n} / ${g.to - g.from + 1}</span></div><div class="grid">${cells.join("")}</div>`);
+  }
+  $("dexGrid").innerHTML = parts.join("") || '<div class="empty">Aucun Pokémon ne correspond.</div>';
+}
+
+function typeBadges(t1, t2) {
+  const list = t1 === t2 ? [t1] : [t1, t2];
+  return list.map(t => `<span class="type" style="background:${TYPE_COLORS[t]}">${esc(TYPES[t])}</span>`).join("");
+}
+
+function openSpecies(n) {
+  const [name, t1, t2, base] = DEX[n];
+  const list = state.byDex.get(n) || [];
+  let shiny = list.some(e => e.isShiny);
+  const total = base.reduce((a, b) => a + b, 0);
+  const order = [0, 1, 2, 4, 5, 3]; // HP, Atk, Def, SpA, SpD, Spe as the games show them
+  const labels = ["PV", "Attaque", "Défense", "Vitesse", "Atq. Spé.", "Déf. Spé."];
+  const html = () => `
+    <div class="grab"></div><button class="close" data-close>✕</button>
+    <div class="stage" style="--t1:${TYPE_COLORS[t1]}55">
+      <img class="sprite" alt="" src="${sprite(n, shiny, true)}" onerror="this.onerror=null;this.src='${sprite(n, shiny)}'">
+      <button class="pill toggle" data-shiny>${shiny ? "★ Chromatique" : "☆ Normal"}</button>
+    </div>
+    <div class="title"><div class="no">${pad(n)}</div><h3>${esc(name)}</h3><div class="types">${typeBadges(t1, t2)}</div></div>
+    <h4>Statistiques de base · ${total}</h4>
+    ${order.map(i => `<div class="stat"><span>${labels[i]}</span><b>${base[i]}</b><div class="bar"><i style="width:${Math.min(100, base[i] / 180 * 100)}%;background:${base[i] >= 100 ? "#5fd36a" : base[i] >= 70 ? "#f5c542" : "#ff8a5c"}"></i></div></div>`).join("")}
+    <h4>${list.length ? `Dans ta banque · ${list.length}` : "Pas encore dans ta banque"}</h4>
+    <div class="copies">${list.map(monCell).join("") || '<p class="note" style="margin:0">Attrape-le dans un de tes jeux, puis dépose-le dans la banque depuis l\'app.</p>'}</div>`;
+  openSheet(html());
+  $("sheet").onclick = ev => {
+    if (ev.target.closest("[data-shiny]")) { shiny = !shiny; $("sheet").innerHTML = html(); return; }
+    sheetClick(ev);
+  };
+}
+
+// ---------- Bank ----------
+
+function monCell(e) {
+  const n = dexOf(e);
+  const d = e.details || {};
+  const nick = e.nickname && norm(e.nickname) !== norm(e.speciesName) ? e.nickname : null;
+  const img = n && n <= MAX ? `<img class="sprite" loading="lazy" alt="" src="${sprite(n, e.isShiny)}">` : `<img alt="">`;
+  return `<button class="cell mon" data-id="${esc(e.id)}">${img}<div style="min-width:0">
+    <div class="nm">${esc(nick || e.speciesName)}${e.isShiny ? ' <span style="color:var(--gold)">★</span>' : ""}${d.gender ? ` <span style="color:var(--dim)">${esc(d.gender)}</span>` : ""}</div>
+    <div class="sub">${nick ? esc(e.speciesName) + " · " : ""}${d.level ? "Nv. " + d.level + " · " : ""}${esc(e.sourceGame)}</div>
+    <div class="sub">DO ${esc(e.trainerName)}${n ? " · " + pad(n) : ""}</div></div></button>`;
+}
+
+function renderBank() {
+  const q = norm(state.bq.trim());
+  let list = state.entries.filter(e => {
+    if (state.bgame && e.sourceGame !== state.bgame) return false;
+    if (!q) return true;
+    return [e.speciesName, e.nickname, e.sourceGame, e.trainerName, e.details?.nature, e.details?.ability].some(v => norm(v).includes(q));
+  });
+  const key = {
+    date: (a, b) => String(b.depositedAt).localeCompare(String(a.depositedAt)),
+    dex: (a, b) => (dexOf(a) || 9999) - (dexOf(b) || 9999),
+    level: (a, b) => (b.details?.level || 0) - (a.details?.level || 0),
+    name: (a, b) => norm(a.speciesName).localeCompare(norm(b.speciesName)),
+  }[state.sort];
+  list = list.slice().sort(key);
+  $("bankGrid").innerHTML = list.map(monCell).join("") ||
+    `<div class="empty">${state.entries.length ? "Aucun Pokémon ne correspond." : "Ta banque est vide pour l'instant."}</div>`;
+}
+
+function openMon(id) {
+  const e = state.entries.find(x => x.id === id);
+  if (!e) return;
+  const d = e.details || {};
+  const n = dexOf(e);
+  const sp = n && n <= MAX ? DEX[n] : null;
+  const gb = e.generation === 1 || e.generation === 2;
+  const labels = d.statLabels || STAT_NAMES;
+  const rows = labels.map((l, i) => {
+    const iv = d.ivs?.[i], ev = d.evs?.[i], st = d.stats?.[i];
+    const max = gb ? 15 : 31;
+    return `<tr><td>${esc(l)}</td><td>${st ?? "–"}</td><td class="${iv === max ? "perfect" : ""}">${iv ?? "–"}</td><td>${ev ?? "–"}</td></tr>`;
+  }).join("");
+  const kv = [
+    ["Niveau", d.level], ["Nature", d.nature], ["Talent", d.ability], ["Objet", d.heldItem],
+    ["Dresseur", e.trainerName + (d.trainerID != null ? ` · ID ${String(d.trainerID).padStart(5, "0")}` : "")],
+    ["Rencontre", [d.metLocation, d.metLevel === 0 ? "œuf" : d.metLevel ? "Nv. " + d.metLevel : null, d.metDate].filter(Boolean).join(" · ")],
+    ["Ball", d.ball], ["Jeu d'origine", d.originGame], ["Déposé depuis", e.sourceGame],
+    ["Dans la banque depuis", e.depositedAt ? new Date(e.depositedAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) : null],
+    ["Puissance cachée", d.hiddenPower], ["Pokérus", d.pokerus], ["Rubans", d.ribbons || null],
+  ].filter(([, v]) => v !== undefined && v !== null && v !== "");
+  const nick = e.nickname && norm(e.nickname) !== norm(e.speciesName) ? e.nickname : null;
+  openSheet(`
+    <div class="grab"></div><button class="close" data-close>✕</button>
+    <div class="stage" style="--t1:${sp ? TYPE_COLORS[sp[1]] : "#555"}55">
+      ${n && n <= MAX ? `<img class="sprite" alt="" src="${sprite(n, e.isShiny, true)}" onerror="this.onerror=null;this.src='${sprite(n, e.isShiny)}'">` : ""}
+    </div>
+    <div class="title"><div class="no">${n ? pad(n) : ""}${e.isShiny ? ' · <span style="color:var(--gold)">★ Chromatique</span>' : ""}</div>
+      <h3>${esc(nick || e.speciesName)} ${d.gender ? `<span style="color:var(--dim);font-size:20px">${esc(d.gender)}</span>` : ""}</h3>
+      ${nick ? `<div class="no" style="margin:-6px 0 8px">${esc(e.speciesName)}</div>` : ""}
+      <div class="types">${sp ? typeBadges(sp[1], sp[2]) : ""}</div></div>
+    <h4>Fiche</h4>
+    <div class="kv">${kv.map(([k, v]) => `<span>${esc(k)}</span><div>${esc(v)}</div>`).join("")}</div>
+    ${d.moves?.length ? `<h4>Attaques</h4><div class="moves">${d.moves.map(m => `<div>${esc(m.name)}<small>${m.pp} PP</small></div>`).join("")}</div>` : ""}
+    ${d.ivs ? `<h4>Statistiques</h4><table class="ivs"><tr><th></th><th>Stat</th><th>${gb ? "DV" : "IV"}</th><th>${gb ? "Exp. stat" : "EV"}</th></tr>${rows}</table>` : ""}
+    ${n && n <= MAX ? `<h4>Pokédex</h4><div class="copies"><button class="cell mon" data-dex="${n}"><img class="sprite" alt="" src="${sprite(n)}"><div><div class="nm">Voir ${esc(DEX[n][0])} dans le Pokédex</div></div></button></div>` : ""}
+  `);
+  $("sheet").onclick = sheetClick;
+}
+
+// ---------- Stats ----------
+
+function renderStats() {
+  const es = state.entries;
+  const shinies = es.filter(e => e.isShiny);
+  const levels = es.map(e => e.details?.level).filter(Boolean);
+  const byGame = {}, byType = {};
+  for (const e of es) {
+    byGame[e.sourceGame] = (byGame[e.sourceGame] || 0) + 1;
+    const n = dexOf(e);
+    if (n && n <= MAX) {
+      const [, t1, t2] = DEX[n];
+      byType[t1] = (byType[t1] || 0) + 1;
+      if (t2 !== t1) byType[t2] = (byType[t2] || 0) + 1;
+    }
+  }
+  const bars = (obj, label, color) => {
+    const list = Object.entries(obj).sort((a, b) => b[1] - a[1]);
+    const top = list[0]?.[1] || 1;
+    return list.map(([k, v]) => `<div class="row"><span>${esc(label(k))}</span><div class="bar"><i style="width:${v / top * 100}%;background:${color(k)}"></i></div><b>${v}</b></div>`).join("");
+  };
+  const counts = [...state.byDex.entries()].sort((a, b) => b[1].length - a[1].length).slice(0, 6);
+  $("stats").innerHTML = `
+    <div class="cards">
+      <div class="card"><b>${es.length}</b><span>Pokémon dans la banque</span></div>
+      <div class="card"><b>${state.byDex.size}</b><span>espèces sur ${MAX}</span></div>
+      <div class="card"><b style="color:var(--gold)">${shinies.length}</b><span>chromatiques</span></div>
+      <div class="card"><b>${levels.length ? Math.max(...levels) : "–"}</b><span>niveau le plus haut</span></div>
+    </div>
+    ${shinies.length ? `<div class="section"><span>Chromatiques</span></div><div class="grid bankgrid">${shinies.map(monCell).join("")}</div>` : ""}
+    <div class="section"><span>Par jeu</span></div><div class="card rows">${bars(byGame, k => k, () => "var(--red2)") || '<span>Rien pour l\'instant.</span>'}</div>
+    <div class="section"><span>Par type</span></div><div class="card rows">${bars(byType, k => TYPES[k], k => TYPE_COLORS[k])}</div>
+    ${counts.length ? `<div class="section"><span>Les plus nombreux</span></div><div class="grid">${counts.map(([n, l]) => `<button class="cell" data-dex="${n}"><span class="cnt">×${l.length}</span><img class="sprite" loading="lazy" alt="" src="${sprite(n)}"><div class="nm">${esc(DEX[n][0])}</div></button>`).join("")}</div>` : ""}`;
+}
+
+// ---------- Sheet & navigation ----------
+
+function openSheet(html) {
+  $("sheet").innerHTML = html;
+  $("sheet").scrollTop = 0;
+  $("sheet").classList.add("on");
+  $("veil").classList.add("on");
+}
+function closeSheet() {
+  $("sheet").classList.remove("on");
+  $("veil").classList.remove("on");
+}
+function sheetClick(ev) {
+  if (ev.target.closest("[data-close]")) return closeSheet();
+  const dex = ev.target.closest("[data-dex]");
+  if (dex) return openSpecies(+dex.dataset.dex);
+  const mon = ev.target.closest("[data-id]");
+  if (mon) return openMon(mon.dataset.id);
+}
+$("veil").onclick = closeSheet;
+addEventListener("keydown", e => { if (e.key === "Escape") closeSheet(); });
+
+function show(tab) {
+  state.tab = tab;
+  for (const b of $("tabs").children) b.classList.toggle("on", b.dataset.tab === tab);
+  const ready = state.source !== null;
+  for (const id of ["dex", "bank", "stats"]) $(id).classList.toggle("hidden", !ready || id !== tab);
+  if (!ready) return;
+  if (tab === "dex") renderDex();
+  if (tab === "bank") renderBank();
+  if (tab === "stats") renderStats();
+}
+
+$("tabs").onclick = e => { const b = e.target.closest("button"); if (b) { show(b.dataset.tab); scrollTo({ top: 0 }); } };
+$("gens").onclick = e => { const b = e.target.closest("[data-gen]"); if (b) { state.gen = +b.dataset.gen; renderDex(); } };
+$("own").onclick = e => {
+  const b = e.target.closest("button"); if (!b) return;
+  state.own = b.dataset.v;
+  for (const x of $("own").children) x.classList.toggle("on", x === b);
+  renderDex();
+};
+$("type").innerHTML += TYPES.map((t, i) => `<option value="${i}">${esc(t)}</option>`).join("");
+$("type").onchange = e => { state.type = e.target.value; renderDex(); };
+$("q").oninput = e => { state.q = e.target.value; renderDex(); };
+$("bq").oninput = e => { state.bq = e.target.value; renderBank(); };
+$("sort").onchange = e => { state.sort = e.target.value; renderBank(); };
+$("bgame").onchange = e => { state.bgame = e.target.value; renderBank(); };
+for (const id of ["dexGrid", "bankGrid", "stats"]) $(id).onclick = sheetClick;
+
+// ---------- Opening a file ----------
+
+$("openfile").onclick = () => $("file").click();
+$("file").onchange = async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  try { setBank(parseBank(await f.text()), "file"); renderAccount(); toast(`${state.entries.length} Pokémon chargés depuis le fichier.`); }
+  catch (err) { toast(err.message); }
+};
+
+// ---------- Account & cloud ----------
+
+const cfg = window.CAPSULE_FIREBASE || {};
+let fb = null;
+
+async function firebase() {
+  if (fb) return fb;
+  if (!cfg.apiKey) throw new Error("La connexion n'est pas encore configurée sur cette page.");
+  const v = "10.12.2";
+  const [app, auth, store] = await Promise.all([
+    import(`https://www.gstatic.com/firebasejs/${v}/firebase-app.js`),
+    import(`https://www.gstatic.com/firebasejs/${v}/firebase-auth.js`),
+    import(`https://www.gstatic.com/firebasejs/${v}/firebase-firestore.js`),
+  ]);
+  const a = app.initializeApp(cfg);
+  fb = { auth, store, authApp: auth.getAuth(a), db: store.getFirestore(a) };
+  return fb;
+}
+
+function renderAccount(user) {
+  const el = $("account");
+  if (user) {
+    el.innerHTML = `<button class="pill" id="refresh" title="Recharger">↻</button>` +
+      (user.photoURL ? `<img class="avatar" src="${esc(user.photoURL)}" alt="" referrerpolicy="no-referrer">` : "") +
+      `<button class="pill" id="signout">Quitter</button>`;
+    $("refresh").onclick = () => loadCloud(user, true);
+    $("signout").onclick = async () => {
+      await fb.auth.signOut(fb.authApp);
+      try { localStorage.removeItem("capsule.bank"); } catch {}
+      location.reload();
+    };
+  } else if (state.source === "file") {
+    el.innerHTML = `<button class="pill" id="close">Fermer</button>`;
+    $("close").onclick = () => location.reload();
+  } else {
+    el.innerHTML = "";
+  }
+}
+
+async function loadCloud(user, manual) {
+  const { store, db } = fb;
+  const files = await store.getDocs(store.collection(db, "users", user.uid, "files"));
+  const doc = files.docs.find(d => d.data().name === "#banque");
+  if (!doc) {
+    setBank([], "cloud");
+    toast("Aucune banque dans le cloud : active la sauvegarde cloud dans l'app.", 5000);
+    return;
+  }
+  const { version, chunks, updatedAt } = doc.data();
+  const pieces = await Promise.all(Array.from({ length: chunks }, (_, i) =>
+    store.getDoc(store.doc(db, "users", user.uid, "chunks", `${doc.id}_${version}_${i}`))));
+  const b64 = pieces.map(p => p.data()?.data || "").join("");
+  const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const text = new TextDecoder().decode(bytes);
+  setBank(parseBank(text), "cloud");
+  try { localStorage.setItem("capsule.bank", text); } catch {}
+  if (manual) {
+    const when = updatedAt?.toDate ? updatedAt.toDate().toLocaleString("fr-FR", { dateStyle: "medium", timeStyle: "short" }) : "";
+    toast(`Banque à jour${when ? " · envoyée le " + when : ""}.`);
+  }
+}
+
+$("signin").onclick = async () => {
+  try {
+    const { auth, authApp } = await firebase();
+    const provider = new auth.GoogleAuthProvider();
+    try { await auth.signInWithPopup(authApp, provider); }
+    catch (err) {
+      if (err.code === "auth/popup-blocked") await auth.signInWithRedirect(authApp, provider);
+      else throw err;
+    }
+  } catch (err) {
+    if (err.code !== "auth/popup-closed-by-user" && err.code !== "auth/cancelled-popup-request") toast(err.message, 5000);
+  }
+};
+
+async function start() {
+  const params = new URLSearchParams(location.search);
+  if (params.has("sample")) { // local preview: ?sample=file.json
+    setBank(parseBank(await (await fetch(params.get("sample"))).text()), "file");
+    renderAccount();
+    return;
+  }
+  try {
+    const cached = localStorage.getItem("capsule.bank");
+    if (cached) setBank(parseBank(cached), "cache");
+  } catch {}
+  if (!cfg.apiKey) { if (state.source === null) $("welcome").classList.remove("hidden"); return; }
+  try {
+    const { auth, authApp } = await firebase();
+    auth.onAuthStateChanged(authApp, async user => {
+      renderAccount(user);
+      if (!user) {
+        try { localStorage.removeItem("capsule.bank"); } catch {}
+        state.source = null;
+        show(state.tab);
+        $("welcome").classList.remove("hidden");
+        return;
+      }
+      try { await loadCloud(user, false); }
+      catch (err) { toast("Le cloud n'a pas répondu : " + err.message, 5000); }
+    });
+  } catch (err) {
+    if (state.source === null) $("welcome").classList.remove("hidden");
+    toast(err.message, 5000);
+  }
+}
+start();
+</script>
+</body>
+</html>
