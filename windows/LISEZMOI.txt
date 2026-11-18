@@ -1,0 +1,38 @@
+CAPSULE POUR WINDOWS
+====================
+
+Tes jeux Pokémon sur PC, avec les mêmes sauvegardes que sur ton iPhone.
+
+1. Mets tes jeux (.gba, .gb, .gbc, .nds, décompressés) dans le dossier "roms".
+   Garde exactement les mêmes noms de fichiers que dans l'app iPhone :
+   c'est le nom du jeu qui relie les sauvegardes entre le PC et l'iPhone.
+2. Lance Capsule.exe (pas pokedaisy.exe : c'est Capsule qui synchronise).
+   - La première fois, une page Google s'ouvre : connecte-toi avec le même
+     compte que dans l'app iPhone.
+   - Capsule récupère tes sauvegardes du cloud, puis ouvre la liste des jeux.
+3. Quand tu fermes le jeu, Capsule renvoie tes sauvegardes dans le cloud.
+   Sur l'iPhone, elles arrivent à la prochaine ouverture de l'app.
+
+Commandes au clavier (par défaut)
+  Flèches : croix directionnelle    Z : A    X : B
+  Q / E : L / R    Tab / F : X / Y (DS)    1 / 2 : L2 / R2
+  Entrée : Start    Retour arrière : Select
+  Espace : avance rapide    R : retour en arrière
+  F2 / F4 : sauvegarde / chargement d'état
+  Échap : le menu (sauvegardes d'état, réglages, touches)
+  Une manette (Xbox, PlayStation, Switch Pro) marche aussi.
+
+Bon à savoir
+  - Windows peut afficher "Windows a protégé votre ordinateur" : le programme
+    n'est pas signé. Clique sur "Informations complémentaires" puis
+    "Exécuter quand même".
+  - Les sauvegardes sont dans "saves". Si une sauvegarde a changé à la fois
+    sur le PC et sur l'iPhone, la plus récente est gardée et l'autre est mise
+    de côté dans "backups\cloud".
+  - Changer de compte : lance "Capsule.exe --deconnexion" depuis un terminal.
+  - Jouer sans internet : "Capsule.exe --hors-ligne".
+  - La banque, le Pokédex et les échanges sont sur la page web :
+    https://louislovni.github.io/capsule
+
+Capsule est un logiciel libre (GPL 3), construit sur PokeDaisy, mGBA et
+DSperate : voir le dossier "licenses". Aucun jeu n'est fourni.

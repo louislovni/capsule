@@ -15,6 +15,16 @@ set(POKEDAISY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../Vendor/pokedaisy" CACHE PATH "
 if(NOT EXISTS "${POKEDAISY_DIR}/libretro/CMakeLists.txt")
 	message(FATAL_ERROR "PokeDaisy not found in ${POKEDAISY_DIR}. Run scripts/build_core.sh, which fetches it.")
 endif()
+if(WIN32)
+	# Windows: the few POSIX calls PokeDaisy's sources make (win/compat.h), and libraries with no "lib" prefix.
+	add_compile_options("$<$<COMPILE_LANGUAGE:C,CXX>:SHELL:-include ${CMAKE_CURRENT_SOURCE_DIR}/win/compat.h>")
+	set(CMAKE_SHARED_LIBRARY_PREFIX "")
+	# EXPAND's crash guard is POSIX signals; Windows does without it.
+	add_compile_definitions(PK_WIDE_NO_GUARD)
+	include_directories(BEFORE SYSTEM "${CMAKE_CURRENT_SOURCE_DIR}/win/include")
+	# Self-contained DLLs: the C/C++ runtimes and threads linked in; files open in binary mode.
+	set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -static-libgcc -static-libstdc++ -Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive,-Bdynamic")
+endif()
 add_subdirectory("${POKEDAISY_DIR}/libretro" pokedaisy EXCLUDE_FROM_ALL)
 set(DSPERATE_JIT OFF CACHE BOOL "" FORCE)
 # No EGL / OpenGL ES on iOS: the DS core draws its 3D in software.

@@ -17,6 +17,45 @@ jobs:
       - name: Build the C core and run its tests
         run: sh scripts/build_core.sh host
 
+  windows:
+    permissions:
+      contents: write
+    name: Windows (MinGW)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: false
+      - name: Install MinGW-w64
+        run: sudo apt-get update -q && sudo apt-get install -y -q mingw-w64
+      - name: Build Capsule for Windows
+        # The Google sign-in of Capsule.exe needs an OAuth client of type "Desktop app" in the
+        # Firebase project's Google Cloud console; without these secrets it plays offline only.
+        env:
+          GOOGLE_DESKTOP_CLIENT_ID: ${{ secrets.GOOGLE_DESKTOP_CLIENT_ID }}
+          GOOGLE_DESKTOP_CLIENT_SECRET: ${{ secrets.GOOGLE_DESKTOP_CLIENT_SECRET }}
+          CAPSULE_VERSION: 0.1.${{ github.run_number }}
+        run: sh scripts/build_core.sh windows
+      - name: Upload the build
+        uses: actions/upload-artifact@v4
+        with:
+          name: Capsule-Windows
+          path: build/Capsule-Windows.zip
+          if-no-files-found: error
+      - name: Publish it (release "windows")
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN: ${{ github.run_number }}
+        run: |
+          gh release view windows >/dev/null 2>&1 || \
+            gh release create windows --title "Capsule pour Windows" --latest=false \
+              --notes "Télécharge Capsule-Windows.zip, décompresse-le et lance Capsule.exe (voir LISEZMOI.txt)."
+          gh release edit windows --title "Capsule 0.1.$RUN pour Windows"
+          gh release upload windows build/Capsule-Windows.zip --clobber
+
   ipa:
     permissions:
       contents: write

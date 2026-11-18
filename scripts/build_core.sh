@@ -4,9 +4,12 @@
 #   scripts/build_core.sh ios    -> build/core-ios/libcapsulecore.a
 #                                   build/frameworks/{pokedaisy_gbc,pokedaisy_ds}.framework
 #   scripts/build_core.sh host   -> build/core-host, then runs the tests (any Unix)
+#   scripts/build_core.sh windows -> build/Capsule-Windows.zip: PokeDaisy's desktop frontend, the two cores,
+#                                   SDL2 and Capsule.exe (windows/launcher: sign-in and cloud saves).
+#                                   Needs mingw-w64 and Go; GOOGLE_DESKTOP_CLIENT_ID / _SECRET for the sign-in.
 set -eu
 
-POKEDAISY_COMMIT=07f864be39fbba8f8ec950d60bce56328e077258   # louislovni/pokedaisy, branch capsule
+POKEDAISY_COMMIT=649114ec778c9842f5ab6aa55a1b6610e33bcd11   # louislovni/pokedaisy, branch capsule
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TARGET="${1:-host}"
 SRC="$ROOT/Vendor/pokedaisy"
@@ -33,6 +36,10 @@ git -C "$SRC/third_party/dsperate-lr/DSperate" checkout -q -- \
 # 1. DSperate's data files are linked in with ELF assembly; Apple's needs Mach-O.
 if [ "$TARGET" = ios ]; then
 	python3 "$ROOT/scripts/patch_dsperate_macho.py" "$SRC/third_party/dsperate-lr/DSperate"
+fi
+# ... and MinGW's, PE/COFF.
+if [ "$TARGET" = windows ]; then
+	python3 "$ROOT/scripts/patch_dsperate_coff.py" "$SRC/third_party/dsperate-lr/DSperate"
 fi
 # 2. mGBA's CMake forces a macOS deployment target on every Apple platform, wrong for iOS.
 perl -pi -e 's/set\(CMAKE_OSX_DEPLOYMENT_TARGET "10.6"\)/# deployment target left to the caller/' \
@@ -86,8 +93,51 @@ host)
 	cmake --build "$OUT" -j 4
 	(cd "$OUT" && ctest --output-on-failure)
 	;;
+windows)
+	SDL_VERSION=2.30.9
+	SDL_SHA256=b188d165dc4a0372042bff3d0c18e9bb90772581e92a7b8b47b521b47714f75c
+	SDL_DIR="$ROOT/build/sdl2-mingw"
+	if [ ! -d "$SDL_DIR/SDL2-$SDL_VERSION" ]; then
+		mkdir -p "$SDL_DIR"
+		curl -sSL -o "$SDL_DIR/sdl.tgz" \
+			"https://github.com/libsdl-org/SDL/releases/download/release-$SDL_VERSION/SDL2-devel-$SDL_VERSION-mingw.tar.gz"
+		echo "$SDL_SHA256  $SDL_DIR/sdl.tgz" | sha256sum -c -
+		tar xzf "$SDL_DIR/sdl.tgz" -C "$SDL_DIR"
+	fi
+	SDL_ROOT="$SDL_DIR/SDL2-$SDL_VERSION/x86_64-w64-mingw32"
+	cmake -S "$ROOT/Core" -B "$OUT" -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="$ROOT/Core/win/mingw.cmake"
+	# shellcheck disable=SC2086
+	cmake --build "$OUT" --target $CORES -j 4
+	cmake -S "$ROOT/windows" -B "$ROOT/build/win-frontend" -DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_TOOLCHAIN_FILE="$ROOT/Core/win/mingw.cmake" -DPOKEDAISY_DIR="$SRC" -DSDL2_ROOT="$SDL_ROOT"
+	cmake --build "$ROOT/build/win-frontend" -j 4
+	VERSION="${CAPSULE_VERSION:-dev}"
+	(cd "$ROOT/windows/launcher" && GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath \
+		-ldflags "-s -w -X main.version=$VERSION -X main.googleClientID=${GOOGLE_DESKTOP_CLIENT_ID:-} -X main.googleClientSecret=${GOOGLE_DESKTOP_CLIENT_SECRET:-}" \
+		-o "$ROOT/build/win-launcher/Capsule.exe" .)
+
+	PKG="$ROOT/build/win-package/Capsule"
+	rm -rf "$ROOT/build/win-package" && mkdir -p "$PKG/roms" "$PKG/licenses"
+	cp "$ROOT/build/win-launcher/Capsule.exe" "$ROOT/build/win-frontend/pokedaisy.exe" "$SDL_ROOT/bin/SDL2.dll" "$PKG/"
+	for core in $CORES; do cp "$(find "$OUT" -name "$core.dll" | head -n 1)" "$PKG/"; done
+	cp "$ROOT/windows/LISEZMOI.txt" "$PKG/LISEZMOI.txt"
+	cp "$ROOT/windows/roms-LISEZMOI.txt" "$PKG/roms/LISEZMOI.txt"
+	cp "$ROOT/LICENSE" "$PKG/licenses/Capsule-GPL-3.0.txt"
+	cp "$ROOT/NOTICE" "$PKG/licenses/Capsule-NOTICE.txt"
+	cp "$SRC/LICENSE" "$PKG/licenses/PokeDaisy-LICENSE.txt"
+	cp "$SRC/NOTICE" "$PKG/licenses/PokeDaisy-NOTICE.txt"
+	cp "$SRC/third_party/mgba/LICENSE" "$PKG/licenses/mGBA-MPL-2.0.txt"
+	cp "$SDL_DIR/SDL2-$SDL_VERSION/LICENSE.txt" "$PKG/licenses/SDL2-zlib.txt"
+	(cd "$SRC/third_party/dsperate-lr" && find . -type f \( -iname 'license*' -o -iname 'copying*' -o -iname 'notice*' \) \
+		-not -path './.git/*' | while read -r f; do mkdir -p "$PKG/licenses/dsperate-lr/$(dirname "$f")"; cp "$f" "$PKG/licenses/dsperate-lr/$f"; done)
+	printf 'Capsule %s pour Windows\nSource : https://github.com/louislovni/capsule\nPokeDaisy : https://github.com/louislovni/pokedaisy (%s)\n' \
+		"$VERSION" "$POKEDAISY_COMMIT" > "$PKG/SOURCE.txt"
+	rm -f "$ROOT/build/Capsule-Windows.zip"
+	(cd "$ROOT/build/win-package" && zip -qr9 "$ROOT/build/Capsule-Windows.zip" Capsule)
+	ls -l "$ROOT/build/Capsule-Windows.zip"
+	;;
 *)
-	echo "usage: $0 ios|host" >&2
+	echo "usage: $0 ios|host|windows" >&2
 	exit 2
 	;;
 esac
