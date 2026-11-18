@@ -299,7 +299,10 @@ struct AnimatedSprite: UIViewRepresentable {
         }
         view.image = nil
         Task {
-            let image = await Self.load(url) ?? Self.loadStill(PokedexStore.sprite(dex, shiny: shiny))
+            var image = await Self.load(url)
+            if image == nil {
+                image = await Self.loadStill(PokedexStore.sprite(dex, shiny: shiny))
+            }
             guard view.accessibilityIdentifier == url.absoluteString, let image = image else { return }
             Self.cache.setObject(image, forKey: url as NSURL)
             view.image = image
