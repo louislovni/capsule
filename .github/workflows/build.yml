@@ -74,6 +74,9 @@ jobs:
       - name: Build Capsule for Android
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          # The same Google "Desktop app" client as Windows: the cloud saves' sign-in.
+          GOOGLE_DESKTOP_CLIENT_ID: ${{ secrets.GOOGLE_DESKTOP_CLIENT_ID }}
+          GOOGLE_DESKTOP_CLIENT_SECRET: ${{ secrets.GOOGLE_DESKTOP_CLIENT_SECRET }}
         run: sh scripts/build_android.sh "1.6.0.${{ github.run_number }}" "$((1000 + ${{ github.run_number }}))"
       - name: Upload the APK
         uses: actions/upload-artifact@v4
