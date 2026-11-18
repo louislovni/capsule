@@ -77,14 +77,14 @@ jobs:
           # The same Google "Desktop app" client as Windows: the cloud saves' sign-in.
           GOOGLE_DESKTOP_CLIENT_ID: ${{ secrets.GOOGLE_DESKTOP_CLIENT_ID }}
           GOOGLE_DESKTOP_CLIENT_SECRET: ${{ secrets.GOOGLE_DESKTOP_CLIENT_SECRET }}
-        run: sh scripts/build_android.sh "1.6.0.${{ github.run_number }}" "$((1000 + ${{ github.run_number }}))"
+        run: sh scripts/build_android.sh "1.6.1.${{ github.run_number }}" "$((1000 + ${{ github.run_number }}))"
       - name: Upload the APK
         uses: actions/upload-artifact@v4
         with:
           name: Capsule-apk
           path: build/Capsule.apk
           if-no-files-found: error
-      - name: Publish it (release v1.6.0.N, which the app's updater finds)
+      - name: Publish it (release v1.6.1.N, which the app's updater finds)
         # Only builds signed with Capsule's key: a debug-signed APK can't update an install.
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && env.SIGNED == 'true'
         env:
@@ -92,9 +92,9 @@ jobs:
           RUN: ${{ github.run_number }}
         run: |
           set -e
-          gh release create "v1.6.0.$RUN" build/Capsule.apk --title "Capsule 1.6.0.$RUN pour Android" --latest=false \
+          gh release create "v1.6.1.$RUN" build/Capsule.apk --title "Capsule 1.6.1.$RUN pour Android" --latest=false \
             --notes "$(git log -1 --pretty=%s)"
-          gh release list --limit 100 --json tagName -q '.[].tagName' | grep '^v1\.6\.0\.' | sort -t. -k4 -n -r | tail -n +4 | \
+          gh release list --limit 100 --json tagName -q '.[].tagName' | grep '^v1\.[0-9]*\.[0-9]*\.[0-9]*$' | sort -t. -k4 -n -r | tail -n +4 | \
             while read old; do gh release delete "$old" --yes --cleanup-tag; done
 
   ipa:

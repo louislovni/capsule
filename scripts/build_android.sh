@@ -9,7 +9,7 @@ set -eu
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 POKEDAISY_COMMIT="$(sed -n 's/^POKEDAISY_COMMIT=\([0-9a-f]*\).*/\1/p' "$ROOT/scripts/build_core.sh")"
-VERSION="${1:-1.6.0.0}"
+VERSION="${1:-1.6.1.0}"
 CODE="${2:-1000}"
 SRC="$ROOT/Vendor/pokedaisy-android"
 
