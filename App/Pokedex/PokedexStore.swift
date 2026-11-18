@@ -141,6 +141,14 @@ final class PokedexStore: ObservableObject {
 
     // MARK: - Names and data (pkcore's tables)
 
+    /// "Pokemon - Version Emeraude (FR)" → "Emeraude".
+    static func gameTitle(_ name: String) -> String {
+        var text = name.replacingOccurrences(of: #"\s*[\(\[][^\)\]]*[\)\]]"#, with: "", options: .regularExpression)
+        text = text.replacingOccurrences(of: #"^[Pp]ok[eé]mon\s*[-:–]?\s*([Vv]ersion\s+)?"#, with: "", options: .regularExpression)
+        text = text.trimmingCharacters(in: .whitespaces)
+        return text.isEmpty ? name : text
+    }
+
     static func name(_ dex: Int) -> String {
         pk_nds_species_name(UInt32(dex)).map { String(cString: $0) } ?? "n°\(dex)"
     }

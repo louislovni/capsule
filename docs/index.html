@@ -95,6 +95,31 @@ select { background: var(--panel); border: 1px solid var(--line); border-radius:
 .cell .cnt { position: absolute; top: 5px; right: 7px; font-size: 11px; background: var(--panel2); border-radius: 8px; padding: 1px 6px; color: var(--dim); }
 .cell.missing img { filter: brightness(0) invert(.18); opacity: .7; }
 .cell.missing .nm { color: #5c5c68; }
+.cell.seen img { opacity: .45; }
+.cell.seen .nm { color: var(--dim); }
+.facts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.facts div { background: var(--panel2); border-radius: 10px; padding: 9px 11px; }
+.facts span { display: block; font-size: 12px; color: var(--dim); }
+.facts b { font-size: 16px; }
+.abil { display: inline-block; background: var(--panel2); border-radius: 999px; padding: 5px 11px; margin: 0 6px 6px 0; font-size: 14px; }
+.abil small { color: var(--dim); }
+.evo { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.evo .row { display: flex; gap: 8px; overflow-x: auto; max-width: 100%; padding-bottom: 2px; justify-content: center; }
+.evo .arrow { color: var(--dim); }
+.evo button { flex: none; width: 118px; background: var(--panel2); border: 1px solid transparent; border-radius: 12px; padding: 6px 4px 8px; }
+.evo button.on { border-color: var(--red2); background: #2a1719; }
+.evo img { width: 56px; height: 56px; display: block; margin: 0 auto; }
+.evo b { display: block; font-size: 13px; }
+.evo small { display: block; font-size: 11px; color: var(--dim); line-height: 1.3; }
+details.ver { background: var(--panel2); border-radius: 12px; padding: 10px 12px; margin-bottom: 6px; }
+details.ver summary { cursor: pointer; font-weight: 700; list-style: none; display: flex; align-items: center; gap: 8px; }
+details.ver summary::after { content: "›"; margin-left: auto; color: var(--dim); transition: transform .15s; }
+details.ver[open] summary::after { transform: rotate(90deg); }
+.mine { font-size: 11px; background: var(--red); color: #fff; border-radius: 999px; padding: 2px 7px; }
+.place { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; padding: 6px 0; border-top: 1px solid var(--line); }
+.place:first-of-type { border-top: 0; margin-top: 6px; }
+.place small { display: block; color: var(--dim); font-size: 12px; }
+.place em { font-style: normal; color: var(--dim); font-size: 12px; white-space: nowrap; }
 @media (max-width: 520px) {
   .grid { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 7px; }
   .cell img { width: 72px; height: 72px; }
@@ -343,8 +368,41 @@ function toast(text, ms = 3200) {
 
 // Caught: in the bank, or in a PC box of a game (the app sends that list: users/UID/meta/pokedex).
 const gameRec = n => state.inGames.dex[n];
-const owned = n => state.byDex.has(n) || !!gameRec(n);
+const owned = n => state.byDex.has(n) || !!gameRec(n)?.g || !!gameRec(n)?.d;
+const seenOnly = n => !owned(n) && !!gameRec(n)?.v;
 const shinyOf = n => (state.byDex.get(n) || []).some(e => e.isShiny) || !!gameRec(n)?.s;
+// "Pokemon - Version Emeraude (FR)" -> "Emeraude"
+const prettyGame = t => t.replace(/\s*[\(\[][^\)\]]*[\)\]]/g, "").replace(/^pok[eé]mon\s*[-:–]?\s*(version\s+)?/i, "").trim() || t;
+const gameName = i => prettyGame(state.inGames.games[i] || "?");
+
+// Species facts (tools/gen_pokedex_data.py, from PokeAPI), loaded the first time a sheet opens.
+let INFO = null;
+const infoReady = fetch("pokedex-data.json").then(r => r.json()).then(j => { INFO = j; }).catch(() => {});
+const wordsOf = t => norm(t).split(/[^a-z0-9]+/).filter(w => w && w !== "pokemon" && w !== "version");
+function versionsOfGame(name) { // "Pokemon - Version Noire 2 (France)" -> the Noir 2 version id
+  if (!INFO) return [];
+  const words = wordsOf(name), numbered = words.some(w => /^\d+$/.test(w));
+  return Object.entries(INFO.versions).filter(([, v]) => {
+    const want = wordsOf(v);
+    if (want.some(w => /^\d+$/.test(w)) !== numbered) return false;
+    return want.every(w => words.some(x => x.startsWith(w)));
+  }).map(([id]) => +id);
+}
+function family(n) {
+  const all = INFO?.species;
+  if (!all) return [];
+  const chain = all[n - 1].chain;
+  const members = all.map((x, i) => ({ ...x, dex: i + 1 })).filter(x => x.chain === chain);
+  if (members.length < 2) return [];
+  const stages = [members.filter(x => !x.pre || all[x.pre - 1].chain !== chain)];
+  for (;;) {
+    const ids = new Set(stages[stages.length - 1].map(x => x.dex));
+    const next = members.filter(x => ids.has(x.pre));
+    if (!next.length) break;
+    stages.push(next);
+  }
+  return stages;
+}
 const ownedCount = (from = 1, to = MAX) => { let c = 0; for (let d = from; d <= to; d++) if (owned(d)) c++; return c; };
 
 function renderDex() {
@@ -372,16 +430,16 @@ function renderDex() {
     for (let n = g.from; n <= g.to; n++) {
       const [name, t1, t2] = DEX[n];
       const list = state.byDex.get(n);
-      const have = owned(n), shiny = shinyOf(n), onlyGames = have && !list;
+      const have = owned(n), seen = seenOnly(n), shiny = have && shinyOf(n), onlyGames = have && !list;
       if (state.own === "have" && !have) continue;
       if (state.own === "miss" && have) continue;
       if (state.own === "shiny" && !shiny) continue;
       if (state.type !== "" && t1 != state.type && t2 != state.type) continue;
       if (q && !norm(name).includes(q) && String(n) !== q.replace(/^#?0*/, "")) continue;
-      cells.push(`<button class="cell ${have ? "" : "missing"}" data-dex="${n}">
-        <span class="no">${pad(n)}</span>${list && list.length > 1 ? `<span class="cnt">×${list.length}</span>` : onlyGames ? '<span class="cnt" title="Dans tes jeux">🎮</span>' : ""}
+      cells.push(`<button class="cell ${have ? "" : seen ? "seen" : "missing"}" data-dex="${n}">
+        <span class="no">${pad(n)}</span>${list && list.length > 1 ? `<span class="cnt">×${list.length}</span>` : onlyGames ? '<span class="cnt" title="Dans tes jeux">🎮</span>' : seen ? '<span class="cnt" title="Vu">👁</span>' : ""}
         <img class="sprite" loading="lazy" alt="" src="${sprite(n, shiny)}">
-        ${shiny ? '<span class="star">★</span>' : ""}<div class="nm">${have ? esc(name) : (state.own === "miss" || q ? esc(name) : "???")}</div></button>`);
+        ${shiny ? '<span class="star">★</span>' : ""}<div class="nm">${have || seen ? esc(name) : (state.own === "miss" || q ? esc(name) : "???")}</div></button>`);
     }
     if (!cells.length) continue;
     const n = ownedCount(g.from, g.to);
@@ -395,30 +453,54 @@ function typeBadges(t1, t2) {
   return list.map(t => `<span class="type" style="background:${TYPE_COLORS[t]}">${esc(TYPES[t])}</span>`).join("");
 }
 
-function openSpecies(n) {
+async function openSpecies(n) {
+  if (!INFO) { openSheet('<div class="grab"></div><div class="empty">Chargement…</div>'); await infoReady; }
   const [name, t1, t2, base] = DEX[n];
   const list = state.byDex.get(n) || [];
-  const games = (gameRec(n)?.g || []).map(([i, c]) => `${state.inGames.games[i] || "?"}${c > 1 ? " ×" + c : ""}`);
-  const have = owned(n);
-  let shiny = shinyOf(n);
+  const rec = gameRec(n) || {};
+  const games = (rec.g || []).map(([i, c]) => `${gameName(i)}${c > 1 ? " ×" + c : ""}${(rec.t || []).includes(i) ? " (équipe)" : ""}`);
+  const dexOnly = (rec.d || []).filter(i => !(rec.g || []).some(([g]) => g === i)).map(gameName);
+  const have = owned(n), seen = seenOnly(n), known = have || seen;
+  const info = INFO?.species?.[n - 1];
+  let shiny = have && shinyOf(n);
   const total = base.reduce((a, b) => a + b, 0);
   const order = [0, 1, 2, 4, 5, 3]; // HP, Atk, Def, SpA, SpD, Spe as the games show them
   const labels = ["PV", "Attaque", "Défense", "Vitesse", "Atq. Spé.", "Déf. Spé."];
+  const mine = [...new Set(state.inGames.games.flatMap(versionsOfGame))];
+  const stages = family(n);
+  const fmt = x => (x / 10).toFixed(1).replace(".", ",");
+  const evoCard = m => {
+    const k = owned(m.dex) || seenOnly(m.dex);
+    return `<button class="${m.dex === n ? "on" : ""}" data-dex="${m.dex}"><img class="sprite" alt="" style="${owned(m.dex) ? "" : k ? "opacity:.45" : "filter:brightness(0);opacity:.6"}" src="${sprite(m.dex)}">
+      <b>${k ? esc(DEX[m.dex][0]) : "???"}</b>${m.how ? `<small>${esc(m.how)}</small>` : ""}</button>`;
+  };
+  const versions = info?.where ? Object.keys(INFO.versions).map(Number).filter(v => info.where[v]) : [];
+  const sortedVersions = [...versions.filter(v => mine.includes(v)), ...versions.filter(v => !mine.includes(v))];
   const html = () => `
     <div class="grab"></div><button class="close" data-close>✕</button>
     <div class="stage ${have ? "" : "unknown"}" style="--t1:${have ? TYPE_COLORS[t1] + "55" : "#ffffff14"}">
-      <img class="sprite" alt="" src="${sprite(n, shiny, true)}" onerror="this.onerror=null;this.src='${sprite(n, shiny)}'">
+      <img class="sprite" alt="" style="${seen ? "filter:none;opacity:.5" : ""}" src="${sprite(n, shiny, have)}" onerror="this.onerror=null;this.src='${sprite(n, shiny)}'">
       ${have ? `<button class="pill toggle" data-shiny>${shiny ? "★ Chromatique" : "☆ Normal"}</button>` : ""}
     </div>
-    <div class="title"><div class="no">${pad(n)}</div><h3>${esc(name)}</h3><div class="types">${typeBadges(t1, t2)}</div></div>
+    <div class="title"><div class="no">${pad(n)}</div><h3>${known ? esc(name) : "???"}</h3>
+      ${info?.c ? `<div class="no" style="margin:-4px 0 8px">${esc(info.c)}</div>` : ""}<div class="types">${typeBadges(t1, t2)}</div></div>
     <h4>Statistiques de base · ${total}</h4>
     ${order.map(i => `<div class="stat"><span>${labels[i]}</span><b>${base[i]}</b><div class="bar"><i style="width:${Math.min(100, base[i] / 180 * 100)}%;background:${base[i] >= 100 ? "#5fd36a" : base[i] >= 70 ? "#f5c542" : "#ff8a5c"}"></i></div></div>`).join("")}
-    ${games.length ? `<h4>Dans tes jeux</h4><p style="margin:0">🎮 ${games.map(esc).join(" · ")}</p>` : ""}
-    <h4>${list.length ? `Dans ta banque · ${list.length}` : "Pas dans ta banque"}</h4>
-    <div class="copies">${list.map(monCell).join("") || `<p class="note" style="margin:0">${games.length ? "Dépose-le dans la banque depuis l'app pour voir sa fiche ici." : "Attrape-le dans un de tes jeux : il apparaît ici dès qu'il est dans une boîte du PC ou dans la banque."}</p>`}</div>`;
+    ${info ? `<h4>Fiche</h4><div class="facts"><div><span>Taille</span><b>${fmt(info.h)} m</b></div><div><span>Poids</span><b>${fmt(info.w)} kg</b></div></div>
+      <div style="margin-top:10px">${info.a.map(a => Array.isArray(a) ? `<span class="abil">${esc(a[0])} <small>caché</small></span>` : `<span class="abil">${esc(a)}</span>`).join("")}</div>` : ""}
+    ${stages.length ? `<h4>Évolutions</h4><div class="evo">${stages.map((st, i) => `${i ? '<div class="arrow">↓</div>' : ""}<div class="row">${st.map(evoCard).join("")}</div>`).join("")}</div>` : ""}
+    <h4>Où tu l'as</h4>
+    ${games.length ? `<p style="margin:0 0 6px">🎮 ${games.map(esc).join(" · ")}</p>` : ""}
+    ${dexOnly.length ? `<p class="note" style="margin:0 0 6px">✓ Attrapé dans ${dexOnly.map(esc).join(", ")} (plus dans ses boîtes)</p>` : ""}
+    ${seen ? `<p class="note" style="margin:0 0 6px">👁 Vu dans ${(rec.v || []).map(gameName).map(esc).join(", ")}, pas encore attrapé</p>` : ""}
+    <div class="copies">${list.map(monCell).join("") || (have || seen ? "" : '<p class="note" style="margin:0">Pas encore rencontré.</p>')}</div>
+    ${info ? `<h4>Où l'attraper</h4>${sortedVersions.length ? sortedVersions.map(v => `<details class="ver" ${mine.includes(v) ? "open" : ""}><summary>${esc(INFO.versions[v])}${mine.includes(v) ? '<span class="mine">ton jeu</span>' : ""}</summary>
+      ${info.where[v].map(([loc, how, lo, hi]) => `<div class="place"><div>${esc(loc)}<small>${esc(how)}</small></div><em>Nv. ${lo}${hi !== lo ? "-" + hi : ""}</em></div>`).join("")}</details>`).join("")
+      : '<p class="note" style="margin:0">Pas dans la nature : évolution, œuf, échange ou événement.</p>'}` : ""}`;
   openSheet(html());
   $("sheet").onclick = ev => {
     if (ev.target.closest("[data-shiny]")) { shiny = !shiny; $("sheet").innerHTML = html(); return; }
+    if (ev.target.closest("summary")) return;
     sheetClick(ev);
   };
 }

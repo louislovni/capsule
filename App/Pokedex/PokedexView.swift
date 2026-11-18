@@ -386,15 +386,15 @@ private struct PokedexDetail: View {
                     Label("Banque · \(record.bank)", systemImage: "tray.full")
                 }
                 ForEach(record.games.keys.sorted(), id: \.self) { game in
-                    Label("\(game) · \(record.games[game] ?? 0)\(record.team.contains(game) ? " (dans l'équipe)" : "")",
+                    Label("\(PokedexStore.gameTitle(game)) · \(record.games[game] ?? 0)\(record.team.contains(game) ? " (dans l'équipe)" : "")",
                           systemImage: "gamecontroller")
                 }
                 ForEach(record.dexCaught.subtracting(record.games.keys).sorted(), id: \.self) { game in
-                    Label("Attrapé dans \(game) (plus dans ses boîtes)", systemImage: "checkmark.circle")
+                    Label("Attrapé dans \(PokedexStore.gameTitle(game)) (plus dans ses boîtes)", systemImage: "checkmark.circle")
                         .foregroundStyle(.secondary)
                 }
             } else if let record = record {
-                Label("Vu dans \(record.dexSeen.sorted().joined(separator: ", ")), pas encore attrapé", systemImage: "eye")
+                Label("Vu dans \(record.dexSeen.sorted().map(PokedexStore.gameTitle).joined(separator: ", ")), pas encore attrapé", systemImage: "eye")
                     .foregroundStyle(.secondary)
             } else {
                 Text("Pas encore rencontré.").foregroundStyle(.secondary)
