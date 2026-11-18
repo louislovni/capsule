@@ -759,3 +759,51 @@ bool pk_gb_blob_set_species(int generation, uint8_t* blob, size_t size, unsigned
 	if (nickname) memcpy(blob + box + PK_GB_NAME_LENGTH, name, PK_GB_NAME_LENGTH);
 	return true;
 }
+
+/* ---------- Team and Pokedex ---------- */
+
+int pk_gb_party(const PKGBSave* save, uint8_t* out) {
+	if (!save || !out) return 0;
+	const Layout* l = save->layout;
+	int generation = generation_of(l);
+	size_t box = generation == 1 ? PK_GB1_BOX_MON : PK_GB2_BOX_MON;
+	size_t partySize = generation == 1 ? PK_GB1_PARTY_MON : PK_GB2_PARTY_MON;
+	size_t blob = box + 2 * PK_GB_NAME_LENGTH + 1;
+	const uint8_t* list = save->data + l->party;
+	unsigned count = list[0];
+	if (count > 6) return 0;
+	const uint8_t* mons = list + 8;
+	const uint8_t* ots = mons + 6 * partySize;
+	const uint8_t* nicks = ots + 6 * PK_GB_NAME_LENGTH;
+	int n = 0;
+	for (unsigned i = 0; i < count; ++i) {
+		uint8_t* o = out + (size_t) n * blob;
+		memcpy(o, mons + i * partySize, box);
+		memcpy(o + box, ots + i * PK_GB_NAME_LENGTH, PK_GB_NAME_LENGTH);
+		memcpy(o + box + PK_GB_NAME_LENGTH, nicks + i * PK_GB_NAME_LENGTH, PK_GB_NAME_LENGTH);
+		o[blob - 1] = list[1 + i];
+		PKGBMon decoded;
+		if (pk_gb_blob_decode(generation, o, blob, &decoded)) ++n;
+	}
+	return n;
+}
+
+bool pk_gb_pokedex(const PKGBSave* save, uint8_t caught[PK_DEX_FLAG_BYTES], uint8_t seen[PK_DEX_FLAG_BYTES]) {
+	if (!save) return false;
+	memset(caught, 0, PK_DEX_FLAG_BYTES);
+	memset(seen, 0, PK_DEX_FLAG_BYTES);
+	size_t own, saw, bytes;
+	switch (save->layout->game) {
+	case PK_GB_GEN1: own = 0x25A3; saw = 0x25B6; bytes = 19; break;
+	case PK_GB_GS: own = 0x2A4C; saw = 0x2A6C; bytes = 32; break;
+	default: own = 0x2A27; saw = 0x2A47; bytes = 32; break;
+	}
+	for (size_t i = 0; i < bytes; ++i) {
+		caught[i] = save->data[own + i];
+		seen[i] = save->data[saw + i] | caught[i];
+	}
+	unsigned maxDex = bytes == 19 ? 151 : 251;
+	caught[maxDex / 8] &= (uint8_t) ((1u << (maxDex % 8)) - 1);
+	seen[maxDex / 8] &= (uint8_t) ((1u << (maxDex % 8)) - 1);
+	return true;
+}

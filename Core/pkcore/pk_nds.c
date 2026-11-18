@@ -264,7 +264,7 @@ struct PKNDSSave {
 	int game;
 	int generation;
 	/* Generation 4: the blocks in use (absolute offsets). */
-	size_t general, generalSize;
+	size_t general, generalSize, generalBase;
 	size_t storage, storageSize, footerSize;
 	size_t boxBase, boxStride, boxNames;
 	size_t currentBoxOffset;
@@ -355,7 +355,8 @@ static bool open_gen4(PKNDSSave* s, int* err) {
 			s->boxNames = 4 + 18 * 0xFF0;
 			s->currentBoxOffset = 0;
 		}
-		s->general += l->trainer; /* only the trainer is read from there */
+		s->generalBase = s->general;
+		s->general += l->trainer; /* the trainer */
 		return true;
 	}
 	return false;
@@ -622,5 +623,57 @@ bool pk_nds_set_species(int generation, uint8_t* raw, uint16_t species, uint16_t
 	if (nickname && !encode_text(generation, nickname, u + 0x48, 11)) return false;
 	wr16(u + 6, data_checksum(u));
 	pack(u, raw);
+	return true;
+}
+
+/* ---------- Team and Pokedex ---------- */
+
+int pk_nds_party(const PKNDSSave* s, uint8_t* out) {
+	if (!s || !out) return 0;
+	size_t at, size;
+	if (s->generation == 4) {
+		at = s->generalBase + (s->game == PK_NDS_PT ? 0xA0 : 0x98);
+		size = 236;
+	} else {
+		at = 0x18E00 + 8;
+		size = 220;
+	}
+	if (at + 6 * size > s->size) return 0;
+	unsigned count = s->data[at - 4];
+	if (count > 6) return 0;
+	int n = 0;
+	for (unsigned i = 0; i < count; ++i) {
+		const uint8_t* mon = s->data + at + i * size;
+		PKNDSMon decoded;
+		if (!pk_nds_mon_decode(s->generation, mon, PK_NDS_MON_SIZE, &decoded)) continue;
+		memcpy(out + (size_t) n * PK_NDS_MON_SIZE, mon, PK_NDS_MON_SIZE);
+		++n;
+	}
+	return n;
+}
+
+static void or_bits(uint8_t* out, const uint8_t* in, size_t bytes, size_t maxDex) {
+	for (size_t i = 0; i < bytes && i * 8 < maxDex; ++i) out[i] |= in[i];
+	size_t last = maxDex / 8;
+	if (last < PK_DEX_FLAG_BYTES) out[last] &= (uint8_t) ((1u << (maxDex % 8)) - 1);
+	for (size_t i = last + 1; i < PK_DEX_FLAG_BYTES; ++i) out[i] = 0;
+}
+
+bool pk_nds_pokedex(const PKNDSSave* s, uint8_t caught[PK_DEX_FLAG_BYTES], uint8_t seen[PK_DEX_FLAG_BYTES]) {
+	if (!s) return false;
+	memset(caught, 0, PK_DEX_FLAG_BYTES);
+	memset(seen, 0, PK_DEX_FLAG_BYTES);
+	if (s->generation == 4) {
+		size_t at = s->generalBase + (s->game == PK_NDS_PT ? 0x1328 : s->game == PK_NDS_HGSS ? 0x12B8 : 0x12DC);
+		if (at + 0x84 > s->size || rd32(s->data + at) != 0xBEEFCAFEu) return false;
+		or_bits(caught, s->data + at + 4, 0x40, 493);
+		or_bits(seen, s->data + at + 0x44, 0x40, 493);
+	} else {
+		size_t at = s->game == PK_NDS_BW ? 0x21600 : 0x21400;
+		if (at + 0x8 + 5 * 0x54 > s->size || rd32(s->data + at) != 0xBEEFCAFEu) return false;
+		or_bits(caught, s->data + at + 8, 0x54, 649);
+		for (int k = 0; k < 4; ++k) or_bits(seen, s->data + at + 0x5C + 0x54 * (size_t) k, 0x54, 649);
+	}
+	for (size_t i = 0; i < PK_DEX_FLAG_BYTES; ++i) seen[i] |= caught[i];
 	return true;
 }

@@ -12,11 +12,18 @@ final class PokedexStore: ObservableObject {
     struct Record: Equatable {
         var bank = 0
         var bankShiny = false
-        /// Game name → how many in its boxes.
+        /// Game name → how many in its boxes and team.
         var games: [String: Int] = [:]
+        /// Games where it is in the team.
+        var team: Set<String> = []
         var gameShiny = false
+        /// Games whose own Pokédex says caught / seen.
+        var dexCaught: Set<String> = []
+        var dexSeen: Set<String> = []
 
         var shiny: Bool { bankShiny || gameShiny }
+        /// Caught: in the bank, in a game, or caught once according to a game's Pokédex.
+        var owned: Bool { bank > 0 || !games.isEmpty || !dexCaught.isEmpty }
     }
 
     @Published private(set) var records: [Int: Record] = [:]
@@ -25,7 +32,9 @@ final class PokedexStore: ObservableObject {
     /// What each game's boxes held, by save file date (scanning a GBA game reads its ROM).
     private struct GameScan: Codable, Equatable {
         var saveDate: Date
-        var mons: [[Int]] // [dex, shiny 0/1]
+        var mons: [[Int]] // [dex, shiny 0/1, in the team 0/1]
+        var caught: [Int]
+        var seen: [Int]
     }
     private var scans: [String: GameScan] = [:]
     private let cacheURL = Storage.bank.appendingPathComponent("pokedex-jeux.json")
@@ -36,7 +45,8 @@ final class PokedexStore: ObservableObject {
         }
     }
 
-    var caught: Int { records.count }
+    var caught: Int { records.values.filter(\.owned).count }
+    var seenOnly: Int { records.values.filter { !$0.owned }.count }
 
     func record(_ dex: Int) -> Record? { records[dex] }
 
@@ -52,8 +62,7 @@ final class PokedexStore: ObservableObject {
                 newScans[game.name] = known
                 continue
             }
-            let mons = await Task.detached(priority: .utility) { Self.scan(game) }.value
-            newScans[game.name] = GameScan(saveDate: date, mons: mons)
+            newScans[game.name] = await Task.detached(priority: .utility) { Self.scan(game, date: date) }.value
         }
         if newScans != scans {
             scans = newScans
@@ -69,9 +78,16 @@ final class PokedexStore: ObservableObject {
             if entry.isShiny { built[dex]?.bankShiny = true }
         }
         for (name, scan) in scans {
-            for mon in scan.mons where mon.count == 2 && (1...Self.maxDex).contains(mon[0]) {
+            for mon in scan.mons where mon.count == 3 && (1...Self.maxDex).contains(mon[0]) {
                 built[mon[0], default: Record()].games[name, default: 0] += 1
                 if mon[1] == 1 { built[mon[0]]?.gameShiny = true }
+                if mon[2] == 1 { built[mon[0]]?.team.insert(name) }
+            }
+            for dex in scan.caught where (1...Self.maxDex).contains(dex) {
+                built[dex, default: Record()].dexCaught.insert(name)
+            }
+            for dex in scan.seen where (1...Self.maxDex).contains(dex) {
+                built[dex, default: Record()].dexSeen.insert(name)
             }
         }
         if built != records {
@@ -79,34 +95,46 @@ final class PokedexStore: ObservableObject {
         }
     }
 
-    /// Species in a game's PC boxes: [dex, shiny].
-    nonisolated private static func scan(_ game: Game) -> [[Int]] {
-        let storage: PCStorage
+    /// A game's boxes, team and own Pokédex.
+    nonisolated private static func scan(_ game: Game, date: Date) -> GameScan {
+        var result = GameScan(saveDate: date, mons: [], caught: [], seen: [])
+        var mons: [(species: Int, shiny: Bool, team: Bool)] = []
+        var flags: (caught: Set<Int>, seen: Set<Int>)?
+        var storage: PCStorage?
         var rom: RomData?
-        do {
-            if game.isDS {
-                storage = try NDSSaveFile(url: game.saveURL, sourceGame: game.name)
-            } else if game.romURL.pathExtension.lowercased() == "gba" {
-                let save = try SaveFile(url: game.saveURL)
-                rom = RomData.load(game.romURL)
-                save.rom = rom
-                storage = save
-            } else {
-                storage = try GBSaveFile(url: game.saveURL, sourceGame: game.name)
-            }
-        } catch {
-            return []
+        if game.isDS, let save = try? NDSSaveFile(url: game.saveURL, sourceGame: game.name) {
+            storage = save
+            mons += save.teamSpecies().map { ($0.species, $0.shiny, true) }
+            flags = save.pokedexFlags()
+        } else if game.romURL.pathExtension.lowercased() == "gba", let save = try? SaveFile(url: game.saveURL) {
+            rom = RomData.load(game.romURL)
+            save.rom = rom
+            storage = save
+            mons += save.teamSpecies().map { ($0.species, $0.shiny, true) }
+            flags = save.pokedexFlags()
+        } else if !game.isDS, let save = try? GBSaveFile(url: game.saveURL, sourceGame: game.name) {
+            storage = save
+            mons += save.teamSpecies().map { ($0.species, $0.shiny, true) }
+            flags = save.pokedexFlags()
         }
-        var result: [[Int]] = []
+        guard let storage = storage else { return result }
         for box in 0..<storage.boxCount {
             for mon in storage.listMons(inBox: box) where !mon.isEgg {
-                var dex = mon.species
-                if storage.generation == 3 {
-                    guard let number = rom?.nationalDex(species: mon.species) ?? (mon.species <= 251 ? mon.species : nil) else { continue }
-                    dex = number
-                }
-                result.append([dex, mon.isShiny ? 1 : 0])
+                mons.append((mon.species, mon.isShiny, false))
             }
+        }
+        for mon in mons {
+            var dex = mon.species
+            if storage.generation == 3 {
+                guard let number = rom?.nationalDex(species: mon.species) ?? (mon.species <= 251 ? mon.species : nil) else { continue }
+                dex = number
+            }
+            result.mons.append([dex, mon.shiny ? 1 : 0, mon.team ? 1 : 0])
+        }
+        // A save whose flags make no sense (a hack's layout, say) is left out.
+        if let flags = flags, flags.caught.isSubset(of: flags.seen), !flags.seen.isEmpty {
+            result.caught = flags.caught.sorted()
+            result.seen = flags.seen.subtracting(flags.caught).sorted()
         }
         return result
     }
@@ -134,16 +162,23 @@ final class PokedexStore: ObservableObject {
 
     // MARK: - Cloud
 
-    /// The page reads this: {"games": [...], "dex": {"25": {"g": [[game index, count]], "s": 1}}} (games' boxes only;
-    /// it reads the bank itself).
+    /// The page reads this (it reads the bank itself): {"games": [...], "dex": {"25": {"g": [[game, count]]
+    /// (boxes and team), "t": [games with it in the team], "s": 1 (shiny), "d": [games whose Pokédex has it
+    /// caught], "v": [... seen only]}}}, games as indexes into "games".
     private func cloudJSON() -> String {
-        let names = Array(Set(records.values.flatMap { $0.games.keys })).sorted()
+        let names = Array(Set(records.values.flatMap { Array($0.games.keys) + Array($0.dexCaught) + Array($0.dexSeen) })).sorted()
         var dex: [String: Any] = [:]
-        for (number, record) in records where !record.games.isEmpty {
-            var item: [String: Any] = ["g": record.games.map { [names.firstIndex(of: $0.key) ?? 0, $0.value] }
-                .sorted { ($0[0]) < ($1[0]) }]
+        let index = { (name: String) in names.firstIndex(of: name) ?? 0 }
+        for (number, record) in records {
+            var item: [String: Any] = [:]
+            if !record.games.isEmpty {
+                item["g"] = record.games.map { [index($0.key), $0.value] }.sorted { $0[0] < $1[0] }
+            }
+            if !record.team.isEmpty { item["t"] = record.team.map(index).sorted() }
             if record.gameShiny { item["s"] = 1 }
-            dex[String(number)] = item
+            if !record.dexCaught.isEmpty { item["d"] = record.dexCaught.map(index).sorted() }
+            if !record.dexSeen.isEmpty { item["v"] = record.dexSeen.map(index).sorted() }
+            if !item.isEmpty { dex[String(number)] = item }
         }
         let object: [String: Any] = ["games": names, "dex": dex]
         let data = (try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])) ?? Data()

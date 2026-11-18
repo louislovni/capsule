@@ -4,6 +4,7 @@ import SwiftUI
 /// The National Pokédex: what the bank and the games' boxes hold, with the Black/White sprites.
 struct PokedexView: View {
     @ObservedObject var pokedex: PokedexStore
+    let games: [Game]
     let refresh: () async -> Void
 
     @State private var region = -1
@@ -31,8 +32,8 @@ struct PokedexView: View {
             let record = pokedex.record(dex)
             switch filter {
             case .all: break
-            case .caught: if record == nil { return false }
-            case .missing: if record != nil { return false }
+            case .caught: if record?.owned != true { return false }
+            case .missing: if record?.owned == true { return false }
             case .shiny: if record?.shiny != true { return false }
             }
             if query.isEmpty { return true }
@@ -63,7 +64,7 @@ struct PokedexView: View {
                         HStack {
                             Text(region.name).font(.headline)
                             Spacer()
-                            Text("\(region.range.filter { pokedex.record($0) != nil }.count) / \(region.range.count)")
+                            Text("\(region.range.filter { pokedex.record($0)?.owned == true }.count) / \(region.range.count)")
                                 .foregroundStyle(.secondary)
                         }
                         .padding(.top, 6)
@@ -86,7 +87,7 @@ struct PokedexView: View {
         .searchable(text: $search, prompt: "Nom ou numéro")
         .refreshable { await refresh() }
         .sheet(item: Binding(get: { selected.map(SelectedDex.init) }, set: { selected = $0?.id })) { item in
-            PokedexDetail(dex: item.id, record: pokedex.record(item.id))
+            PokedexDetail(dex: item.id, pokedex: pokedex, games: games)
                 .presentationDetents([.medium, .large])
         }
         .task { await refresh() }
@@ -110,8 +111,12 @@ struct PokedexView: View {
             .frame(width: 86, height: 86)
             VStack(alignment: .leading, spacing: 4) {
                 Text("Pokédex national").font(.headline)
-                Text("Les espèces de ta banque et des boîtes de tes jeux.")
+                Text("Ta banque, les boîtes et l'équipe de tes jeux, et leur propre Pokédex.")
                     .font(.subheadline).foregroundStyle(.secondary)
+                if pokedex.seenOnly > 0 {
+                    Text("\(pokedex.seenOnly) vu\(pokedex.seenOnly > 1 ? "s" : "") mais pas attrapé\(pokedex.seenOnly > 1 ? "s" : "")")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
                 if shinies > 0 {
                     Text("★ \(shinies) chromatique\(shinies > 1 ? "s" : "")")
                         .font(.subheadline.weight(.semibold)).foregroundStyle(.yellow)
@@ -154,13 +159,15 @@ private struct PokedexCell: View {
     let record: PokedexStore.Record?
 
     var body: some View {
+        let owned = record?.owned == true
         VStack(spacing: 2) {
-            PokedexSprite(dex: dex, shiny: record?.shiny ?? false, known: record != nil)
+            PokedexSprite(dex: dex, shiny: owned && record?.shiny == true, known: record != nil)
+                .opacity(owned || record == nil ? 1 : 0.45)
                 .frame(width: 64, height: 64)
             Text(record != nil ? PokedexStore.name(dex) : "???")
                 .font(.caption2.weight(.semibold))
                 .lineLimit(1)
-                .foregroundStyle(record != nil ? .primary : .secondary)
+                .foregroundStyle(owned ? .primary : .secondary)
         }
         .padding(.vertical, 6)
         .frame(maxWidth: .infinity)
@@ -170,8 +177,10 @@ private struct PokedexCell: View {
                 .foregroundStyle(.secondary).padding(5)
         }
         .overlay(alignment: .topTrailing) {
-            if record?.shiny == true {
+            if record?.owned == true && record?.shiny == true {
                 Text("★").font(.caption).foregroundStyle(.yellow).padding(4)
+            } else if let record = record, !record.owned {
+                Image(systemName: "eye").font(.system(size: 9)).foregroundStyle(.secondary).padding(5)
             } else if let record = record, record.bank == 0 {
                 Image(systemName: "gamecontroller.fill").font(.system(size: 9)).foregroundStyle(.secondary).padding(5)
             }
@@ -181,85 +190,265 @@ private struct PokedexCell: View {
 
 private struct PokedexDetail: View {
     let dex: Int
-    let record: PokedexStore.Record?
+    @ObservedObject var pokedex: PokedexStore
+    let games: [Game]
+    @State private var current: Int
     @State private var shiny = false
+    @State private var openVersions: Set<Int>?
+
+    init(dex: Int, pokedex: PokedexStore, games: [Game]) {
+        self.dex = dex
+        self.pokedex = pokedex
+        self.games = games
+        _current = State(initialValue: dex)
+    }
 
     private static let statOrder = [0, 1, 2, 4, 5, 3]
     private static let statNames = ["PV", "Attaque", "Défense", "Vitesse", "Atq. Spé.", "Déf. Spé."]
 
+    private var record: PokedexStore.Record? { pokedex.record(current) }
+    private var owned: Bool { record?.owned == true }
+    private var info: PokedexInfo.Species? { PokedexInfo.shared.species(current) }
+
+    /// The player's games as version ids, first in "Où l'attraper".
+    private var myVersions: [Int] {
+        var seen = Set<Int>()
+        return games.flatMap { PokedexInfo.shared.versions(matching: $0.name) }.filter { seen.insert($0).inserted }
+    }
+
     var body: some View {
-        let base = PokedexStore.base(dex)
-        ScrollView {
-            VStack(spacing: 12) {
-                ZStack(alignment: .bottomTrailing) {
-                    Group {
-                        if record != nil {
-                            AnimatedSprite(dex: dex, shiny: shiny)
-                        } else {
-                            PokedexSprite(dex: dex, known: false)
-                        }
-                    }
-                    .frame(width: 160, height: 160)
-                    .frame(maxWidth: .infinity)
-                    if record != nil {
-                        Button(shiny ? "★ Chromatique" : "☆ Normal") { shiny.toggle() }
-                            .buttonStyle(.bordered)
-                            .font(.footnote)
-                    }
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(spacing: 12) {
+                    top.id("top")
+                    stats
+                    facts
+                    evolutions(proxy)
+                    whereYouHaveIt
+                    whereToCatch
                 }
-                Text(String(format: "#%03d", dex)).foregroundStyle(.secondary)
-                Text(PokedexStore.name(dex)).font(.largeTitle.bold())
-                if let base = base {
-                    HStack {
-                        ForEach(base.type1 == base.type2 ? [base.type1] : [base.type1, base.type2], id: \.self) { type in
-                            Text(PokedexStore.typeName(type))
-                                .font(.subheadline.bold()).foregroundStyle(.white)
-                                .padding(.horizontal, 12).padding(.vertical, 4)
-                                .background(PokedexView.typeColors[Int(type) % 17], in: Capsule())
-                        }
-                    }
-                    let stats = [base.stats.0, base.stats.1, base.stats.2, base.stats.3, base.stats.4, base.stats.5].map(Int.init)
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Statistiques de base · \(stats.reduce(0, +))").font(.footnote.weight(.semibold))
-                            .foregroundStyle(.secondary).textCase(.uppercase)
-                        ForEach(Self.statOrder, id: \.self) { index in
-                            HStack {
-                                Text(Self.statNames[index]).foregroundStyle(.secondary).frame(width: 80, alignment: .leading)
-                                Text("\(stats[index])").monospacedDigit().frame(width: 34, alignment: .trailing)
-                                GeometryReader { proxy in
-                                    Capsule().fill(Color.secondary.opacity(0.2))
-                                        .overlay(alignment: .leading) {
-                                            Capsule().fill(stats[index] >= 100 ? .green : stats[index] >= 70 ? .yellow : .orange)
-                                                .frame(width: proxy.size.width * min(1, CGFloat(stats[index]) / 180))
-                                        }
-                                }
-                                .frame(height: 7)
-                            }
-                            .font(.subheadline)
-                        }
-                    }
-                    .padding(.top, 8)
-                }
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Où tu l'as").font(.footnote.weight(.semibold)).foregroundStyle(.secondary).textCase(.uppercase)
-                    if let record = record {
-                        if record.bank > 0 {
-                            Label("Banque · \(record.bank)", systemImage: "tray.full")
-                        }
-                        ForEach(record.games.keys.sorted(), id: \.self) { game in
-                            Label("\(game) · \(record.games[game] ?? 0)", systemImage: "gamecontroller")
-                        }
-                    } else {
-                        Text("Pas encore attrapé. Il apparaît ici dès qu'il est dans ta banque ou dans une boîte du PC d'un de tes jeux.")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, 8)
+                .padding()
             }
-            .padding()
         }
-        .onAppear { shiny = record?.shiny ?? false }
+        .onAppear { shiny = owned && record?.shiny == true }
+    }
+
+    private func section(_ title: String) -> some View {
+        Text(title).font(.footnote.weight(.semibold)).foregroundStyle(.secondary).textCase(.uppercase)
+            .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 10)
+    }
+
+    private var top: some View {
+        VStack(spacing: 8) {
+            ZStack(alignment: .bottomTrailing) {
+                Group {
+                    if owned {
+                        AnimatedSprite(dex: current, shiny: shiny)
+                    } else {
+                        PokedexSprite(dex: current, known: record != nil).opacity(record == nil ? 1 : 0.5)
+                    }
+                }
+                .frame(width: 160, height: 160)
+                .frame(maxWidth: .infinity)
+                if owned {
+                    Button(shiny ? "★ Chromatique" : "☆ Normal") { shiny.toggle() }
+                        .buttonStyle(.bordered).font(.footnote)
+                }
+            }
+            Text(String(format: "#%03d", current)).foregroundStyle(.secondary)
+            Text(record != nil ? PokedexStore.name(current) : "???").font(.largeTitle.bold())
+            if let info = info, !info.category.isEmpty {
+                Text(info.category).foregroundStyle(.secondary)
+            }
+            if let base = PokedexStore.base(current) {
+                HStack {
+                    ForEach(base.type1 == base.type2 ? [base.type1] : [base.type1, base.type2], id: \.self) { type in
+                        Text(PokedexStore.typeName(type))
+                            .font(.subheadline.bold()).foregroundStyle(.white)
+                            .padding(.horizontal, 12).padding(.vertical, 4)
+                            .background(PokedexView.typeColors[Int(type) % 17], in: Capsule())
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private var stats: some View {
+        if let base = PokedexStore.base(current) {
+            let values = [base.stats.0, base.stats.1, base.stats.2, base.stats.3, base.stats.4, base.stats.5].map(Int.init)
+            section("Statistiques de base · \(values.reduce(0, +))")
+            ForEach(Self.statOrder, id: \.self) { index in
+                HStack {
+                    Text(Self.statNames[index]).foregroundStyle(.secondary).frame(width: 80, alignment: .leading)
+                    Text("\(values[index])").monospacedDigit().frame(width: 34, alignment: .trailing)
+                    GeometryReader { geometry in
+                        Capsule().fill(Color.secondary.opacity(0.2))
+                            .overlay(alignment: .leading) {
+                                Capsule().fill(values[index] >= 100 ? .green : values[index] >= 70 ? .yellow : .orange)
+                                    .frame(width: geometry.size.width * min(1, CGFloat(values[index]) / 180))
+                            }
+                    }
+                    .frame(height: 7)
+                }
+                .font(.subheadline)
+            }
+        }
+    }
+
+    @ViewBuilder private var facts: some View {
+        if let info = info {
+            section("Fiche")
+            HStack(spacing: 10) {
+                fact("Taille", info.heightText)
+                fact("Poids", info.weightText)
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Talents").font(.caption).foregroundStyle(.secondary)
+                ForEach(info.abilities, id: \.name) { ability in
+                    HStack {
+                        Text(ability.name)
+                        if ability.hidden {
+                            Text("caché").font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+                                .padding(.horizontal, 6).padding(.vertical, 2)
+                                .background(Color.secondary.opacity(0.15), in: Capsule())
+                        }
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+        }
+    }
+
+    private func fact(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label).font(.caption).foregroundStyle(.secondary)
+            Text(value).font(.headline)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    @ViewBuilder private func evolutions(_ proxy: ScrollViewProxy) -> some View {
+        let stages = PokedexInfo.shared.family(of: current)
+        if !stages.isEmpty {
+            section("Évolutions")
+            VStack(spacing: 6) {
+                ForEach(stages.indices, id: \.self) { index in
+                    if index > 0 {
+                        Image(systemName: "arrow.down").font(.caption).foregroundStyle(.secondary)
+                    }
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(stages[index], id: \.dex) { member in
+                                Button {
+                                    current = member.dex
+                                    shiny = pokedex.record(member.dex)?.owned == true && pokedex.record(member.dex)?.shiny == true
+                                    withAnimation { proxy.scrollTo("top", anchor: .top) }
+                                } label: {
+                                    evolutionCard(member)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+            }
+        }
+    }
+
+    private func evolutionCard(_ member: PokedexInfo.Species) -> some View {
+        let memberRecord = pokedex.record(member.dex)
+        return VStack(spacing: 2) {
+            PokedexSprite(dex: member.dex, known: memberRecord != nil)
+                .opacity(memberRecord?.owned == true || memberRecord == nil ? 1 : 0.5)
+                .frame(width: 56, height: 56)
+            Text(memberRecord != nil ? PokedexStore.name(member.dex) : "???").font(.caption.weight(.semibold))
+            if let how = member.how {
+                Text(how).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(width: 118)
+        .padding(.vertical, 8)
+        .background(member.dex == current ? Color.red.opacity(0.18) : Color(.secondarySystemBackground),
+                    in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    @ViewBuilder private var whereYouHaveIt: some View {
+        section("Où tu l'as")
+        VStack(alignment: .leading, spacing: 6) {
+            if let record = record, record.owned {
+                if record.bank > 0 {
+                    Label("Banque · \(record.bank)", systemImage: "tray.full")
+                }
+                ForEach(record.games.keys.sorted(), id: \.self) { game in
+                    Label("\(game) · \(record.games[game] ?? 0)\(record.team.contains(game) ? " (dans l'équipe)" : "")",
+                          systemImage: "gamecontroller")
+                }
+                ForEach(record.dexCaught.subtracting(record.games.keys).sorted(), id: \.self) { game in
+                    Label("Attrapé dans \(game) (plus dans ses boîtes)", systemImage: "checkmark.circle")
+                        .foregroundStyle(.secondary)
+                }
+            } else if let record = record {
+                Label("Vu dans \(record.dexSeen.sorted().joined(separator: ", ")), pas encore attrapé", systemImage: "eye")
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("Pas encore rencontré.").foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder private var whereToCatch: some View {
+        if let info = info, !info.places.isEmpty {
+            let mine = myVersions
+            let order = PokedexInfo.shared.versions.map(\.id).filter { info.places[$0] != nil }
+            let sorted = order.filter(mine.contains) + order.filter { !mine.contains($0) }
+            section("Où l'attraper")
+            VStack(spacing: 6) {
+                ForEach(sorted, id: \.self) { version in
+                    DisclosureGroup(isExpanded: Binding(
+                        get: { (openVersions ?? Set(mine)).contains(version) },
+                        set: { open in
+                            var opened = openVersions ?? Set(mine)
+                            if open { opened.insert(version) } else { opened.remove(version) }
+                            openVersions = opened
+                        })) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            ForEach(info.places[version] ?? []) { place in
+                                HStack(alignment: .firstTextBaseline) {
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        Text(place.location)
+                                        Text(place.method).font(.caption).foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                    Text(place.levels).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                        .padding(.top, 4)
+                    } label: {
+                        HStack {
+                            Text(PokedexInfo.shared.versions.first { $0.id == version }?.name ?? "?").font(.headline)
+                            if mine.contains(version) {
+                                Text("ton jeu").font(.caption2.weight(.semibold)).foregroundStyle(.white)
+                                    .padding(.horizontal, 6).padding(.vertical, 2).background(Color.red, in: Capsule())
+                            }
+                        }
+                    }
+                    .padding(12)
+                    .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+                }
+            }
+        } else if info != nil {
+            section("Où l'attraper")
+            Text("Pas dans la nature : évolution, œuf, échange ou événement.")
+                .foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 }
 

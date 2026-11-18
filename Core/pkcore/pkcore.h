@@ -145,6 +145,13 @@ uint32_t pk_save_trainer_id(const PKSave* save);
 /* Hours in the high 16 bits, minutes in the low 16. */
 uint32_t pk_save_play_time(const PKSave* save);
 
+/* Pokedex flags of a save: bit (dex - 1) of caught[] / seen[] (seen includes caught). */
+#define PK_DEX_FLAG_BYTES 82 /* 649 species and some room */
+
+/* The team: up to 6 copies of 100-byte structures in out (600 bytes). Returns how many. */
+int pk_save_party(const PKSave* save, uint8_t* out);
+bool pk_save_pokedex(const PKSave* save, uint8_t caught[PK_DEX_FLAG_BYTES], uint8_t seen[PK_DEX_FLAG_BYTES]);
+
 /* Pointer to the 80 bytes of a PC slot (inside the save object), or NULL. */
 const uint8_t* pk_save_box_mon(const PKSave* save, int box, int slot);
 void pk_save_box_name(const PKSave* save, int box, char* out, size_t outSize);
@@ -341,6 +348,9 @@ int pk_gb_box_append(PKGBSave* save, int box, const uint8_t* blob, size_t size);
 /* First box with room: the current one if possible. */
 bool pk_gb_first_free(const PKGBSave* save, int* box);
 size_t pk_gb_save_size(const PKGBSave* save);
+/* The team as bank blobs (6 * pk_gb_blob_size bytes in out). Returns how many. */
+int pk_gb_party(const PKGBSave* save, uint8_t* out);
+bool pk_gb_pokedex(const PKGBSave* save, uint8_t caught[PK_DEX_FLAG_BYTES], uint8_t seen[PK_DEX_FLAG_BYTES]);
 size_t pk_gb_save_write(const PKGBSave* save, uint8_t* out, size_t outSize);
 
 /* ---------- DS games: generations 4 and 5 ---------- */
@@ -463,6 +473,9 @@ int pk_nds_clear_box_mon(PKNDSSave* save, int box, int slot);
 /* First empty slot, starting with the box selected in the game. */
 bool pk_nds_first_empty(const PKNDSSave* save, int* box, int* slot);
 size_t pk_nds_save_size(const PKNDSSave* save);
+/* The team: up to 6 stored 136-byte structures in out (816 bytes). Returns how many. */
+int pk_nds_party(const PKNDSSave* save, uint8_t* out);
+bool pk_nds_pokedex(const PKNDSSave* save, uint8_t caught[PK_DEX_FLAG_BYTES], uint8_t seen[PK_DEX_FLAG_BYTES]);
 /* Writes the save with fresh checksums. Returns the bytes written, 0 if out is too small. */
 size_t pk_nds_save_write(const PKNDSSave* save, uint8_t* out, size_t outSize);
 

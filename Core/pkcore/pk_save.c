@@ -286,3 +286,37 @@ size_t pk_save_write(const PKSave* save, uint8_t* out, size_t outSize) {
 	}
 	return save->size;
 }
+
+/* ---------- Team and Pokedex ---------- */
+
+int pk_save_party(const PKSave* save, uint8_t* out) {
+	if (!save || !out) return 0;
+	bool frlg = pk_save_game(save) == PK_GAME_FRLG;
+	const uint8_t* block = section_ptr(save, 1);
+	unsigned count = rd32(block + (frlg ? 0x34 : 0x234));
+	if (count > 6) return 0;
+	int n = 0;
+	for (unsigned i = 0; i < count; ++i) {
+		const uint8_t* mon = block + (frlg ? 0x38 : 0x238) + i * PK_PARTY_MON_SIZE;
+		PKMon decoded;
+		if (!pk_mon_decode(mon, PK_PARTY_MON_SIZE, &decoded)) continue;
+		memcpy(out + (size_t) n * PK_PARTY_MON_SIZE, mon, PK_PARTY_MON_SIZE);
+		++n;
+	}
+	return n;
+}
+
+bool pk_save_pokedex(const PKSave* save, uint8_t caught[PK_DEX_FLAG_BYTES], uint8_t seen[PK_DEX_FLAG_BYTES]) {
+	if (!save) return false;
+	memset(caught, 0, PK_DEX_FLAG_BYTES);
+	memset(seen, 0, PK_DEX_FLAG_BYTES);
+	const uint8_t* block = section_ptr(save, 0);
+	/* 386 species: 49 bytes, the last one with two bits used */
+	for (int i = 0; i < 49; ++i) {
+		caught[i] = block[0x28 + i];
+		seen[i] = block[0x5C + i] | caught[i];
+	}
+	caught[48] &= 0x03;
+	seen[48] &= 0x03;
+	return true;
+}

@@ -179,3 +179,34 @@ struct GBSaveError: LocalizedError {
         }
     }
 }
+
+extension GBSaveFile {
+    /// The team: National numbers and shiny.
+    func teamSpecies() -> [(species: Int, shiny: Bool)] {
+        let size = Int(pk_gb_blob_size(handle))
+        var buffer = [UInt8](repeating: 0, count: 6 * size)
+        let count = Int(pk_gb_party(handle, &buffer))
+        return (0..<count).compactMap { index in
+            var mon = PKGBMon()
+            let ok = buffer[index * size..<(index + 1) * size].withUnsafeBufferPointer {
+                pk_gb_blob_decode(Int32(generation), $0.baseAddress, $0.count, &mon)
+            }
+            return ok && !mon.isEgg ? (Int(mon.dex), mon.isShiny) : nil
+        }
+    }
+
+    /// The game's own Pokédex: National numbers caught and seen.
+    func pokedexFlags() -> (caught: Set<Int>, seen: Set<Int>)? {
+        var caught = [UInt8](repeating: 0, count: Int(PK_DEX_FLAG_BYTES))
+        var seen = caught
+        guard pk_gb_pokedex(handle, &caught, &seen) else { return nil }
+        func numbers(_ bits: [UInt8]) -> Set<Int> {
+            var out = Set<Int>()
+            for index in 0..<(bits.count * 8) where bits[index / 8] & (1 << (index % 8)) != 0 {
+                out.insert(index + 1)
+            }
+            return out
+        }
+        return (numbers(caught), numbers(seen))
+    }
+}

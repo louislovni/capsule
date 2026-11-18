@@ -197,3 +197,32 @@ enum SaveBackup {
         }
     }
 }
+
+extension SaveFile {
+    /// The team: species (the game's own index) and shiny.
+    func teamSpecies() -> [(species: Int, shiny: Bool)] {
+        var buffer = [UInt8](repeating: 0, count: 6 * Int(PK_PARTY_MON_SIZE))
+        let count = Int(pk_save_party(handle, &buffer))
+        return (0..<count).compactMap { index in
+            var mon = PKMon()
+            let start = index * Int(PK_PARTY_MON_SIZE)
+            let ok = buffer[start..<start + Int(PK_PARTY_MON_SIZE)].withUnsafeBufferPointer { pk_mon_decode($0.baseAddress, $0.count, &mon) }
+            return ok && !mon.isEgg ? (Int(mon.species), mon.isShiny) : nil
+        }
+    }
+
+    /// The game's own Pokédex: National numbers caught and seen.
+    func pokedexFlags() -> (caught: Set<Int>, seen: Set<Int>)? {
+        var caught = [UInt8](repeating: 0, count: Int(PK_DEX_FLAG_BYTES))
+        var seen = caught
+        guard pk_save_pokedex(handle, &caught, &seen) else { return nil }
+        func numbers(_ bits: [UInt8]) -> Set<Int> {
+            var out = Set<Int>()
+            for index in 0..<(bits.count * 8) where bits[index / 8] & (1 << (index % 8)) != 0 {
+                out.insert(index + 1)
+            }
+            return out
+        }
+        return (numbers(caught), numbers(seen))
+    }
+}

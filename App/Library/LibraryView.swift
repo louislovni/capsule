@@ -44,7 +44,7 @@ struct LibraryView: View {
 
                 Section {
                     NavigationLink {
-                        PokedexView(pokedex: pokedex, refresh: refreshPokedex)
+                        PokedexView(pokedex: pokedex, games: library.games, refresh: refreshPokedex)
                     } label: {
                         Label("Pokédex · \(pokedex.caught) / \(PokedexStore.maxDex)", systemImage: "book.closed")
                     }
