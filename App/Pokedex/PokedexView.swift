@@ -1,3 +1,4 @@
+import ImageIO
 import SwiftUI
 
 /// The National Pokédex: what the bank and the games' boxes hold, with the Black/White sprites.
@@ -191,9 +192,15 @@ private struct PokedexDetail: View {
         ScrollView {
             VStack(spacing: 12) {
                 ZStack(alignment: .bottomTrailing) {
-                    PokedexSprite(dex: dex, shiny: shiny, known: record != nil)
-                        .frame(width: 150, height: 150)
-                        .frame(maxWidth: .infinity)
+                    Group {
+                        if record != nil {
+                            AnimatedSprite(dex: dex, shiny: shiny)
+                        } else {
+                            PokedexSprite(dex: dex, known: false)
+                        }
+                    }
+                    .frame(width: 160, height: 160)
+                    .frame(maxWidth: .infinity)
                     if record != nil {
                         Button(shiny ? "★ Chromatique" : "☆ Normal") { shiny.toggle() }
                             .buttonStyle(.bordered)
@@ -261,5 +268,68 @@ extension Color {
         let value = UInt32(hex, radix: 16) ?? 0
         self.init(red: Double((value >> 16) & 0xFF) / 255, green: Double((value >> 8) & 0xFF) / 255,
                   blue: Double(value & 0xFF) / 255)
+    }
+}
+
+/// An animated Black/White sprite (GIF), drawn with sharp pixels. Falls back to the still one.
+struct AnimatedSprite: UIViewRepresentable {
+    let dex: Int
+    var shiny = false
+
+    private static let cache = NSCache<NSURL, UIImage>()
+
+    func makeUIView(context: Context) -> UIImageView {
+        let view = UIImageView()
+        view.contentMode = .scaleAspectFit
+        view.layer.magnificationFilter = .nearest
+        view.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        view.setContentHuggingPriority(.defaultLow, for: .vertical)
+        view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        view.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
+        return view
+    }
+
+    func updateUIView(_ view: UIImageView, context: Context) {
+        let url = PokedexStore.sprite(dex, shiny: shiny, animated: true)
+        guard view.accessibilityIdentifier != url.absoluteString else { return }
+        view.accessibilityIdentifier = url.absoluteString
+        if let cached = Self.cache.object(forKey: url as NSURL) {
+            view.image = cached
+            return
+        }
+        view.image = nil
+        Task {
+            let image = await Self.load(url) ?? Self.loadStill(PokedexStore.sprite(dex, shiny: shiny))
+            guard view.accessibilityIdentifier == url.absoluteString, let image = image else { return }
+            Self.cache.setObject(image, forKey: url as NSURL)
+            view.image = image
+        }
+    }
+
+    private static func load(_ url: URL) async -> UIImage? {
+        guard let (data, _) = try? await URLSession.shared.data(from: url),
+              let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
+        let count = CGImageSourceGetCount(source)
+        guard count > 0 else { return nil }
+        var frames: [UIImage] = []
+        var total = 0.0
+        for index in 0..<count {
+            guard let cgImage = CGImageSourceCreateImageAtIndex(source, index, nil) else { continue }
+            let properties = CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [CFString: Any]
+            let gif = properties?[kCGImagePropertyGIFDictionary] as? [CFString: Any]
+            var delay = (gif?[kCGImagePropertyGIFUnclampedDelayTime] as? Double) ?? (gif?[kCGImagePropertyGIFDelayTime] as? Double) ?? 0.1
+            if delay < 0.02 { delay = 0.1 }
+            // UIImage plays frames at an even pace: repeat each one for its own share of time.
+            let repeats = max(1, Int((delay / 0.02).rounded()))
+            let frame = UIImage(cgImage: cgImage)
+            frames.append(contentsOf: Array(repeating: frame, count: repeats))
+            total += delay
+        }
+        return frames.count > 1 ? UIImage.animatedImage(with: frames, duration: total) : frames.first
+    }
+
+    private static func loadStill(_ url: URL) async -> UIImage? {
+        guard let (data, _) = try? await URLSession.shared.data(from: url) else { return nil }
+        return UIImage(data: data)
     }
 }
