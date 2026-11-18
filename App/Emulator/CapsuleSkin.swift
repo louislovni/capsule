@@ -17,6 +17,7 @@ enum PadSkin: String, CaseIterable, Identifiable {
 struct WheelTool: Identifiable {
     let id: String
     let short: String
+    let icon: String
     let action: () -> Void
 }
 
@@ -32,6 +33,9 @@ struct CapsuleCard<MenuContent: View>: View {
 
     @State private var drift = false
     @State private var toolIndex = 0
+    /// Counts the runs of the tool in the pill: each makes the pill bounce.
+    @State private var fired = 0
+    @State private var bounce = false
     @GestureState private var wheelDrag: CGFloat = 0
 
     private let ink = Color(red: 0.094, green: 0.141, blue: 0.114)
@@ -240,24 +244,41 @@ struct CapsuleCard<MenuContent: View>: View {
                     .stroke(.white.opacity(0.3), lineWidth: 0.5))
                 .shadow(color: .black.opacity(0.35), radius: 5, y: 4)
                 .frame(width: 38, height: 54)
+                .scaleEffect(bounce ? 1.14 : 1)
                 .padding(.top, 32)
             VStack(spacing: 0) {
                 ForEach(Array(tools.enumerated()), id: \.element.id) { index, tool in
                     let distance = abs(CGFloat(index) - rolled)
+                    let picked = distance < 0.5
                     Button {
-                        roll(to: index)
-                        tool.action()
+                        if index == toolIndex {
+                            // The tool in the pill runs; any other one only rolls into it.
+                            fired += 1
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            tool.action()
+                        } else {
+                            roll(to: index)
+                        }
                     } label: {
-                        Text(tool.short)
-                            .font(.system(size: 8, weight: .bold))
-                            .tracking(0.4)
-                            .foregroundStyle(distance < 0.5 ? Color.white
-                                             : Color(red: 0.75, green: 0.8, blue: 0.77).opacity(distance < 1.5 ? 0.55 : 0))
-                            .frame(width: 46, height: itemHeight)
-                            .contentShape(Rectangle())
+                        VStack(spacing: 2) {
+                            Image(systemName: tool.icon)
+                                .font(.system(size: picked ? 15 : 12, weight: .semibold))
+                            if picked {
+                                Text(tool.short)
+                                    .font(.system(size: 7, weight: .heavy))
+                                    .tracking(0.3)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.7)
+                            }
+                        }
+                        .foregroundStyle(picked ? Color.white
+                                         : Color(red: 0.75, green: 0.8, blue: 0.77).opacity(distance < 1.5 ? 0.6 : 0))
+                        .frame(width: 46, height: itemHeight)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(tool.id)
+                    .accessibilityHint(index == toolIndex ? "Touche pour lancer" : "Touche pour le placer au centre")
                 }
             }
             .offset(y: 59 - itemHeight / 2 - rolled * itemHeight)
@@ -275,6 +296,12 @@ struct CapsuleCard<MenuContent: View>: View {
                 }
         )
         .animation(.spring(response: 0.5, dampingFraction: 0.62), value: toolIndex)
+        .onChange(of: fired) { _ in
+            withAnimation(.spring(response: 0.18, dampingFraction: 0.5)) { bounce = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.45)) { bounce = false }
+            }
+        }
     }
 
     private func roll(to index: Int) {

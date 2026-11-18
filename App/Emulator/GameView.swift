@@ -185,20 +185,20 @@ struct GameView: View {
         var tools: [WheelTool] = []
         if session.game.isDS {
             tools += [
-                WheelTool(id: "Compagnon", short: "COMP.") { session.pulse(PadKey.l2) },
-                WheelTool(id: "Menu rapide", short: "MENU") { session.pulse(PadKey.select | PadKey.l2) },
-                WheelTool(id: "Disposition des écrans", short: "ÉCRANS") { session.pulse(PadKey.r2) },
-                WheelTool(id: "Écran tactile", short: "TACT.") { session.pulse(PadKey.select | PadKey.r2) },
+                WheelTool(id: "Compagnon", short: "COMP.", icon: "sparkles") { session.pulse(PadKey.l2) },
+                WheelTool(id: "Menu rapide", short: "MENU", icon: "square.grid.2x2") { session.pulse(PadKey.select | PadKey.l2) },
+                WheelTool(id: "Disposition des écrans", short: "ÉCRANS", icon: "rectangle.split.1x2") { session.pulse(PadKey.r2) },
+                WheelTool(id: "Écran tactile", short: "TACT.", icon: "hand.point.up.left") { session.pulse(PadKey.select | PadKey.r2) },
             ]
         }
         tools += [
-            WheelTool(id: "Sauvegarde rapide", short: "SAUV.") { session.saveState(slot: 1) },
-            WheelTool(id: "Charger la sauvegarde rapide", short: "CHARG.") { requestLoad(slot: 1) },
-            WheelTool(id: session.isPaused ? "Reprendre" : "Pause", short: session.isPaused ? "REPR." : "PAUSE") {
+            WheelTool(id: "Sauvegarde rapide", short: "SAUV.", icon: "square.and.arrow.down") { session.saveState(slot: 1) },
+            WheelTool(id: "Charger la sauvegarde rapide", short: "CHARG.", icon: "clock.arrow.circlepath") { requestLoad(slot: 1) },
+            WheelTool(id: session.isPaused ? "Reprendre" : "Pause", short: session.isPaused ? "REPR." : "PAUSE", icon: session.isPaused ? "play.fill" : "pause.fill") {
                 userPaused.toggle()
                 session.setPaused(userPaused)
             },
-            WheelTool(id: "Plein écran", short: "PLEIN") {
+            WheelTool(id: "Plein écran", short: "PLEIN", icon: "arrow.up.left.and.arrow.down.right") {
                 forcedLandscape.toggle()
                 Orientation.force(landscape: forcedLandscape)
             },

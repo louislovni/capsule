@@ -402,6 +402,17 @@ struct PadRepresentable: UIViewRepresentable {
 final class ScreenUIView: UIView {
     /// Where the finger is, as a fraction of the picture (0...1), or nil when lifted.
     var onTouch: ((CGPoint?) -> Void)?
+    /// Called when the view comes on screen: the frames go to the one shown. When the layout
+    /// changes (upright to sideways) SwiftUI builds the new view before it drops the old one,
+    /// and the old one kept the frames: a black game.
+    var onShown: ((ScreenUIView) -> Void)?
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window != nil {
+            onShown?(self)
+        }
+    }
     private var tracked: UITouch?
 
     private func report(_ touch: UITouch) {
@@ -461,6 +472,9 @@ struct ScreenRepresentable: UIViewRepresentable {
     func makeUIView(context: Context) -> ScreenUIView {
         let view = ScreenUIView()
         session.displayLayer = view.layer
+        view.onShown = { [weak session] shown in
+            session?.displayLayer = shown.layer
+        }
         view.onTouch = { [weak session] point in
             session?.setTouch(point)
         }
@@ -468,6 +482,12 @@ struct ScreenRepresentable: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: ScreenUIView, context: Context) {
-        session.displayLayer = uiView.layer
+        if uiView.window != nil {
+            session.displayLayer = uiView.layer
+        }
+    }
+
+    static func dismantleUIView(_ uiView: ScreenUIView, coordinator: ()) {
+        uiView.onShown = nil
     }
 }
