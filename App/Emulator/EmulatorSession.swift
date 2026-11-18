@@ -39,6 +39,9 @@ final class EmulatorSession: ObservableObject {
     /// Width / height of the frame the core draws (it changes with EXPAND and the companion).
     @Published private(set) var screenAspect: CGFloat = 1.5
     @Published var notice: String?
+    /// The picture's average colour (0...1 each), refreshed about every second: the Capsule
+    /// controller takes its tint from it.
+    @Published private(set) var tint: (r: Double, g: Double, b: Double) = (0.62, 0.79, 0.65)
     /// What PokeDaisy made of the game when it loaded (shown once, then kept in the menu).
     @Published private(set) var companionInfo: String?
     @Published private(set) var companionSupported = true
@@ -238,9 +241,22 @@ final class EmulatorSession: ObservableObject {
         sendKeys()
     }
 
+    private var pulseKeys: UInt32 = 0
+
+    /// Holds these keys for a short moment, as a tap would (PokeDaisy's DS shortcuts).
+    func pulse(_ keys: UInt32) {
+        pulseKeys = keys
+        sendKeys()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+            guard let self = self, self.pulseKeys == keys else { return }
+            self.pulseKeys = 0
+            self.sendKeys()
+        }
+    }
+
     private func sendKeys() {
         guard let core = core else { return }
-        lr_set_keys(core, touchKeys | controllerKeys)
+        lr_set_keys(core, touchKeys | controllerKeys | pulseKeys)
     }
 
     /// A touch on the frame, in its own coordinates (0...1 on both axes), or nil when lifted.
@@ -272,7 +288,10 @@ final class EmulatorSession: ObservableObject {
 
     func cycleSpeed() {
         let index = Self.speeds.firstIndex(of: speed) ?? 0
-        let next = Self.speeds[(index + 1) % Self.speeds.count]
+        setSpeed(Self.speeds[(index + 1) % Self.speeds.count])
+    }
+
+    func setSpeed(_ next: Int) {
         speed = next
         lock.lock()
         speedFlag = next
@@ -378,12 +397,41 @@ final class EmulatorSession: ObservableObject {
         finished.signal()
     }
 
+    private var tintFrames = 0
+
+    /// The mean of a grid of 16 × 16 pixels (RGBX bytes), leaving out near-black ones (the
+    /// bands and the DS's gaps), which would only grey the tint.
+    private static func averageColour(_ data: Data, width: Int, height: Int) -> (r: Double, g: Double, b: Double) {
+        var r = 0, g = 0, b = 0, n = 0
+        data.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
+            let bytes = raw.bindMemory(to: UInt8.self)
+            for j in 0..<16 {
+                for i in 0..<16 {
+                    let x = (2 * i + 1) * width / 32, y = (2 * j + 1) * height / 32
+                    let o = (y * width + x) * 4
+                    let pr = Int(bytes[o]), pg = Int(bytes[o + 1]), pb = Int(bytes[o + 2])
+                    if pr + pg + pb < 60 { continue }
+                    r += pr; g += pg; b += pb; n += 1
+                }
+            }
+        }
+        guard n > 0 else { return (0.62, 0.79, 0.65) }
+        return (Double(r) / Double(n) / 255, Double(g) / Double(n) / 255, Double(b) / Double(n) / 255)
+    }
+
     private func present(_ core: OpaquePointer) {
         guard let pixels = lr_video_buffer(core) else { return }
         let width = Int(lr_video_width(core))
         let height = Int(lr_video_height(core))
         guard width > 0, height > 0 else { return }
         let data = Data(bytes: pixels, count: width * height * 4)
+        tintFrames += 1
+        if tintFrames % 60 == 1 {
+            let tint = Self.averageColour(data, width: width, height: height)
+            DispatchQueue.main.async { [weak self] in
+                self?.tint = tint
+            }
+        }
         guard let provider = CGDataProvider(data: data as CFData),
               let image = CGImage(
                   width: width,

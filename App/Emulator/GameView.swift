@@ -11,6 +11,9 @@ struct GameView: View {
     @State private var userPaused = false
     /// Sideways forced by the plein écran button (works with the rotation lock on).
     @State private var forcedLandscape = false
+    @AppStorage(PadSkin.storageKey) private var skinName = PadSkin.capsule.rawValue
+
+    private var skin: PadSkin { PadSkin(rawValue: skinName) ?? .capsule }
 
     private static let stateSlots = [1, 2, 3]
 
@@ -22,11 +25,13 @@ struct GameView: View {
         GeometryReader { geometry in
             let isLandscape = geometry.size.width > geometry.size.height
             let topInset = geometry.safeAreaInsets.top
-            let pictureArea = Self.portraitPictureArea(geometry.size, topInset: topInset)
             let screenHeight = geometry.size.height + topInset + geometry.safeAreaInsets.bottom
+            let pictureArea = portraitPictureArea(geometry.size, topInset: topInset, screenHeight: screenHeight)
             Group {
                 if isLandscape {
                     landscapeLayout(bandsBeside: picturesLeavesBands(geometry))
+                } else if skin == .capsule {
+                    capsuleLayout(pictureArea: pictureArea, screenHeight: screenHeight)
                 } else {
                     portraitLayout(pictureArea: pictureArea, screenHeight: screenHeight)
                 }
@@ -35,17 +40,11 @@ struct GameView: View {
                 gamepad.onKeys = { [weak session] keys in session?.setControllerKeys(keys) }
                 gamepad.onSpeed = { [weak session] in session?.cycleSpeed() }
                 session.start(landscape: isLandscape, pictureArea: isLandscape ? nil : pictureArea,
-                              screenHeight: isLandscape ? nil : screenHeight, topInset: topInset)
+                              screenHeight: isLandscape || skin == .capsule ? nil : screenHeight, topInset: topInset)
             }
             .onChange(of: isLandscape) { session.setLandscape($0) }
-            .onChange(of: geometry.size) { size in
-                if size.width <= size.height {
-                    let insets = geometry.safeAreaInsets
-                    session.setPictureArea(Self.portraitPictureArea(size, topInset: insets.top),
-                                           screenHeight: size.height + insets.top + insets.bottom,
-                                           topInset: insets.top)
-                }
-            }
+            .onChange(of: geometry.size) { _ in updatePictureArea(geometry) }
+            .onChange(of: skinName) { _ in updatePictureArea(geometry) }
         }
         .background(Color.black.ignoresSafeArea())
         .preferredColorScheme(.dark)
@@ -127,10 +126,84 @@ struct GameView: View {
         min(max(height * 0.42, 300), 380)
     }
 
+    /// The Capsule card's height, for the whole screen's height (points).
+    private static func cardHeight(_ screenHeight: CGFloat) -> CGFloat {
+        min(max(screenHeight * 0.51, 400), 440)
+    }
+
+    /// Black between the picture and the card, and around the card.
+    private static let cardGap: CGFloat = 5
+
     /// Upright, the picture's room: the width of the screen, from its top edge (under the
-    /// Dynamic Island too) down to the controls.
-    private static func portraitPictureArea(_ size: CGSize, topInset: CGFloat) -> CGSize {
-        CGSize(width: size.width, height: max(size.height + topInset - controlZoneHeight(size.height), 100))
+    /// Dynamic Island too) down to the controls (the plain skin) or the card (Capsule's).
+    private func portraitPictureArea(_ size: CGSize, topInset: CGFloat, screenHeight: CGFloat) -> CGSize {
+        if skin == .capsule {
+            let height = screenHeight - Self.cardHeight(screenHeight) - 2 * Self.cardGap
+            return CGSize(width: size.width, height: max(height, 100))
+        }
+        return CGSize(width: size.width, height: max(size.height + topInset - Self.controlZoneHeight(size.height), 100))
+    }
+
+    private func updatePictureArea(_ geometry: GeometryProxy) {
+        let size = geometry.size
+        guard size.width <= size.height else { return }
+        let insets = geometry.safeAreaInsets
+        let full = size.height + insets.top + insets.bottom
+        session.setPictureArea(portraitPictureArea(size, topInset: insets.top, screenHeight: full),
+                               screenHeight: skin == .capsule ? nil : full,
+                               topInset: insets.top)
+    }
+
+    /// Upright with the Capsule skin: the picture in the black on top, the card below it.
+    private func capsuleLayout(pictureArea: CGSize, screenHeight: CGFloat) -> some View {
+        VStack(spacing: Self.cardGap) {
+            Group {
+                if session.loadFailed {
+                    loadFailure
+                } else {
+                    screen
+                }
+            }
+            .frame(width: pictureArea.width, height: pictureArea.height)
+            .clipped()
+            CapsuleCard(session: session,
+                        showsControls: !session.loadFailed && gamepad.controllerName == nil,
+                        tools: wheelTools,
+                        onQuit: { dismiss() },
+                        menu: { moreMenu })
+                .frame(height: Self.cardHeight(screenHeight))
+                .padding(.horizontal, Self.cardGap)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .ignoresSafeArea()
+    }
+
+    /// The side wheel's tools. On a DS game, PokeDaisy's own buttons first: its DS core opens
+    /// the companion on L2, the quick menu on SELECT + L2, steps the screen layouts on R2 and
+    /// floats the touch screen in on SELECT + R2.
+    private var wheelTools: [WheelTool] {
+        var tools: [WheelTool] = []
+        if session.game.isDS {
+            tools += [
+                WheelTool(id: "Compagnon", short: "COMP.") { session.pulse(PadKey.l2) },
+                WheelTool(id: "Menu rapide", short: "MENU") { session.pulse(PadKey.select | PadKey.l2) },
+                WheelTool(id: "Disposition des écrans", short: "ÉCRANS") { session.pulse(PadKey.r2) },
+                WheelTool(id: "Écran tactile", short: "TACT.") { session.pulse(PadKey.select | PadKey.r2) },
+            ]
+        }
+        tools += [
+            WheelTool(id: "Sauvegarde rapide", short: "SAUV.") { session.saveState(slot: 1) },
+            WheelTool(id: "Charger la sauvegarde rapide", short: "CHARG.") { requestLoad(slot: 1) },
+            WheelTool(id: session.isPaused ? "Reprendre" : "Pause", short: session.isPaused ? "REPR." : "PAUSE") {
+                userPaused.toggle()
+                session.setPaused(userPaused)
+            },
+            WheelTool(id: "Plein écran", short: "PLEIN") {
+                forcedLandscape.toggle()
+                Orientation.force(landscape: forcedLandscape)
+            },
+        ]
+        return tools
     }
 
     /// Upright: the picture from the top, its HUD and the player in the part clear of the
@@ -276,35 +349,7 @@ struct GameView: View {
 
 
             Menu {
-                if let info = session.companionInfo {
-                    Section("PokeDaisy") {
-                        Text(info)
-                    }
-                }
-                Section("Enregistrer un état") {
-                    ForEach(Self.stateSlots, id: \.self) { slot in
-                        Button {
-                            session.saveState(slot: slot)
-                        } label: {
-                            slotLabel(slot)
-                        }
-                    }
-                }
-                Section("Charger un état") {
-                    ForEach(Self.stateSlots, id: \.self) { slot in
-                        Button {
-                            requestLoad(slot: slot)
-                        } label: {
-                            slotLabel(slot)
-                        }
-                        .disabled(stateDate(slot) == nil)
-                    }
-                }
-                Section {
-                    Button("Redémarrer le jeu", role: .destructive) {
-                        session.reset()
-                    }
-                }
+                moreMenu
             } label: {
                 Label("Plus", systemImage: "ellipsis.circle")
                     .labelStyle(.iconOnly)
@@ -315,6 +360,47 @@ struct GameView: View {
         .padding(.horizontal, compact ? 0 : 18)
         .padding(.vertical, compact ? 6 : 8)
         .fixedSize()
+    }
+
+    /// The menu behind "…": save states, the controller's look, restarting.
+    @ViewBuilder
+    private var moreMenu: some View {
+        if let info = session.companionInfo {
+            Section("PokeDaisy") {
+                Text(info)
+            }
+        }
+        Section("Enregistrer un état") {
+            ForEach(Self.stateSlots, id: \.self) { slot in
+                Button {
+                    session.saveState(slot: slot)
+                } label: {
+                    slotLabel(slot)
+                }
+            }
+        }
+        Section("Charger un état") {
+            ForEach(Self.stateSlots, id: \.self) { slot in
+                Button {
+                    requestLoad(slot: slot)
+                } label: {
+                    slotLabel(slot)
+                }
+                .disabled(stateDate(slot) == nil)
+            }
+        }
+        Section {
+            Button("Redémarrer le jeu", role: .destructive) {
+                session.reset()
+            }
+        }
+        Section("Apparence de la manette") {
+            Picker("Apparence de la manette", selection: $skinName) {
+                ForEach(PadSkin.allCases) { skin in
+                    Text(skin.title).tag(skin.rawValue)
+                }
+            }
+        }
     }
 
     @ViewBuilder
