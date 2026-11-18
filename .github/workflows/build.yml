@@ -56,6 +56,44 @@ jobs:
           gh release edit windows --title "Capsule 0.1.$RUN pour Windows"
           gh release upload windows build/Capsule-Windows.zip --clobber
 
+  android:
+    permissions:
+      contents: write
+    name: Android (APK)
+    runs-on: ubuntu-latest
+    env:
+      SIGNED: ${{ secrets.ANDROID_KEYSTORE_PASSWORD != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android NDK and CMake
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;28.2.13676358" "cmake;3.22.1" > /dev/null
+      - name: Build Capsule for Android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: sh scripts/build_android.sh "1.6.0.${{ github.run_number }}" "$((1000 + ${{ github.run_number }}))"
+      - name: Upload the APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Capsule-apk
+          path: build/Capsule.apk
+          if-no-files-found: error
+      - name: Publish it (release v1.6.0.N, which the app's updater finds)
+        # Only builds signed with Capsule's key: a debug-signed APK can't update an install.
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && env.SIGNED == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN: ${{ github.run_number }}
+        run: |
+          set -e
+          gh release create "v1.6.0.$RUN" build/Capsule.apk --title "Capsule 1.6.0.$RUN pour Android" --latest=false \
+            --notes "$(git log -1 --pretty=%s)"
+          gh release list --limit 100 --json tagName -q '.[].tagName' | grep '^v1\.6\.0\.' | sort -t. -k4 -n -r | tail -n +4 | \
+            while read old; do gh release delete "$old" --yes --cleanup-tag; done
+
   ipa:
     permissions:
       contents: write
