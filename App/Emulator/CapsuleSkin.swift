@@ -164,7 +164,12 @@ struct CapsuleCard<MenuContent: View>: View {
     static func displayTitle(_ name: String) -> String {
         var title = name.replacingOccurrences(of: #"\s*[\(\[][^\)\]]*[\)\]]"#, with: "", options: .regularExpression)
         title = title.replacingOccurrences(of: #"^(Pok[eé]mon)\s*[-:–]?\s*"#, with: "", options: [.regularExpression, .caseInsensitive])
-        title = title.replacingOccurrences(of: "_", with: " ").trimmingCharacters(in: .whitespaces)
+        title = title.replacingOccurrences(of: "_", with: " ")
+        // Patch words and "Version" say nothing: "Version Argent SoulSilver apfix" → "Argent SoulSilver".
+        title = title.replacingOccurrences(of: #"(?i)\b(version|ver\.?|apfix|ap fix|patched|patch|fixed|fix|rev ?\d+|v\d+(\.\d+)*)\b"#,
+                                           with: "", options: .regularExpression)
+        title = title.replacingOccurrences(of: #"\s{2,}"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: CharacterSet(charactersIn: " -–:"))
         return title.isEmpty ? name : title
     }
 
