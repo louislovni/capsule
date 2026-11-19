@@ -27,7 +27,7 @@ struct LibraryView: View {
     @Namespace private var cartridges
 
     enum Route: Hashable {
-        case pokedex, bank, account, settings, gamepad
+        case pokedex, bank, account, settings, gamepad, compat
     }
 
     var body: some View {
@@ -45,6 +45,8 @@ struct LibraryView: View {
                     PokeDaisySettingsView().capsuleScreen()
                 case .gamepad:
                     GamepadSettingsView().capsuleScreen()
+                case .compat:
+                    CompatView(games: library.games)
                 }
             }
             .fileImporter(isPresented: $importing, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
@@ -179,6 +181,10 @@ struct LibraryView: View {
                 }
                 .buttonStyle(SquishStyle())
                 .padding(.top, 6)
+                NavigationLink(value: Route.compat) {
+                    pill("checklist", "Jeux compatibles")
+                }
+                .buttonStyle(SquishStyle())
                 HStack(spacing: 10) {
                     NavigationLink(value: Route.settings) {
                         pill("slider.horizontal.3", "Réglages PokeDaisy")

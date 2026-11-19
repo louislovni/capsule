@@ -1,0 +1,2158 @@
+{
+ "generatedFrom": "PokeDaisy fork, 3ds/core/pd_game.c and website/src/data/compat.json",
+ "games": [
+  {
+   "title": "Pokémon Blattgrüne Edition",
+   "console": "GBA",
+   "kind": "official",
+   "version": "",
+   "revisions": [
+    0
+   ],
+   "code": "BPGD",
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Edición Esmeralda",
+   "console": "GBA",
+   "kind": "official",
+   "version": "",
+   "revisions": [
+    0
+   ],
+   "code": "BPES",
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Edición Rojo Fuego",
+   "console": "GBA",
+   "kind": "official",
+   "version": "",
+   "revisions": [
+    0
+   ],
+   "code": "BPRS",
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Edición Rubí",
+   "console": "GBA",
+   "kind": "official",
+   "version": "",
+   "revisions": [
+    0,
+    1
+   ],
+   "code": "AXVS",
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Edición Verde Hoja",
+   "console": "GBA",
+   "kind": "official",
+   "version": "",
+   "revisions": [
+    0
+   ],
+   "code": "BPGS",
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Edición Zafiro",
+   "console": "GBA",
+   "kind": "official",
+   "version": "",
+   "revisions": [
+    0,
+    1
+   ],
+   "code": "AXPS",
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Feuerrote Edition",
+   "console": "GBA",
+   "kind": "official",
+   "version": "",
+   "revisions": [
+    0
+   ],
+   "code": "BPRD",
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon LeafGreen",
+   "console": "GBA",
+   "kind": "official",
+   "version": "",
+   "revisions": [
+    0,
+    1
+   ],
+   "code": "BPGE",
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Rubin-Edition",
+   "console": "GBA",
+   "kind": "official",
+   "version": "",
+   "revisions": [
+    0,
+    1
+   ],
+   "code": "AXVD",
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Ruby",
+   "console": "GBA",
+   "kind": "official",
+   "version": "",
+   "revisions": [
+    0,
+    1,
+    2
+   ],
+   "code": "AXVE",
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Saphir-Edition",
+   "console": "GBA",
+   "kind": "official",
+   "version": "",
+   "revisions": [
+    0,
+    1
+   ],
+   "code": "AXPD",
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Sapphire",
+   "console": "GBA",
+   "kind": "official",
+   "version": "",
+   "revisions": [
+    0,
+    1,
+    2
+   ],
+   "code": "AXPE",
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Smaragd-Edition",
+   "console": "GBA",
+   "kind": "official",
+   "version": "",
+   "revisions": [
+    0
+   ],
+   "code": "BPED",
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Version Rouge Feu",
+   "console": "GBA",
+   "kind": "official",
+   "version": "",
+   "revisions": [
+    0
+   ],
+   "code": "BPRF",
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Version Rubis",
+   "console": "GBA",
+   "kind": "official",
+   "version": "",
+   "revisions": [
+    0,
+    1
+   ],
+   "code": "AXVF",
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Version Saphir",
+   "console": "GBA",
+   "kind": "official",
+   "version": "",
+   "revisions": [
+    0,
+    1
+   ],
+   "code": "AXPF",
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Version Vert Feuille",
+   "console": "GBA",
+   "kind": "official",
+   "version": "",
+   "revisions": [
+    0
+   ],
+   "code": "BPGF",
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Version Émeraude",
+   "console": "GBA",
+   "kind": "official",
+   "version": "",
+   "revisions": [
+    0
+   ],
+   "code": "BPEF",
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Versione Rosso Fuoco",
+   "console": "GBA",
+   "kind": "official",
+   "version": "",
+   "revisions": [
+    0
+   ],
+   "code": "BPRI",
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Versione Rubino",
+   "console": "GBA",
+   "kind": "official",
+   "version": "",
+   "revisions": [
+    0,
+    1
+   ],
+   "code": "AXVI",
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Versione Smeraldo",
+   "console": "GBA",
+   "kind": "official",
+   "version": "",
+   "revisions": [
+    0
+   ],
+   "code": "BPEI",
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Versione Verde Foglia",
+   "console": "GBA",
+   "kind": "official",
+   "version": "",
+   "revisions": [
+    0
+   ],
+   "code": "BPGI",
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Versione Zaffiro",
+   "console": "GBA",
+   "kind": "official",
+   "version": "",
+   "revisions": [
+    0,
+    1
+   ],
+   "code": "AXPI",
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "ポケットモンスター エメラルド",
+   "console": "GBA",
+   "kind": "official",
+   "version": "",
+   "revisions": [
+    0
+   ],
+   "code": "BPEJ",
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "ポケットモンスター サファイア",
+   "console": "GBA",
+   "kind": "official",
+   "version": "",
+   "revisions": [
+    0,
+    1
+   ],
+   "code": "AXPJ",
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "ポケットモンスター ファイアレッド",
+   "console": "GBA",
+   "kind": "official",
+   "version": "",
+   "revisions": [
+    0,
+    1
+   ],
+   "code": "BPRJ",
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "ポケットモンスター リーフグリーン",
+   "console": "GBA",
+   "kind": "official",
+   "version": "",
+   "revisions": [
+    0,
+    1
+   ],
+   "code": "BPGJ",
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "ポケットモンスター ルビー",
+   "console": "GBA",
+   "kind": "official",
+   "version": "",
+   "revisions": [
+    0,
+    1
+   ],
+   "code": "AXVJ",
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Moemon Quetzal",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v0.8.4-ALPHA-ES-Hotfix",
+   "sha1": [
+    "ae5d88bb823a8f9d0d07e8784da2376ff7c1ae43"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Moemon Quetzal",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v0.8.4-ALPHA-Hotfix",
+   "sha1": [
+    "f1035f615c13c46394a18fa99181c24c3cd15e12"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Altered Emerald",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "",
+   "sha1": [
+    "b1d5feccdf9f1b2b025c5ff6062ce97134b1d0e7"
+   ],
+   "companion": true,
+   "bank": "likely",
+   "unverified": true
+  },
+  {
+   "title": "Pokémon Amethyst",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v1.3.0",
+   "sha1": [
+    "00e70c0384a5f1698588034201fd5b849d3542e2"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Amethyst",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v1.4.1",
+   "sha1": [
+    "91291aade04b4b111cd03ae7b6e2ff460e1edd8a"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Ash Gray",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v4.5.3",
+   "sha1": [
+    "1ee1557db1e4c2e0e94c6306efcc40506bc40cc9"
+   ],
+   "companion": true,
+   "bank": "likely",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Ash Gray Fork Bug Fix",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v1.0",
+   "sha1": [
+    "92ed82145c013069472153391c7aab1cfbf37b75"
+   ],
+   "companion": true,
+   "bank": "likely",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Celia's Stupid Romhack",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v1.1.4",
+   "sha1": [
+    "3cbd5a2e72ce60cfae1e0c28d83e01f855c51537"
+   ],
+   "companion": true,
+   "bank": "likely",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Delta Emerald",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "",
+   "sha1": [
+    "6650b2f7f2b7aa0c880061e0e362bbdb9ab999c6"
+   ],
+   "companion": true,
+   "bank": "likely",
+   "unverified": true
+  },
+  {
+   "title": "Pokémon Dreamstone Mysteries",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "",
+   "sha1": [
+    "20e91aecb3243eea7cd610659846f37062f5d709"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Emerald Imperium",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v1.3.1",
+   "sha1": [
+    "1d20091c4d936f5eb122db8780554dd0829ffb63"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Emerald Kaizo",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v2.0",
+   "sha1": [
+    "a7c4e34fafb53f2d5283eb6d43dad285c0dd40a8"
+   ],
+   "companion": true,
+   "bank": "likely",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Emerald Legacy",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v1.1.4",
+   "sha1": [
+    "cbd71af65ee3dcd53280a6a12014bfb11e8f626a"
+   ],
+   "companion": true,
+   "bank": "likely",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Emerald Rogue EX",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v2.2.1-EX",
+   "sha1": [
+    "7600af1fe08444c850c3c1227fd7dfd81336ae8e"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Emerald Seaglass",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v3.0",
+   "sha1": [
+    "b9f4d332d30fc88c379f9e037f9eae3b2755ead4"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon FireRed Rocket Edition",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "",
+   "sha1": [
+    "033d05374ae34eb84fae62c693ca8f3da23dd1bd"
+   ],
+   "companion": true,
+   "bank": "likely",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon GS Chronicles",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v2.7.6",
+   "sha1": [
+    "25f8840ecb58e584edf18ffde35f845e94f3f17c"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Gaia",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v3.2",
+   "sha1": [
+    "d5b1e77975fcda831e0e9a7b527906bf3f40ecd0"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Ghost Grey",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "",
+   "sha1": [
+    "20dfaea1d5317cf95fe0b493208edce7d50b865f",
+    "74337272566a74625d6dedefe47d2d153eb48ec1",
+    "0dafc0116b74406a2df491e26ccb40dd362fb0b7"
+   ],
+   "companion": true,
+   "bank": "likely",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Glazed",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v9.2.0",
+   "sha1": [
+    "e10105d8544469c6a11ca2cf510289981df3c3b0"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Heart and Soul",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v2.0.6",
+   "sha1": [
+    "79ee6df0869c1773c8c6a5f764afc1f8d833d8bb"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Lazarus",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v2.0",
+   "sha1": [
+    "7dcdc7e280bc4631487e13dd37e6e0cea04adea6"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Let's Go Eevee",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "",
+   "sha1": [
+    "4a41d539cbf6108cfe3344db5ba997fc5660d77d"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Let's Go Pikachu",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "",
+   "sha1": [
+    "62bb900925118796fb963b7df92d02cb548c404e"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Monomyth",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v1.0",
+   "sha1": [
+    "ae1c4be9be8d706bb989602bc05731203d42860d"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Monomyth",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v1.1",
+   "sha1": [
+    "eb660caffbc26e1f09f86714d03af4c3eccd9e4d"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Monomyth",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v1.2",
+   "sha1": [
+    "742e62ffa5a8d607171fdb8477eb1f417dc36086"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Odyssey",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v4.1.1",
+   "sha1": [
+    "8745ddbdbfadf6abaf66de4e9055923b62eb4668"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Orange Islands",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "",
+   "sha1": [
+    "8bac897de515f88e6ce92d0712ce2c018a394b37"
+   ],
+   "companion": true,
+   "bank": "likely",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Orange Islands",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v5.7-BETA",
+   "sha1": [
+    "d2e3800e69e44c9649c3d9a15dc1cd12c1d90501"
+   ],
+   "companion": true,
+   "bank": "likely",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Quetzal",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v0.8.4-ALPHA",
+   "sha1": [
+    "6806c7146aff457a4be85ef2030e9ddcdb17b665"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Quetzal",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v0.8.4-ALPHA-ES",
+   "sha1": [
+    "b6542c7dbb40cf6ea96714a7a0e30cb468102861"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Quetzal",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v9.0-ALPHA",
+   "sha1": [
+    "d0658315da1e8827f66f15c3d3a000fe747e163e"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Quetzal",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v9.0-ALPHA-ES",
+   "sha1": [
+    "fe346b5b0eb022e3a103f81e7dcefba6f1dc542f"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Quetzal",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v9.1-ALPHA",
+   "sha1": [
+    "c108cec750a35775084c0806cc704d8abd1994e7"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Quetzal",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v9.1-ALPHA-ES",
+   "sha1": [
+    "ff008b70b6f2b330da9ffa8a405fc951a9e54147"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon R.O.W.E.",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v2.1.9.1",
+   "sha1": [
+    "81bd0f4bfa1c04ab2c6faab1bddd10e8a390ea77"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Radical Red",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v4.1",
+   "sha1": [
+    "964f951a0fdaf209e4ea1344883ef0d557bb3a80"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Recharged Emerald",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v2.2.5",
+   "sha1": [
+    "67f44fb4cdbb16c0d1a495ac219f2979b1e3005f"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Recharged Emerald",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v2.2.8",
+   "sha1": [
+    "56c9777215f5be627f7c3099e68985aefc10f2b7"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Recharged Emerald Rebalanced",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v2.2.8",
+   "sha1": [
+    "08b9c7903ae4c4e26d80ef945a90c004ae1e0ebb"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Recharged Yellow",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v1.8.0",
+   "sha1": [
+    "be5033598e91d0e80fa93e551406f02a7876d7c2"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Recharged Yellow",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v1.9.0",
+   "sha1": [
+    "ac30d1ed80e75104a3fb92f71e2b9a51c26e80c8"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Recharged Yellow",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v1.9.4",
+   "sha1": [
+    "7d9fae6cf31c07bc7fa5cf7afe137ad5385cefb1"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Recharged Yellow",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v1.9.7",
+   "sha1": [
+    "ed60654d7525ba005bfc8f799bf0ecba2ef08a2e"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Royal Sapphire",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "",
+   "sha1": [
+    "186449f6208675af4d8cfe4ace5afbf5186cea6d"
+   ],
+   "companion": true,
+   "bank": "likely",
+   "unverified": true
+  },
+  {
+   "title": "Pokémon SoulGold",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v1.1.4",
+   "sha1": [
+    "ea5d369cc8a31cbf1cfacb7c9470ea670f08957b"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon SoulGold",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v1.2",
+   "sha1": [
+    "805d880ee229fb6dc3ce03d7b03baf48f0d759d0"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon SoulGold",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v1.2.1",
+   "sha1": [
+    "32988f918ca09923466ae3bc5bbfe5f2a771c728"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon SoulGold",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v1.2.1b",
+   "sha1": [
+    "dacb6e40e7f572ddefd2dfa10e99c0da6835b062"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon SoulGold",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v1.2b",
+   "sha1": [
+    "5d6a036260fdbde96f85b5c1b92d0256d3aebafb"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon SoulGold",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v1.2c",
+   "sha1": [
+    "2be7c99aa473308debe1d03ff2015bab7d9addb5"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Sword and Shield Ultimate Plus",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v1.2.1.2",
+   "sha1": [
+    "afe4c8e0f9c7186860fcea5f25d8318f5d7929b9"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Sword and Shield Ultimate Plus",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v1.2.1.2-CASUAL",
+   "sha1": [
+    "daa2f89934d2c0447d5271dabeba86bfba04e1fd"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Sword and Shield Ultimate Plus",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v1.2.1.2-CASUAL-PERFORMANCE",
+   "sha1": [
+    "932323d1fa3732d8673d1319fa86ed4df41087b9"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Sword and Shield Ultimate Plus",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v1.2.1.2-PERFORMANCE",
+   "sha1": [
+    "4858cc3d7b335bb5eed553861d7a4a17bad9ce2c"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Team Rocket Edition",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v1.5",
+   "sha1": [
+    "40780347d0b4df6bf491eaf12603e5422caee677"
+   ],
+   "companion": true,
+   "bank": "likely",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Too Many Types 2",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "",
+   "sha1": [
+    "8a6940ae3fb9a27577ab24833d7c928eb4d8db87"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": true
+  },
+  {
+   "title": "Pokémon Too Many Types 2",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v1.5.2",
+   "sha1": [
+    "3fa8e61ec1727cc51540c54677623f736a446e1b"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Ultra Violet",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v1.22",
+   "sha1": [
+    "3b6c51d8fb6b513bdd01b7bda3ed8965bc985d58"
+   ],
+   "companion": true,
+   "bank": "likely",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Unbound",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v2.1.1.1",
+   "sha1": [
+    "b4776b82a4c7915d0fadeaa27e013523f99dfd94"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Unbound",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v2.1.1.1-FR",
+   "sha1": [
+    "0ce2a880aa097f1dce4e1db8ee513d0e82d15859"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Wishes of Tomorrow",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v1.2.6",
+   "sha1": [
+    "60182b934d2e8eb3eef226a9bbc25e5df6becd4f"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Super Mariomon",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "",
+   "sha1": [
+    "c2ee8cc6b0a80bde0f4fb0d4a2e1fb984bccec77"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": true
+  },
+  {
+   "title": "Super Mariomon",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v1.2.1",
+   "sha1": [
+    "43dd208b23eade69aa3384301e934ecafbf6c2b3"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Super Mariomon",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v1.2.2",
+   "sha1": [
+    "08d1c275c0ba4d559b33427292702d61ad49fb5c"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Super Mariomon",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v1.3",
+   "sha1": [
+    "043512c2497871c018df606fb90ffbd4c81430f4"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Super Mariomon",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v1.5.1-Anniversary",
+   "sha1": [
+    "831fe0f97301f17b24a9cd4a64ef0520835c4dde"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Super Mariomon",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "v1.5.2-Anniversary",
+   "sha1": [
+    "06e79d12afa578db97c23c1f7ba771fe2f8fe905"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Blue",
+   "console": "GB",
+   "kind": "official",
+   "version": "",
+   "sha1": [
+    "d7037c83e1ae5b39bde3c30787637ba1d4c48ce2"
+   ],
+   "companion": true,
+   "bank": "yes",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Crystal",
+   "console": "GB",
+   "kind": "official",
+   "version": "",
+   "sha1": [
+    "f4cd194bdee0d04ca4eac29e09b8e4e9d818c133",
+    "f2f52230b536214ef7c9924f483392993e226cfb",
+    "a0fc810f1d4e124434f7be2c989ab5b5892ddf36"
+   ],
+   "companion": true,
+   "bank": "yes",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Edición Amarilla",
+   "console": "GB",
+   "kind": "official",
+   "version": "",
+   "sha1": [
+    "1dc242039218fba50928d1afb66b70565b6b9daf"
+   ],
+   "companion": true,
+   "bank": "yes",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Gelbe Edition",
+   "console": "GB",
+   "kind": "official",
+   "version": "",
+   "sha1": [
+    "42f3714eec6eca25200d42461ff08d57c98f6d1d"
+   ],
+   "companion": true,
+   "bank": "yes",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Gold",
+   "console": "GB",
+   "kind": "official",
+   "version": "",
+   "sha1": [
+    "d8b8a3600a465308c9953dfa04f0081c05bdcb94"
+   ],
+   "companion": true,
+   "bank": "yes",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Red",
+   "console": "GB",
+   "kind": "official",
+   "version": "",
+   "sha1": [
+    "ea9bcae617fdf159b045185467ae58b2e4a48b9a"
+   ],
+   "companion": true,
+   "bank": "yes",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Silver",
+   "console": "GB",
+   "kind": "official",
+   "version": "",
+   "sha1": [
+    "49b163f7e57702bc939d642a18f591de55d92dae"
+   ],
+   "companion": true,
+   "bank": "yes",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Version Jaune",
+   "console": "GB",
+   "kind": "official",
+   "version": "",
+   "sha1": [
+    "0aceec0ef7aa2ca5aa831554598d91f61a925591"
+   ],
+   "companion": true,
+   "bank": "yes",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Versione Gialla",
+   "console": "GB",
+   "kind": "official",
+   "version": "",
+   "sha1": [
+    "05bb8e99f24d498613930949730afa8024e77d08"
+   ],
+   "companion": true,
+   "bank": "yes",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Yellow",
+   "console": "GB",
+   "kind": "official",
+   "version": "",
+   "sha1": [
+    "cc7d03262ebfaf2f06772c1a480c7d9d5f4a38e1"
+   ],
+   "companion": true,
+   "bank": "yes",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Ambrosia",
+   "console": "GB",
+   "kind": "hack",
+   "version": "",
+   "sha1": [
+    "0d96cd8447788dd72392e4983df2115bf40e9315"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": true
+  },
+  {
+   "title": "Pokémon Crystal Clear",
+   "console": "GB",
+   "kind": "hack",
+   "version": "",
+   "sha1": [
+    "a1c4da6b0057c98fe4ebea45d6812a484fc69abd",
+    "6fc677bf7a9db103cb9ee11ac08d26782e69ae41",
+    "84d5c4924c3f1f3fc690669148b7e392948fb23d",
+    "534876e4e4d0d79a82fef3bbe5bea11c40451727"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Crystal Legacy",
+   "console": "GB",
+   "kind": "hack",
+   "version": "",
+   "sha1": [
+    "74a6727e4406c35bc2d4f81347a5c5fdb8970663"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": true
+  },
+  {
+   "title": "Pokémon Polished Crystal",
+   "console": "GB",
+   "kind": "hack",
+   "version": "",
+   "sha1": [
+    "6930b48af5844d373e3c9130f26d6dd1084cf4ed",
+    "beb8b38280af59e9ef84be12684a6ecf09021c9b",
+    "79ebf9984eac8081f488d15a35a6c5d11b4f84e2",
+    "e55859484c5cda70e05daed59b14662e0a0f8eac",
+    "457d61dfc28a17388b87792595433ba20bd1c1ed",
+    "bea9804dc88a4ee370af62ff3139fdf1380277bf",
+    "9c13585eb34efdcd881c2e68f029b820bddf349d",
+    "11d461629363402fc15b5005ef51b8f44e726140"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Polished Crystal (Faithful)",
+   "console": "GB",
+   "kind": "hack",
+   "version": "",
+   "sha1": [
+    "3ff091a8e94a0c031372b6f0275e12620fe3d766",
+    "e63b1e52a9f71c3948e3e7e515e9939d728fc679",
+    "666f8edfb9efd8c301adbc14d38ccfaae33a047d",
+    "b012f6d55c34c972778f5566e1cc910962dd7ab5",
+    "b5393eb27fec51970cc9186f36c34e94494bfd39",
+    "772858dd5a3e66dea4454d5f83b48c83d732ca69",
+    "c4bd263e58325c6c04c34462c1b4a37fba085e9c",
+    "c0a2c70d73ce68830a891ddd292300c90766acdd"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Prism",
+   "console": "GB",
+   "kind": "hack",
+   "version": "",
+   "sha1": [
+    "752076692ae3387cf426ce5f51a98c6b60e8df6a"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon PureBlue",
+   "console": "GB",
+   "kind": "hack",
+   "version": "",
+   "sha1": [
+    "d419fe244fa17196f7df46ddab47c840e7573652"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon PureBlue 2.7.7",
+   "console": "GB",
+   "kind": "hack",
+   "version": "",
+   "sha1": [
+    "b96ee563112c2b17ce1828e48446e1d71d61e8b5"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": true
+  },
+  {
+   "title": "Pokémon PureGreen 2.7.7",
+   "console": "GB",
+   "kind": "hack",
+   "version": "",
+   "sha1": [
+    "258ec7fef3d966cfb2a7e16c15fe1a329cf392ce"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": true
+  },
+  {
+   "title": "Pokémon PureRed",
+   "console": "GB",
+   "kind": "hack",
+   "version": "",
+   "sha1": [
+    "2e94d09c1e16a57eb079404c030f26fdeeac949d"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon PureRed 2.7.7",
+   "console": "GB",
+   "kind": "hack",
+   "version": "",
+   "sha1": [
+    "60d445d5a38364cc77e8fd1c043157e50e7df209"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": true
+  },
+  {
+   "title": "Pokémon Yellow Legacy",
+   "console": "GB",
+   "kind": "hack",
+   "version": "",
+   "sha1": [
+    "2ac87de42afc70ef6016805acb3b206644417f97"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": false
+  },
+  {
+   "title": "Pokémon Yume Blue",
+   "console": "GB",
+   "kind": "hack",
+   "version": "",
+   "sha1": [
+    "65f409e0677cdb0cfefeb2f981136cc84ba45a1c"
+   ],
+   "companion": true,
+   "bank": "no",
+   "unverified": true
+  },
+  {
+   "title": "Pokémon Black",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IRBO",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Black 2",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IREO",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Edición Blanca",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IRAS",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": false,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Edición Blanca 2",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IRDS",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": false,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Edición Negra",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IRBS",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": false,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Edición Negra 2",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IRES",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": false,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Edición Oro HeartGold",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IPKS",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": false,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Edición Plata SoulSilver",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IPGS",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": false,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Edición Platino",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "CPUS",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": false,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Goldene Edition HeartGold",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IPKD",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": false,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon HeartGold",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IPKE",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Platinum",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "CPUE",
+   "revisions": [
+    1
+   ],
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Schwarze Edition",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IRBD",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": false,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Schwarze Edition 2",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IRED",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": false,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Silberne Edition SoulSilver",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IPGD",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": false,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon SoulSilver",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IPGE",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Version Argent SoulSilver",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IPGF",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Version Blanche",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IRAF",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Version Blanche 2",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IRDF",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Version Noire",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IRBF",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Version Noire 2",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IREF",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Version Or HeartGold",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IPKF",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Version Platine",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "CPUF",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Versione Argento SoulSilver",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IPGI",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": false,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Versione Bianca",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IRAI",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": false,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Versione Bianca 2",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IRDI",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": false,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Versione Nera",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IRBI",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": false,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Versione Nera 2",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IREI",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": false,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Versione Oro HeartGold",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IPKI",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": false,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Weiße Edition",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IRAD",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": false,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Weiße Edition 2",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IRDD",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": false,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon White",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IRAO",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon White 2",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IRDO",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": true,
+   "bank": "yes"
+  },
+  {
+   "title": "ポケットモンスター ソウルシルバー",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IPGJ",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": false,
+   "bank": "yes"
+  },
+  {
+   "title": "ポケットモンスター ハートゴールド",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IPKJ",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": false,
+   "bank": "yes"
+  },
+  {
+   "title": "ポケットモンスター ブラック",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IRBJ",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": false,
+   "bank": "yes"
+  },
+  {
+   "title": "ポケットモンスター ブラック2",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IREJ",
+   "revisions": [
+    1
+   ],
+   "sha1": [],
+   "companion": false,
+   "bank": "yes"
+  },
+  {
+   "title": "ポケットモンスター ホワイト",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IRAJ",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": false,
+   "bank": "yes"
+  },
+  {
+   "title": "ポケットモンスター ホワイト2",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IRDJ",
+   "revisions": [
+    1
+   ],
+   "sha1": [],
+   "companion": false,
+   "bank": "yes"
+  },
+  {
+   "title": "포켓몬스터 블랙",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IRBK",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": false,
+   "bank": "yes"
+  },
+  {
+   "title": "포켓몬스터 블랙2",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IREK",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": false,
+   "bank": "yes"
+  },
+  {
+   "title": "포켓몬스터 소울실버",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IPGK",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": false,
+   "bank": "yes"
+  },
+  {
+   "title": "포켓몬스터 하트골드",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IPKK",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": false,
+   "bank": "yes"
+  },
+  {
+   "title": "포켓몬스터 화이트",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IRAK",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": false,
+   "bank": "yes"
+  },
+  {
+   "title": "포켓몬스터 화이트2",
+   "console": "DS",
+   "kind": "official",
+   "version": "",
+   "code": "IRDK",
+   "revisions": [
+    0
+   ],
+   "sha1": [],
+   "companion": false,
+   "bank": "yes"
+  },
+  {
+   "title": "Pokémon Blaze Black 2 Redux",
+   "console": "DS",
+   "kind": "hack",
+   "version": "v1.4.1",
+   "sha1": [],
+   "companion": false,
+   "bank": "likely",
+   "note": "Compagnon sur Android seulement"
+  },
+  {
+   "title": "Pokémon Chaos Purple",
+   "console": "DS",
+   "kind": "hack",
+   "version": "démo (Silph Co. fix)",
+   "sha1": [
+    "330d9eb56e069df13c09bbcb3c748c269c94a88e"
+   ],
+   "companion": false,
+   "bank": "yes",
+   "note": "Banque et Pokédex vérifiés sur une sauvegarde ; Pokémon après Arceus réservés aux jeux du même moteur"
+  },
+  {
+   "title": "Pokémon Heartfelt Gold",
+   "console": "DS",
+   "kind": "hack",
+   "version": "v1.0.15",
+   "sha1": [],
+   "companion": false,
+   "bank": "likely",
+   "note": "Compagnon sur Android seulement"
+  },
+  {
+   "title": "Pokémon Origin HeartGold",
+   "console": "DS",
+   "kind": "hack",
+   "version": "v4.0.3 English 1.0.0",
+   "sha1": [],
+   "companion": false,
+   "bank": "no",
+   "note": "Compagnon sur Android seulement"
+  },
+  {
+   "title": "Pokémon Renegade Platinum",
+   "console": "DS",
+   "kind": "hack",
+   "version": "v1.3.0",
+   "sha1": [],
+   "companion": false,
+   "bank": "likely",
+   "note": "Compagnon sur Android seulement"
+  },
+  {
+   "title": "Pokémon Volt White 2 Redux",
+   "console": "DS",
+   "kind": "hack",
+   "version": "v1.4.1",
+   "sha1": [],
+   "companion": false,
+   "bank": "likely",
+   "note": "Compagnon sur Android seulement"
+  }
+ ]
+}
