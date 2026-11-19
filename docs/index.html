@@ -325,6 +325,70 @@ nav button.on { background: #f4efe9; color: #120f0d; }
 .cbar label { flex: 1; min-width: 0; height: 54px; border-radius: 27px; background: #1f1c1a; display: flex; align-items: center; gap: 10px; padding: 0 20px; color: #c9c2bb; }
 .cbar input { flex: 1; min-width: 0; background: none; border: 0; outline: 0; color: #f4efe9; font-size: 16px; }
 .cbar select { flex: none; max-width: 42%; height: 54px; border-radius: 27px; background: #1f1c1a; border: 0; color: #f4efe9; padding: 0 18px; font-weight: 600; font-size: 15px; }
+/* ---------- Capsule look, the rest of the site (2026-11): bank, stats, trades, sheet, welcome ---------- */
+:root { --bg: #0b0a09; --panel: #171513; --panel2: #221f1c; --line: #2a2622; --text: #f4efe9; --dim: #a39a91;
+  --red: #f5843f; --red2: #f5843f; --radius: 26px; --font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+.heavy, .card b, .hero h2, .box h3, .welcome h2, h1, .title h3 { font-family: "Bricolage Grotesque", Inter, var(--font); font-weight: 800; letter-spacing: -.6px; }
+.caps, h4, .section, .card span, .line .who small, .mon .sub { text-transform: uppercase; letter-spacing: 1.5px; font-size: 11px; font-weight: 500; }
+.hero, .card, .box, .search, .seg, select, .inrow input { border: 1px solid #ffffff0d; }
+.hero { border-radius: 30px; padding: 18px 20px; }
+.search, .seg, select { border-radius: 999px; background: var(--panel); }
+.search { padding: 0 18px; }
+.seg button { border-radius: 999px; padding: 8px 14px; }
+.seg button.on { background: #f4efe9; color: #120f0d; }
+select { padding: 11px 16px; color: var(--text); }
+.section { color: var(--dim); margin: 26px 4px 12px; }
+.empty { color: var(--dim); }
+/* Bank: a card per Pokémon in its types' colours, as the app's bank. */
+.cell.mon.own { color: #1d1712; border: 0; border-radius: 26px; padding: 12px 14px 12px 8px; background: var(--tint);
+  box-shadow: inset 0 1px 0 #ffffff59; transition: transform .35s cubic-bezier(.34,1.56,.64,1); }
+.cell.mon.own:active { transform: scale(.96); }
+.cell.mon.own img { background: radial-gradient(circle at 40% 35%, #ffffff8c, #ffffff26 70%); border-radius: 50%; }
+.cell.mon.own .nm { font-family: "Bricolage Grotesque", Inter, var(--font); font-weight: 800; font-size: 19px; letter-spacing: -.4px; }
+.cell.mon.own .sub { color: #1d1712a6; }
+.cell.mon.own .nm span { color: #1d1712a6 !important; }
+/* Stats: big heavy numbers on soft panels. */
+.cards { gap: 10px; }
+.card { border-radius: 26px; padding: 18px; }
+.card b { font-size: 40px; line-height: 1; margin-bottom: 8px; }
+.card.rows { padding: 16px 20px; }
+.rows .row { font-size: 13px; }
+.card .rows .row b, .card.rows .row b { font-size: 16px; line-height: 1.2; margin: 0; letter-spacing: 0; }
+.rows .row span { text-transform: uppercase; letter-spacing: 1.2px; font-size: 11px; color: var(--dim); }
+.rows .row .bar { height: 10px; border-radius: 5px; background: #ffffff10; }
+.rows .row .bar i { border-radius: 5px; }
+.card.tint { color: #1d1712; border: 0; background: linear-gradient(135deg, #f6d8c4, #f1e7c9 45%, #d9e6cf); }
+.card.tint span { color: #1d1712b3; }
+/* Trades. */
+.box { border-radius: 28px; padding: 20px; margin-bottom: 14px; }
+.box h3 { font-size: 22px; margin-bottom: 12px; }
+.code { font-family: "Bricolage Grotesque", Inter, var(--font); font-weight: 800; font-size: 44px; letter-spacing: 6px; }
+.box.tint { color: #1d1712; border: 0; background: linear-gradient(135deg, #f6d8c4, #f1e7c9 45%, #d9e6cf); }
+.box.tint .note { color: #1d1712b3; }
+.line { border-top: 1px solid #ffffff0d; padding: 12px 0; }
+.line .who { font-weight: 600; }
+.btn { border-radius: 999px; padding: 10px 18px; background: linear-gradient(#f79b62, #e8711f); box-shadow: 0 4px 10px #e8711f33;
+  transition: transform .35s cubic-bezier(.34,1.56,.64,1); }
+.btn:active { transform: scale(.92); }
+.btn.alt { background: var(--panel2); box-shadow: none; }
+.inrow input { border-radius: 999px; padding: 12px 18px; }
+/* The Pokémon sheet: a pastel stage, rounded. */
+.sheet { border-radius: 32px 32px 0 0; background: #141210; border: 1px solid #ffffff0d; }
+.stage { border-radius: 28px; margin: 6px 12px 0; background: var(--stage, linear-gradient(135deg, #e6dccb, #f1e9da)); }
+.stage img { filter: drop-shadow(0 10px 12px #0004); }
+.title h3 { font-size: 34px; }
+.moves div { border-radius: 16px; background: var(--panel2); }
+.kv { font-size: 15px; }
+/* Welcome. */
+.welcome { max-width: 480px; padding: 30px 26px 26px; border-radius: 36px; color: #1d1712;
+  background: linear-gradient(135deg, #cfe3cc, #f2ead1 40%, #f5d6c3 75%, #dcd3ec); }
+.welcome .ball { display: none; }
+.welcome h2 { font-size: 40px; line-height: 1; margin-bottom: 12px; }
+.welcome p { color: #1d1712b8; }
+.welcome .big { border-radius: 999px; background: #1d1712; color: #f4efe9; }
+.welcome .ghost { border-radius: 999px; color: #1d1712; background: #ffffff70; border: 1px solid #1d171230; }
+.welcome .note { color: #1d171299; }
+.toast { border-radius: 999px; background: #221f1c; }
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
@@ -348,7 +412,8 @@ nav button.on { background: #f4efe9; color: #120f0d; }
 <main>
   <section id="welcome" class="welcome hidden">
     <div class="ball"></div>
-    <h2>Ta banque Capsule, partout</h2>
+    <div class="caps" style="opacity:.7;margin-bottom:10px">Capsule · sur le web</div>
+    <h2>Ta banque et ton Pokédex, partout</h2>
     <p>Connecte-toi avec le compte Google de l'app : ta banque arrive depuis le cloud, et ton Pokédex se remplit avec chaque Pokémon que tu y as déposé.</p>
     <button class="big" id="signin">Se connecter avec Google</button>
     <button class="ghost" id="openfile">Ouvrir un fichier de banque</button>
@@ -439,7 +504,7 @@ function setBank(list, source) {
   }
   state.source = source;
   const games = [...new Set(state.entries.map(e => e.sourceGame))].sort();
-  $("bgame").innerHTML = '<option value="">Tous les jeux</option>' + games.map(g => `<option>${esc(g)}</option>`).join("");
+  $("bgame").innerHTML = '<option value="">Tous les jeux</option>' + games.map(g => `<option value="${esc(g)}">${esc(prettyGame(g))}</option>`).join("");
   $("welcome").classList.add("hidden");
   show(state.tab);
 }
@@ -467,7 +532,7 @@ const owned = n => state.byDex.has(n) || !!gameRec(n)?.g || !!gameRec(n)?.d;
 const seenOnly = n => !owned(n) && !!gameRec(n)?.v;
 const shinyOf = n => (state.byDex.get(n) || []).some(e => e.isShiny) || !!gameRec(n)?.s;
 // "Pokemon - Version Emeraude (FR)" -> "Emeraude"
-const prettyGame = t => t.replace(/\s*[\(\[][^\)\]]*[\)\]]/g, "").replace(/^pok[eé]mon\s*[-:–]?\s*(version\s+)?/i, "").trim() || t;
+function prettyGame(t) { return t.replace(/\s*[\(\[][^\)\]]*[\)\]]/g, "").replace(/^pok[eé]mon\s*[-:–]?\s*(version\s+)?/i, "").trim() || t; }
 const gameName = i => prettyGame(state.inGames.games[i] || "?");
 
 // Species facts (tools/gen_pokedex_data.py, from PokeAPI), loaded the first time a sheet opens.
@@ -860,9 +925,10 @@ function monCell(e) {
   const d = e.details || {};
   const nick = e.nickname && norm(e.nickname) !== norm(e.speciesName) ? e.nickname : null;
   const img = n && n <= MAX ? `<img class="sprite" loading="lazy" alt="" src="${sprite(n, e.isShiny)}">` : `<img alt="">`;
-  return `<button class="cell mon" data-id="${esc(e.id)}">${img}<div style="min-width:0">
+  const tint = n && n <= MAX ? ` style="--tint:${pastelGradient(DEX[n][1], DEX[n][2], e.isShiny, 135)}"` : "";
+  return `<button class="cell mon${tint ? " own" : ""}" data-id="${esc(e.id)}"${tint}>${img}<div style="min-width:0">
     <div class="nm">${esc(nick || e.speciesName)}${e.isShiny ? ' <span style="color:var(--gold)">★</span>' : ""}${d.gender ? ` <span style="color:var(--dim)">${esc(d.gender)}</span>` : ""}</div>
-    <div class="sub">${nick ? esc(e.speciesName) + " · " : ""}${d.level ? "Nv. " + d.level + " · " : ""}${esc(e.sourceGame)}</div>
+    <div class="sub">${nick ? esc(e.speciesName) + " · " : ""}${d.level ? "Nv. " + d.level + " · " : ""}${esc(prettyGame(e.sourceGame || ""))}</div>
     <div class="sub">DO ${esc(e.trainerName)}${n ? " · " + pad(n) : ""}</div></div></button>`;
 }
 
@@ -908,7 +974,7 @@ function openMon(id) {
   const nick = e.nickname && norm(e.nickname) !== norm(e.speciesName) ? e.nickname : null;
   openSheet(`
     <div class="grab"></div><button class="close" data-close>✕</button>
-    <div class="stage" style="--t1:${sp ? TYPE_COLORS[sp[1]] : "#555"}55">
+    <div class="stage" style="--t1:${sp ? TYPE_COLORS[sp[1]] : "#555"}55${sp ? `;--stage:${pastelGradient(sp[1], sp[2], e.isShiny)}` : ""}">
       ${n && n <= MAX ? `<img class="sprite" alt="" src="${sprite(n, e.isShiny, true)}" onerror="this.onerror=null;this.src='${sprite(n, e.isShiny)}'">` : ""}
     </div>
     <div class="title"><div class="no">${n ? pad(n) : ""}${e.isShiny ? ' · <span style="color:var(--gold)">★ Chromatique</span>' : ""}</div>
@@ -948,13 +1014,13 @@ function renderStats() {
   const counts = [...state.byDex.entries()].sort((a, b) => b[1].length - a[1].length).slice(0, 6);
   $("stats").innerHTML = `
     <div class="cards">
-      <div class="card"><b>${es.length}</b><span>Pokémon dans la banque</span></div>
+      <div class="card tint"><b>${es.length}</b><span>Pokémon dans la banque</span></div>
       <div class="card"><b>${ownedCount()}</b><span>espèces sur ${MAX}</span></div>
       <div class="card"><b style="color:var(--gold)">${shinies.length}</b><span>chromatiques</span></div>
       <div class="card"><b>${levels.length ? Math.max(...levels) : "–"}</b><span>niveau le plus haut</span></div>
     </div>
     ${shinies.length ? `<div class="section"><span>Chromatiques</span></div><div class="grid bankgrid">${shinies.map(monCell).join("")}</div>` : ""}
-    <div class="section"><span>Par jeu</span></div><div class="card rows">${bars(byGame, k => k, () => "var(--red2)") || '<span>Rien pour l\'instant.</span>'}</div>
+    <div class="section"><span>Par jeu</span></div><div class="card rows">${bars(byGame, k => prettyGame(k), () => "#f5843f") || '<span>Rien pour l\'instant.</span>'}</div>
     <div class="section"><span>Par type</span></div><div class="card rows">${bars(byType, k => TYPES[k], k => TYPE_COLORS[k])}</div>
     ${counts.length ? `<div class="section"><span>Les plus nombreux</span></div><div class="grid">${counts.map(([n, l]) => `<button class="cell" data-dex="${n}"><span class="cnt">×${l.length}</span><img class="sprite" loading="lazy" alt="" src="${sprite(n)}"><div class="nm">${esc(DEX[n][0])}</div></button>`).join("")}</div>` : ""}`;
 }
@@ -1228,7 +1294,7 @@ async function renderTrades() {
   const waiting = T.friends.filter(f => !f.accepted && f.mine);
   const friends = T.friends.filter(f => f.accepted);
   el.innerHTML = `
-    <div class="box"><h3>Ton code ami</h3><div class="code">${esc(T.profile.code)}</div>
+    <div class="box tint"><h3>Ton code ami</h3><div class="code">${esc(T.profile.code)}</div>
       <p class="note" style="margin:6px 0 0">${esc(T.profile.name)} · donne ce code à un ami pour qu'il t'ajoute.</p></div>
     ${T.trades.length ? `<div class="box"><h3>Échanges en cours</h3>${T.trades.map(t => `<div class="line"><div class="who">Avec ${esc(t.name)}</div>
       <button class="btn" data-act="open" data-trade="${esc(t.id)}">Reprendre</button></div>`).join("")}</div>` : ""}
