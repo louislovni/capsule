@@ -31,61 +31,22 @@ struct CapsuleCard<MenuContent: View>: View {
     let onQuit: () -> Void
     @ViewBuilder let menu: () -> MenuContent
 
-    @State private var drift = false
-    @State private var toolIndex = 0
-    /// Counts the runs of the tool in the pill: each makes the pill bounce.
-    @State private var fired = 0
-    @State private var bounce = false
-    @GestureState private var wheelDrag: CGFloat = 0
-
     private let ink = Color(red: 0.094, green: 0.141, blue: 0.114)
-    private static var itemHeight: CGFloat { 34 }
-
-    // MARK: Colours
-
-    private var base: UIColor {
-        let t = session.tint
-        return UIColor(red: t.r, green: t.g, blue: t.b, alpha: 1)
-    }
-
-    /// Three pastel stops around the picture's colour, a little apart in hue.
-    private var gradientStops: [Color] {
-        let b = base
-        var h: CGFloat = 0, s: CGFloat = 0, v: CGFloat = 0, a: CGFloat = 0
-        b.getHue(&h, saturation: &s, brightness: &v, alpha: &a)
-        let sat = min(max(s, 0.18), 0.5)
-        func pastel(_ dh: CGFloat, _ light: CGFloat) -> Color {
-            var hue = h + dh
-            if hue < 0 { hue += 1 }
-            if hue > 1 { hue -= 1 }
-            return Color(UIColor(hue: hue, saturation: sat, brightness: 0.82, alpha: 1).mixed(with: .white, light))
-        }
-        return [pastel(-0.04, 0.3), pastel(0.03, 0.5), pastel(0.12, 0.42), pastel(0, 0.36)]
-    }
-
-    /// The strong colour: A and the wheel's pill.
-    private var accent: UIColor {
-        var h: CGFloat = 0, s: CGFloat = 0, v: CGFloat = 0, a: CGFloat = 0
-        base.getHue(&h, saturation: &s, brightness: &v, alpha: &a)
-        return UIColor(hue: h, saturation: min(max(s, 0.3), 0.6), brightness: 0.38, alpha: 1)
-    }
 
     var body: some View {
         GeometryReader { geometry in
             let size = geometry.size
             ZStack(alignment: .topLeading) {
-                background
+                TintedBackground(tint: session.pictureTint)
                 header
                     .padding(.leading, 22)
                     .padding(.trailing, 64)
                     .padding(.top, 24)
-                notch
+                CapsuleWheel(tint: session.pictureTint, tools: tools)
                     .frame(maxWidth: .infinity, alignment: .topTrailing)
                     .padding(.top, 10)
                 if showsControls {
-                    CapsulePadRepresentable(accent: accent) { [weak session] keys in
-                        session?.setKeys(keys)
-                    }
+                    TintedPad(tint: session.pictureTint, session: session)
                     .frame(width: size.width, height: max(size.height - 182 - 24, 120))
                     .offset(y: 182)
                 } else {
@@ -100,19 +61,6 @@ struct CapsuleCard<MenuContent: View>: View {
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 40, style: .continuous))
-        .onAppear { drift = true }
-    }
-
-    private var background: some View {
-        ZStack {
-            LinearGradient(colors: gradientStops,
-                           startPoint: drift ? .topLeading : .top,
-                           endPoint: drift ? .bottomTrailing : .bottom)
-                .animation(.easeInOut(duration: 8).repeatForever(autoreverses: true), value: drift)
-            RadialGradient(colors: [.white.opacity(0.34), .white.opacity(0)],
-                           center: UnitPoint(x: 0.8, y: 0.75), startRadius: 0, endRadius: 260)
-        }
-        .animation(.easeInOut(duration: 1.4), value: session.tint.r + session.tint.g * 2 + session.tint.b * 3)
     }
 
     // MARK: Header
@@ -142,6 +90,7 @@ struct CapsuleCard<MenuContent: View>: View {
                 } label: {
                     glassCircle(systemImage: "ellipsis")
                 }
+                .menuOrder(.fixed)
                 .accessibilityLabel("Plus")
             }
         }
@@ -223,98 +172,6 @@ struct CapsuleCard<MenuContent: View>: View {
         .buttonStyle(SquishStyle())
         .accessibilityLabel(label)
     }
-
-    // MARK: The notch and its wheel
-
-    private var notch: some View {
-        ZStack(alignment: .topTrailing) {
-            NotchShape()
-                .fill(Color(red: 0.043, green: 0.051, blue: 0.047))
-                .frame(width: 56, height: 164)
-            wheel
-                .frame(width: 46, height: 118)
-                .clipped()
-                .padding(.top, 23)
-        }
-    }
-
-    private var wheel: some View {
-        let itemHeight = Self.itemHeight
-        let rolled = CGFloat(toolIndex) - wheelDrag / itemHeight
-        return ZStack(alignment: .top) {
-            RoundedRectangle(cornerRadius: 19, style: .continuous)
-                .fill(LinearGradient(colors: [Color(accent.mixed(with: .white, 0.25)), Color(accent)],
-                                     startPoint: .top, endPoint: .bottom))
-                .overlay(RoundedRectangle(cornerRadius: 19, style: .continuous)
-                    .stroke(.white.opacity(0.3), lineWidth: 0.5))
-                .shadow(color: .black.opacity(0.35), radius: 5, y: 4)
-                .frame(width: 38, height: 54)
-                .scaleEffect(bounce ? 1.14 : 1)
-                .padding(.top, 32)
-            VStack(spacing: 0) {
-                ForEach(Array(tools.enumerated()), id: \.element.id) { index, tool in
-                    let distance = abs(CGFloat(index) - rolled)
-                    let picked = distance < 0.5
-                    Button {
-                        if index == toolIndex {
-                            // The tool in the pill runs; any other one only rolls into it.
-                            fired += 1
-                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                            tool.action()
-                        } else {
-                            roll(to: index)
-                        }
-                    } label: {
-                        VStack(spacing: 2) {
-                            Image(systemName: tool.icon)
-                                .font(.system(size: picked ? 15 : 12, weight: .semibold))
-                            if picked {
-                                Text(tool.short)
-                                    .font(.system(size: 7, weight: .heavy))
-                                    .tracking(0.3)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.7)
-                            }
-                        }
-                        .foregroundStyle(picked ? Color.white
-                                         : Color(red: 0.75, green: 0.8, blue: 0.77).opacity(distance < 1.5 ? 0.6 : 0))
-                        .frame(width: 46, height: itemHeight)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(tool.id)
-                    .accessibilityHint(index == toolIndex ? "Touche pour lancer" : "Touche pour le placer au centre")
-                }
-            }
-            .offset(y: 59 - itemHeight / 2 - rolled * itemHeight)
-        }
-        .frame(width: 46, height: 118, alignment: .top)
-        .contentShape(Rectangle())
-        .gesture(
-            DragGesture(minimumDistance: 6)
-                .updating($wheelDrag) { value, state, _ in
-                    state = value.translation.height
-                }
-                .onEnded { value in
-                    let target = Int((CGFloat(toolIndex) - value.translation.height / itemHeight).rounded())
-                    roll(to: min(max(target, 0), tools.count - 1))
-                }
-        )
-        .animation(.spring(response: 0.5, dampingFraction: 0.62), value: toolIndex)
-        .onChange(of: fired) { _ in
-            withAnimation(.spring(response: 0.18, dampingFraction: 0.5)) { bounce = true }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) {
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.45)) { bounce = false }
-            }
-        }
-    }
-
-    private func roll(to index: Int) {
-        if index != toolIndex {
-            UISelectionFeedbackGenerator().selectionChanged()
-        }
-        toolIndex = index
-    }
 }
 
 /// The side notch: the black of the screen's edge coming into the card in a soft curve.
@@ -339,5 +196,234 @@ struct SquishStyle: ButtonStyle {
             .scaleEffect(configuration.isPressed ? 0.86 : 1)
             .offset(y: configuration.isPressed ? 1.5 : 0)
             .animation(.spring(response: 0.35, dampingFraction: 0.45), value: configuration.isPressed)
+    }
+}
+
+// MARK: - Colours from the picture
+
+/// The card's colours, worked out from the picture's.
+enum CardColors {
+    private static func hsb(_ tint: Tint) -> (CGFloat, CGFloat, CGFloat) {
+        var h: CGFloat = 0, s: CGFloat = 0, v: CGFloat = 0, a: CGFloat = 0
+        UIColor(red: tint.r, green: tint.g, blue: tint.b, alpha: 1).getHue(&h, saturation: &s, brightness: &v, alpha: &a)
+        return (h, s, v)
+    }
+
+    /// Four pastel stops around the picture's colour, a little apart in hue.
+    static func stops(_ tint: Tint) -> [Color] {
+        let (h, s, _) = hsb(tint)
+        let sat = min(max(s, 0.18), 0.5)
+        func pastel(_ dh: CGFloat, _ light: CGFloat) -> Color {
+            var hue = h + dh
+            if hue < 0 { hue += 1 }
+            if hue > 1 { hue -= 1 }
+            return Color(UIColor(hue: hue, saturation: sat, brightness: 0.82, alpha: 1).mixed(with: .white, light))
+        }
+        return [pastel(-0.04, 0.3), pastel(0.03, 0.5), pastel(0.12, 0.42), pastel(0, 0.36)]
+    }
+
+    /// The strong colour: A and the wheel's pill.
+    static func accent(_ tint: Tint) -> UIColor {
+        let (h, s, _) = hsb(tint)
+        return UIColor(hue: h, saturation: min(max(s, 0.3), 0.6), brightness: 0.38, alpha: 1)
+    }
+}
+
+/// The card's drifting gradient.
+struct TintedBackground: View {
+    @ObservedObject var tint: PictureTint
+    @State private var drift = false
+
+    var body: some View {
+        ZStack {
+            LinearGradient(colors: CardColors.stops(tint.value),
+                           startPoint: drift ? .topLeading : .top,
+                           endPoint: drift ? .bottomTrailing : .bottom)
+                .animation(.easeInOut(duration: 8).repeatForever(autoreverses: true), value: drift)
+            RadialGradient(colors: [.white.opacity(0.34), .white.opacity(0)],
+                           center: UnitPoint(x: 0.8, y: 0.75), startRadius: 0, endRadius: 260)
+        }
+        .animation(.easeInOut(duration: 1.4), value: tint.value)
+        .onAppear { drift = true }
+    }
+}
+
+/// The controls, their A in the card's strong colour.
+struct TintedPad: View {
+    @ObservedObject var tint: PictureTint
+    let session: EmulatorSession
+
+    var body: some View {
+        CapsulePadRepresentable(accent: CardColors.accent(tint.value)) { [weak session] keys in
+            session?.setKeys(keys)
+        }
+    }
+}
+
+// MARK: - The side wheel
+
+/// The tools in the notch on the side. A finger rolls the wheel (it snaps to a tool, a tick at
+/// each one) or a tap on a tool above or below brings it to the middle; only a tap on the tool in
+/// the middle runs it. Its full name shows beside the notch when it comes to the middle.
+struct CapsuleWheel: View {
+    @ObservedObject var tint: PictureTint
+    let tools: [WheelTool]
+
+    @State private var index = 0
+    @State private var drag: CGFloat = 0
+    @State private var moved = false
+    @State private var bounce = false
+    @State private var caption: String?
+    @State private var captionTask: DispatchWorkItem?
+
+    private let item: CGFloat = 34
+    /// The window's middle, where the pill is.
+    private let middle: CGFloat = 59
+
+    /// Where the wheel stands, in tools (fractional while a finger moves it), held a little past
+    /// the ends.
+    private var rolled: CGFloat {
+        let raw = CGFloat(index) - drag / item
+        let last = CGFloat(max(tools.count - 1, 0))
+        if raw < 0 { return raw / 3 }
+        if raw > last { return last + (raw - last) / 3 }
+        return raw
+    }
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            NotchShape()
+                .fill(Color(red: 0.043, green: 0.051, blue: 0.047))
+                .frame(width: 56, height: 164)
+            window
+                .padding(.top, 23)
+        }
+        .frame(width: 56, height: 164)
+        .overlay(alignment: .topTrailing) {
+            if let caption = caption {
+                Text(caption)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .fixedSize()
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color(red: 0.043, green: 0.051, blue: 0.047).opacity(0.88), in: Capsule())
+                    .offset(x: -60, y: 23 + middle - 14)
+                    .transition(.opacity.combined(with: .offset(x: 12)))
+                    .allowsHitTesting(false)
+            }
+        }
+        .animation(.easeOut(duration: 0.2), value: caption)
+    }
+
+    private var window: some View {
+        let accent = CardColors.accent(tint.value)
+        let rolled = self.rolled
+        return ZStack(alignment: .top) {
+            RoundedRectangle(cornerRadius: 19, style: .continuous)
+                .fill(LinearGradient(colors: [Color(accent.mixed(with: .white, 0.25)), Color(accent)],
+                                     startPoint: .top, endPoint: .bottom))
+                .overlay(RoundedRectangle(cornerRadius: 19, style: .continuous).stroke(.white.opacity(0.3), lineWidth: 0.5))
+                .shadow(color: .black.opacity(0.35), radius: 5, y: 4)
+                .frame(width: 38, height: 54)
+                .scaleEffect(bounce ? 1.14 : 1)
+                .offset(y: middle - 27)
+            ForEach(Array(tools.enumerated()), id: \.offset) { offset, tool in
+                let distance = abs(CGFloat(offset) - rolled)
+                let picked = distance < 0.5
+                VStack(spacing: 2) {
+                    Image(systemName: tool.icon)
+                        .font(.system(size: picked ? 15 : 12, weight: .semibold))
+                    Text(tool.short)
+                        .font(.system(size: 7, weight: .heavy))
+                        .tracking(0.3)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .opacity(picked ? 1 : 0)
+                }
+                .foregroundStyle(picked ? Color.white : Color(red: 0.75, green: 0.8, blue: 0.77))
+                .opacity(distance < 0.5 ? 1 : max(0, 0.65 - (distance - 0.5) * 0.45))
+                .frame(width: 46, height: item)
+                .offset(y: middle - item / 2 + (CGFloat(offset) - rolled) * item)
+            }
+        }
+        .frame(width: 46, height: 118, alignment: .top)
+        .clipped()
+        .contentShape(Rectangle())
+        .gesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { value in
+                    if !moved && abs(value.translation.height) > 6 {
+                        moved = true
+                    }
+                    guard moved else { return }
+                    let before = Int(self.rolled.rounded())
+                    drag = value.translation.height
+                    let now = Int(self.rolled.rounded())
+                    if now != before, (0..<tools.count).contains(now) {
+                        UISelectionFeedbackGenerator().selectionChanged()
+                    }
+                }
+                .onEnded { value in
+                    if moved {
+                        let target = min(max(Int(rolled.rounded()), 0), tools.count - 1)
+                        withAnimation(.spring(response: 0.42, dampingFraction: 0.75)) {
+                            index = target
+                            drag = 0
+                        }
+                        moved = false
+                        show(tools[target].id)
+                    } else {
+                        tap(at: value.location.y)
+                    }
+                }
+        )
+        .accessibilityElement()
+        .accessibilityLabel(tools.indices.contains(index) ? tools[index].id : "Outils")
+        .accessibilityHint("Glisse pour changer d'outil, touche pour le lancer")
+        .accessibilityAdjustableAction { direction in
+            let next = direction == .increment ? index + 1 : index - 1
+            if tools.indices.contains(next) {
+                index = next
+            }
+        }
+        .accessibilityAction {
+            run()
+        }
+    }
+
+    private func tap(at y: CGFloat) {
+        let slot = Int(((y - middle) / item).rounded())
+        let target = index + slot
+        guard tools.indices.contains(target) else { return }
+        if slot == 0 {
+            run()
+        } else {
+            UISelectionFeedbackGenerator().selectionChanged()
+            withAnimation(.spring(response: 0.42, dampingFraction: 0.75)) {
+                index = target
+            }
+            show(tools[target].id)
+        }
+    }
+
+    private func run() {
+        guard tools.indices.contains(index) else { return }
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        withAnimation(.spring(response: 0.18, dampingFraction: 0.5)) { bounce = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.45)) { bounce = false }
+        }
+        tools[index].action()
+    }
+
+    /// The tool's full name beside the notch, for a moment.
+    private func show(_ name: String) {
+        captionTask?.cancel()
+        caption = name
+        let task = DispatchWorkItem { caption = nil }
+        captionTask = task
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6, execute: task)
     }
 }

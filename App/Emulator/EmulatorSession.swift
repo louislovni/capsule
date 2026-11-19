@@ -5,6 +5,19 @@ import QuartzCore
 import UIKit
 
 /// Buttons, as the libretro core expects them (bits of RETRO_DEVICE_ID_JOYPAD_*).
+/// A colour, 0...1 each.
+struct Tint: Equatable {
+    var r: Double
+    var g: Double
+    var b: Double
+
+    static let standard = Tint(r: 0.62, g: 0.79, b: 0.65)
+}
+
+final class PictureTint: ObservableObject {
+    @Published var value = Tint.standard
+}
+
 enum PadKey {
     static let b: UInt32 = 1 << 0
     static let y: UInt32 = 1 << 1
@@ -39,9 +52,10 @@ final class EmulatorSession: ObservableObject {
     /// Width / height of the frame the core draws (it changes with EXPAND and the companion).
     @Published private(set) var screenAspect: CGFloat = 1.5
     @Published var notice: String?
-    /// The picture's average colour (0...1 each), refreshed about every second: the Capsule
-    /// controller takes its tint from it.
-    @Published private(set) var tint: (r: Double, g: Double, b: Double) = (0.62, 0.79, 0.65)
+    /// The picture's average colour, refreshed about every second: the Capsule controller takes
+    /// its tint from it. An object of its own, so that only the views painted with it redraw (a
+    /// change here used to rebuild the whole game screen, an open menu included, every second).
+    let pictureTint = PictureTint()
     /// What PokeDaisy made of the game when it loaded (shown once, then kept in the menu).
     @Published private(set) var companionInfo: String?
     @Published private(set) var companionSupported = true
@@ -401,7 +415,7 @@ final class EmulatorSession: ObservableObject {
 
     /// The mean of a grid of 16 × 16 pixels (RGBX bytes), leaving out near-black ones (the
     /// bands and the DS's gaps), which would only grey the tint.
-    private static func averageColour(_ data: Data, width: Int, height: Int) -> (r: Double, g: Double, b: Double) {
+    private static func averageColour(_ data: Data, width: Int, height: Int) -> Tint {
         var r = 0, g = 0, b = 0, n = 0
         data.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
             let bytes = raw.bindMemory(to: UInt8.self)
@@ -415,8 +429,10 @@ final class EmulatorSession: ObservableObject {
                 }
             }
         }
-        guard n > 0 else { return (0.62, 0.79, 0.65) }
-        return (Double(r) / Double(n) / 255, Double(g) / Double(n) / 255, Double(b) / Double(n) / 255)
+        guard n > 0 else { return Tint.standard }
+        // Rounded, so that a picture that barely changes doesn't repaint the card.
+        func level(_ v: Int) -> Double { (Double(v) / Double(n) / 255 * 32).rounded() / 32 }
+        return Tint(r: level(r), g: level(g), b: level(b))
     }
 
     private func present(_ core: OpaquePointer) {
@@ -429,7 +445,8 @@ final class EmulatorSession: ObservableObject {
         if tintFrames % 60 == 1 {
             let tint = Self.averageColour(data, width: width, height: height)
             DispatchQueue.main.async { [weak self] in
-                self?.tint = tint
+                guard let self = self, self.pictureTint.value != tint else { return }
+                self.pictureTint.value = tint
             }
         }
         guard let provider = CGDataProvider(data: data as CFData),

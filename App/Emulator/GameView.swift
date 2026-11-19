@@ -394,12 +394,16 @@ struct GameView: View {
                 session.reset()
             }
         }
-        Section("Apparence de la manette") {
-            Picker("Apparence de la manette", selection: $skinName) {
+        Section {
+            // One line that opens the choice, so the menu stays short.
+            Picker(selection: $skinName) {
                 ForEach(PadSkin.allCases) { skin in
                     Text(skin.title).tag(skin.rawValue)
                 }
+            } label: {
+                Label("Apparence de la manette", systemImage: "gamecontroller")
             }
+            .pickerStyle(.menu)
         }
     }
 
