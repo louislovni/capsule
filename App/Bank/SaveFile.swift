@@ -103,6 +103,22 @@ final class SaveFile: PCStorage {
         guard raw.count == Self.monSize else {
             throw SaveFileError(code: 6)
         }
+        // The official games' last species (internal 411), move (354) and item (376): a hack's past them stays out.
+        var mon = PKMon()
+        let decoded = raw.withUnsafeBytes { bytes in
+            pk_mon_decode(bytes.bindMemory(to: UInt8.self).baseAddress, raw.count, &mon)
+        }
+        if decoded {
+            if mon.species > 411 {
+                throw GameLacksError(reason: "Ce Pokémon n'existe pas dans ce jeu.")
+            }
+            if let move = [mon.moves.0, mon.moves.1, mon.moves.2, mon.moves.3].first(where: { $0 > 354 }) {
+                throw GameLacksError(reason: "Il connaît une capacité (n° \(move)) qui n'existe pas dans ce jeu.")
+            }
+            if mon.heldItem > 376 {
+                throw GameLacksError(reason: "L'objet qu'il tient n'existe pas dans ce jeu : retire-le dans le jeu d'origine d'abord.")
+            }
+        }
         var box: Int32 = 0
         var slot: Int32 = 0
         guard pk_save_first_empty(handle, &box, &slot) else {

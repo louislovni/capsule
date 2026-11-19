@@ -97,6 +97,9 @@ final class NDSSaveFile: PCStorage {
         guard raw.count == Self.monSize else {
             throw NDSSaveError(code: Int32(PK_ERR_INVALID_MON))
         }
+        if let reason = missingFromGame(raw) {
+            throw GameLacksError(reason: reason)
+        }
         let code: Int32 = raw.withUnsafeBytes { bytes in
             pk_nds_put_box_mon(handle, box, slot, bytes.bindMemory(to: UInt8.self).baseAddress)
         }
@@ -104,6 +107,35 @@ final class NDSSaveFile: PCStorage {
             throw NDSSaveError(code: code)
         }
         return (Int(box), Int(slot))
+    }
+
+    /// What of this Pokémon the game doesn't have (a ROM hack's Pokémon, move, talent or item past the official
+    /// game's last one), or nil when it can go in. The saves the bank opens are the official games' layouts, so
+    /// their limits are the official games'.
+    private func missingFromGame(_ raw: Data) -> String? {
+        var mon = PKNDSMon()
+        let decoded = raw.withUnsafeBytes { bytes in
+            pk_nds_mon_decode(Int32(generation), bytes.bindMemory(to: UInt8.self).baseAddress, raw.count, &mon)
+        }
+        guard decoded else { return nil }
+        let gen5 = generation == 5
+        let lastSpecies = gen5 ? 649 : 493, lastMove = gen5 ? 559 : 467
+        let lastAbility = gen5 ? 164 : 123, lastItem = gen5 ? 638 : 536
+        let species = Int(mon.species)
+        if species > lastSpecies {
+            return "Ce Pokémon n'existe pas dans \(PokedexStore.gameTitle(sourceGame))."
+        }
+        let moves = [mon.moves.0, mon.moves.1, mon.moves.2, mon.moves.3].map(Int.init)
+        if let move = moves.first(where: { $0 > lastMove }) {
+            return "Il connaît une capacité (n° \(move)) qui n'existe pas dans \(PokedexStore.gameTitle(sourceGame))."
+        }
+        if Int(mon.ability) > lastAbility {
+            return "Son talent n'existe pas dans \(PokedexStore.gameTitle(sourceGame))."
+        }
+        if Int(mon.heldItem) > lastItem {
+            return "L'objet qu'il tient n'existe pas dans \(PokedexStore.gameTitle(sourceGame)) : retire-le dans le jeu d'origine d'abord."
+        }
+        return nil
     }
 
     func remove(_ mon: BoxedMon) throws {
@@ -177,4 +209,10 @@ extension NDSSaveFile {
         }
         return (numbers(caught), numbers(seen))
     }
+}
+
+/// A Pokémon the target game doesn't have: it stays in the bank.
+struct GameLacksError: LocalizedError {
+    let reason: String
+    var errorDescription: String? { reason + " Il reste dans la banque." }
 }
