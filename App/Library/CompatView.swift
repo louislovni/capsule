@@ -11,7 +11,10 @@ struct CompatGame: Decodable, Identifiable {
     let code: String?
     let revisions: [Int]?
     let sha1: [String]
+    /// Capsule's companion on iPhone (and PC: the same cores).
     let companion: Bool
+    /// PokeDaisy's own companion: the PokeDaisy app, and Capsule for Android, which is built from it.
+    let pokedaisy: Bool
     let bank: String
     let unverified: Bool?
     let note: String?
@@ -85,14 +88,14 @@ struct CompatView: View {
     @State private var mine: [Game.ID: (CompatGame?, String?)] = [:]
 
     enum Filter: String, CaseIterable, Identifiable {
-        case all = "Tous", official = "Officiels", hacks = "Hacks"
+        case all = "Tous", official = "Officiels", hacks = "Hacks", pokedaisy = "PokeDaisy"
         var id: String { rawValue }
     }
 
     private var shown: [CompatGame] {
         let query = search.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
         return CompatGame.all.filter { game in
-            (filter == .all || (filter == .hacks) == game.isHack)
+            (filter == .all || (filter == .pokedaisy ? game.pokedaisy : (filter == .hacks) == game.isHack))
                 && (console == "Toutes" || game.console == console)
                 && (query.isEmpty || game.title.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil).contains(query))
         }
@@ -158,7 +161,8 @@ struct CompatView: View {
     private var legend: some View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Se joue : tous les jeux de la liste, et les autres aussi", systemImage: "play.circle")
-            Label("Compagnon : équipe, combats, carte, guide pendant le jeu (PokeDaisy)", systemImage: "sparkles")
+            Label("iPhone / PC : le compagnon de Capsule (équipe, combats, carte, guide pendant le jeu)", systemImage: "iphone")
+            Label("PokeDaisy : le compagnon de l'app PokeDaisy, celui de Capsule sur Android", systemImage: "sparkles")
             Label("Banque : boîtes, banque, Pokédex et échanges", systemImage: "archivebox")
             HStack(spacing: 12) {
                 CompatBadge(state: .yes, text: "oui")
@@ -236,8 +240,9 @@ private struct CompatRow: View {
                     }
                 }
             }
-            HStack(spacing: 14) {
-                CompatBadge(state: game.companion ? .yes : .no, text: "Compagnon")
+            HStack(spacing: 12) {
+                CompatBadge(state: game.companion ? .yes : .no, text: "iPhone / PC")
+                CompatBadge(state: game.pokedaisy ? .yes : .no, text: "PokeDaisy")
                 CompatBadge(state: game.bank == "yes" ? .yes : game.bank == "likely" ? .likely : .no, text: "Banque")
             }
             if let note = game.note {

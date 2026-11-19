@@ -4,6 +4,8 @@
   python3 tools/gen_compat.py <PokeDaisy fork checkout>
 
 What each game gets in Capsule:
+- pokedaisy: PokeDaisy's own companion (the Android app, and Capsule for Android, built from it) recognises it: the
+  site's compat.json (retail codes, hack / Game Boy SHA-1s, DS codes and hacks);
 - companion: the iPhone cores' companion recognises it (3ds/core/pd_game.c for GBA / Game Boy by SHA-1 or cart code,
   linux/dsperate/companion.cpp for DS: the US carts by SHA-1, the French ones by header);
 - bank: the bank and Pokédex read its save: "yes" (checked layouts), "likely" (a hack edited in place of an official
@@ -16,6 +18,10 @@ fork = sys.argv[1]
 src = open(os.path.join(fork, "3ds/core/pd_game.c"), encoding="utf-8").read()
 site = json.load(open(os.path.join(fork, "website/src/data/compat.json"), encoding="utf-8"))
 versions = {h["sha1"]: h.get("version", "") for h in site["hacks"]}
+pd_hacks = {h["sha1"] for h in site["hacks"]}
+pd_gb = {g["sha1"] for g in site["gameBoy"]}
+pd_gba_codes = {r["code"] for r in site["retail"]}
+pd_ds_codes = {r["code"] for r in site["ds"]}
 
 # Hacks whose save keeps the official game's layout (edited in place, the official species list).
 IN_PLACE = {"PD_CONFIG_EMERALD", "PD_CONFIG_SAPPHIRE", "PD_CONFIG_EMERALD_LEGACY", "PD_CONFIG_EMERALD_KAIZO",
@@ -33,7 +39,7 @@ def add(**g):
 # Game Boy Advance, official carts (every language the companion has a config for).
 for r in site["retail"]:
     add(title=r["title"], console="GBA", kind="official", version="", revisions=r["revs"], code=r["code"],
-        sha1=[], companion=True, bank="yes")
+        sha1=[], companion=True, pokedaisy=True, bank="yes")
 
 # Game Boy Advance hacks (by SHA-1).
 hacks = {}
@@ -41,10 +47,22 @@ for sha, cfg, _kind, title in re.findall(r'\{"([0-9a-f]{40})", &(PD_CONFIG_\w+),
     name, unverified = clean(title)
     key = (name, versions.get(sha, ""))
     entry = hacks.setdefault(key, dict(title=name, console="GBA", kind="hack", version=versions.get(sha, ""),
-                                       sha1=[], companion=True, bank="likely" if cfg in IN_PLACE else "no",
-                                       unverified=unverified))
+                                       sha1=[], companion=True, pokedaisy=False,
+                                       bank="likely" if cfg in IN_PLACE else "no", unverified=unverified))
     entry["sha1"].append(sha)
+    entry["pokedaisy"] = entry["pokedaisy"] or sha in pd_hacks
 games += hacks.values()
+# Hacks only PokeDaisy's (Android) companion knows.
+ios_gba = {sha for g in hacks.values() for sha in g["sha1"]}
+android_only = {}
+for h in site["hacks"]:
+    if h["sha1"] in ios_gba:
+        continue
+    key = (h["title"], h.get("version", ""))
+    entry = android_only.setdefault(key, dict(title=h["title"], console="GBA", kind="hack", version=h.get("version", ""),
+                                              sha1=[], companion=False, pokedaisy=True, bank="no"))
+    entry["sha1"].append(h["sha1"])
+games += android_only.values()
 
 # Game Boy / Game Boy Color (official and hacks, by SHA-1).
 OFFICIAL_GB = ("Pokémon Red", "Pokémon Blue", "Pokémon Yellow", "Pokémon Gold", "Pokémon Silver", "Pokémon Crystal",
@@ -54,9 +72,22 @@ for sha, _cfg, title in re.findall(r'\{"([0-9a-f]{40})", &(PD_GB_CONFIG_\w+), "(
     name, unverified = clean(title)
     official = name in OFFICIAL_GB or any(word in name for word in ("Gelbe", "Jaune", "Gialla", "Amarilla"))
     entry = gb.setdefault(name, dict(title=name, console="GB", kind="official" if official else "hack", version="",
-                                      sha1=[], companion=True, bank="yes" if official else "no", unverified=unverified))
+                                      sha1=[], companion=True, pokedaisy=False, bank="yes" if official else "no",
+                                      unverified=unverified))
     entry["sha1"].append(sha)
+    entry["pokedaisy"] = entry["pokedaisy"] or sha in pd_gb
 games += gb.values()
+ios_gb = {sha for g in gb.values() for sha in g["sha1"]}
+for g in site["gameBoy"]:
+    if g["sha1"] in ios_gb:
+        continue
+    # The other languages' official carts (German Red, Gold...) and the hacks only PokeDaisy reads.
+    official = any(w in g["title"] for w in ("Rote Edition", "Blaue Edition", "Goldene Edition", "Silberne Edition",
+                                             "Kristall", "Rouge", "Bleue", "Version Or", "Version Argent", "Cristal",
+                                             "Versione Rossa", "Versione Blu", "Versione Oro", "Versione Argento",
+                                             "Edición Roja", "Edición Azul", "Edición Oro", "Edición Plata"))
+    add(title=g["title"], console="GB", kind="official" if official else "hack", version="", sha1=[g["sha1"]],
+        companion=False, pokedaisy=True, bank="likely" if official else "no")
 
 # DS: the companion on iPhone knows the US carts (by SHA-1) and the French ones (by header); the others play without
 # it. The bank reads every language's save.
@@ -69,14 +100,14 @@ for r in site["ds"]:
         continue
     seen.add(r["code"])
     add(title=r["title"], console="DS", kind="official", version="", code=r["code"], revisions=[r["rev"]], sha1=[],
-        companion=r["code"] in US or r["code"] in FR, bank="yes")
+        companion=r["code"] in US or r["code"] in FR, pokedaisy=r["code"] in pd_ds_codes, bank="yes")
 for h in site["dsHacks"]:
     bank = {"Pokémon Renegade Platinum": "likely", "Pokémon Blaze Black 2 Redux": "likely",
             "Pokémon Volt White 2 Redux": "likely", "Pokémon Heartfelt Gold": "likely"}.get(h["title"], "no")
-    add(title=h["title"], console="DS", kind="hack", version=h.get("version", ""), sha1=[], companion=False, bank=bank,
-        note="Compagnon sur Android seulement")
+    add(title=h["title"], console="DS", kind="hack", version=h.get("version", ""), sha1=[], companion=False,
+        pokedaisy=True, bank=bank)
 add(title="Pokémon Chaos Purple", console="DS", kind="hack", version="démo (Silph Co. fix)",
-    sha1=["330d9eb56e069df13c09bbcb3c748c269c94a88e"], companion=False, bank="yes",
+    sha1=["330d9eb56e069df13c09bbcb3c748c269c94a88e"], companion=False, pokedaisy=False, bank="yes",
     note="Banque et Pokédex vérifiés sur une sauvegarde ; Pokémon après Arceus réservés aux jeux du même moteur")
 
 order = {"GBA": 0, "GB": 1, "DS": 2}
