@@ -38,6 +38,7 @@ lzma_ret lzma_code(lzma_stream* strm, lzma_action action) {
 }
 
 void lzma_end(lzma_stream* strm) {
+	if (!strm) return; /* xdelta3 ends the streams it never started (liblzma allows it) */
 	if (strm->internal) xz_dec_end((struct xz_dec*) strm->internal);
 	strm->internal = 0;
 }
