@@ -31,11 +31,15 @@ final class NDSSaveFile: PCStorage {
 
     var generation: Int { Int(pk_nds_save_generation(handle)) }
 
+    /// An hg-engine hack's save (Chaos Purple): 30 boxes, its own Pokémon past ARCEUS.
+    var isHgEngine: Bool { pk_nds_save_hg_engine(handle) }
+
     var gameFamily: String {
         switch Int(pk_nds_save_game(handle)) {
         case Int(PK_NDS_DP): return "Diamant / Perle"
         case Int(PK_NDS_PT): return "Platine"
-        case Int(PK_NDS_HGSS): return "Or HeartGold / Argent SoulSilver"
+        case Int(PK_NDS_HGSS):
+            return isHgEngine ? "hack HeartGold (hg-engine)" : "Or HeartGold / Argent SoulSilver"
         case Int(PK_NDS_BW): return "Noire / Blanche"
         default: return "Noire 2 / Blanche 2"
         }
@@ -118,10 +122,12 @@ final class NDSSaveFile: PCStorage {
             pk_nds_mon_decode(Int32(generation), bytes.bindMemory(to: UInt8.self).baseAddress, raw.count, &mon)
         }
         guard decoded else { return nil }
+        // An hg-engine hack holds every official Pokémon, move and talent: the core checks what's left.
+        if isHgEngine { return nil }
         let gen5 = generation == 5
         let lastSpecies = gen5 ? 649 : 493, lastMove = gen5 ? 559 : 467
         let lastAbility = gen5 ? 164 : 123, lastItem = gen5 ? 638 : 536
-        let species = Int(mon.species)
+        let species = Int(mon.storedSpecies)
         if species > lastSpecies {
             return "Ce Pokémon n'existe pas dans ce jeu."
         }
@@ -191,7 +197,7 @@ extension NDSSaveFile {
             let ok = buffer[index * size..<(index + 1) * size].withUnsafeBufferPointer {
                 pk_nds_mon_decode(generation, $0.baseAddress, $0.count, &mon)
             }
-            return ok && !mon.isEgg ? (Int(mon.species), mon.isShiny) : nil
+            return ok && !mon.isEgg && mon.species > 0 ? (Int(mon.species), mon.isShiny) : nil
         }
     }
 

@@ -15,6 +15,9 @@
 
 #include "pkcore.h"
 
+/* The last species id of an hg-engine HeartGold hack (its personal records). */
+#define HG_ENGINE_LAST_SPECIES 1534
+
 #define PARTITION 0x40000
 
 static uint16_t rd16(const uint8_t* p) { return (uint16_t) (p[0] | (p[1] << 8)); }
@@ -146,9 +149,10 @@ bool pk_nds_mon_decode(int generation, const uint8_t* raw, size_t size, PKNDSMon
 	unpack(raw, u);
 	out->generation = (uint8_t) generation;
 	out->personality = rd32(u);
-	out->species = rd16(u + 0x08);
-	if (out->species == 0 || data_checksum(u) != rd16(u + 6)) return false;
-	if (out->species > (generation == 4 ? 493 : 649)) return false;
+	out->storedSpecies = rd16(u + 0x08);
+	if (out->storedSpecies == 0 || data_checksum(u) != rd16(u + 6)) return false;
+	if (out->storedSpecies > (generation == 4 ? HG_ENGINE_LAST_SPECIES : 649)) return false;
+	out->species = (uint16_t) (generation == 4 ? pk_nds_national(out->storedSpecies) : out->storedSpecies);
 
 	out->heldItem = rd16(u + 0x0A);
 	out->tid = rd16(u + 0x0C);
@@ -272,17 +276,32 @@ struct PKNDSSave {
 	size_t mainSize, infoLength;
 	unsigned boxCount;
 	uint32_t dirtyBoxes;
+	bool hgEngine;
 };
+
+
+unsigned pk_nds_national(unsigned stored) {
+	if (stored <= 493) return stored;
+	if (stored >= 544 && stored <= 1075) return stored - 50;
+	return 0;
+}
+
+bool pk_nds_save_hg_engine(const PKNDSSave* s) { return s && s->hgEngine; }
 
 typedef struct {
 	int game;
 	size_t generalSize, storageStart, storageSize, footerSize, trainer;
+	bool hgEngine;
 } Gen4Layout;
 
 static const Gen4Layout kGen4[] = {
-	{PK_NDS_DP, 0xC100, 0xC100, 0x121E0, 0x14, 0x64},
-	{PK_NDS_PT, 0xCF2C, 0xCF2C, 0x121E4, 0x14, 0x68},
-	{PK_NDS_HGSS, 0xF628, 0xF700, 0x12310, 0x10, 0x64},
+	{PK_NDS_DP, 0xC100, 0xC100, 0x121E0, 0x14, 0x64, false},
+	{PK_NDS_PT, 0xCF2C, 0xCF2C, 0x121E4, 0x14, 0x68, false},
+	{PK_NDS_HGSS, 0xF628, 0xF700, 0x12310, 0x10, 0x64, false},
+	/* hg-engine over the US HeartGold (Chaos Purple): its bag grown, the general block to 0xFFA0; 30 boxes
+	 * (0x1000 each), then the current box (0x1E000) and the 30 names (0x1E008); the Pokedex at 0x14A8 (a bit per
+	 * species id: caught +4, seen +0x400). Checked on a Chaos Purple save. */
+	{PK_NDS_HGSS, 0xFFA0, 0x10000, 0x1E4FC, 0x10, 0x64, true},
 };
 
 enum { FIRST = 0, SECOND = 1, SAME = 2 };
@@ -343,12 +362,13 @@ static bool open_gen4(PKNDSSave* s, int* err) {
 		s->generalSize = l->generalSize;
 		s->storageSize = l->storageSize;
 		s->footerSize = l->footerSize;
-		s->boxCount = 18;
+		s->boxCount = l->hgEngine ? 30 : 18;
+		s->hgEngine = l->hgEngine;
 		if (l->game == PK_NDS_HGSS) {
 			s->boxBase = 0;
 			s->boxStride = 0x1000;
-			s->boxNames = 0x12008;
-			s->currentBoxOffset = 0x12000;
+			s->boxNames = s->boxCount * 0x1000 + 8;
+			s->currentBoxOffset = s->boxCount * 0x1000;
 		} else {
 			s->boxBase = 4;
 			s->boxStride = 0xFF0;
@@ -476,10 +496,15 @@ static bool fits_game(const PKNDSSave* s, const PKNDSMon* mon) {
 	switch (s->game) {
 	case PK_NDS_DP: maxItem = 464, maxMove = 467, maxAbility = 123; break;
 	case PK_NDS_PT: maxItem = 467, maxMove = 467, maxAbility = 123; break;
-	case PK_NDS_HGSS: maxItem = 536, maxMove = 467, maxAbility = 123; break;
+	case PK_NDS_HGSS:
+		if (s->hgEngine) maxItem = 1000, maxMove = 923, maxAbility = 255;
+		else maxItem = 536, maxMove = 467, maxAbility = 123;
+		break;
 	case PK_NDS_BW: maxItem = 632, maxMove = 559, maxAbility = 164; break;
 	default: maxItem = 638, maxMove = 559, maxAbility = 164; break;
 	}
+	/* A hack's Pokemon past ARCEUS (or one of its forms) only into a game of the same engine. */
+	if (s->generation == 4 && !s->hgEngine && mon->storedSpecies > 493) return false;
 	if (mon->heldItem > maxItem || mon->ability > maxAbility) return false;
 	for (int i = 0; i < 4; ++i)
 		if (mon->moves[i] > maxMove) return false;
@@ -530,7 +555,7 @@ size_t pk_nds_save_write(const PKNDSSave* s, uint8_t* out, size_t outSize) {
 		if (s->game == PK_NDS_HGSS && s->dirtyBoxes) {
 			/* The game only re-saves boxes marked as changed: mark them all so
 			 * its next save copies every box to the other partition. */
-			wr32(block + 0x12004, 0x3FFFF);
+			wr32(block + s->currentBoxOffset + 4, (uint32_t) ((1ull << s->boxCount) - 1));
 		}
 		wr16(block + s->storageSize - 2, crc16_ccitt(block, s->storageSize - s->footerSize));
 	} else {
@@ -663,7 +688,18 @@ bool pk_nds_pokedex(const PKNDSSave* s, uint8_t caught[PK_DEX_FLAG_BYTES], uint8
 	if (!s) return false;
 	memset(caught, 0, PK_DEX_FLAG_BYTES);
 	memset(seen, 0, PK_DEX_FLAG_BYTES);
-	if (s->generation == 4) {
+	if (s->generation == 4 && s->hgEngine) {
+		/* A bit per species id, mapped to the National Dex numbers this table holds (to 649). */
+		size_t at = s->generalBase + 0x14A8;
+		if (at + 0x400 + 0xC0 > s->size || rd32(s->data + at) != 0xBEEFCAFEu) return false;
+		for (unsigned id = 1; id <= 0xC0 * 8; ++id) {
+			unsigned dex = pk_nds_national(id);
+			if (!dex || dex > 649) continue;
+			unsigned bit = id - 1;
+			if (s->data[at + 4 + bit / 8] >> (bit % 8) & 1) caught[(dex - 1) / 8] |= (uint8_t) (1u << ((dex - 1) % 8));
+			if (s->data[at + 0x400 + bit / 8] >> (bit % 8) & 1) seen[(dex - 1) / 8] |= (uint8_t) (1u << ((dex - 1) % 8));
+		}
+	} else if (s->generation == 4) {
 		size_t at = s->generalBase + (s->game == PK_NDS_PT ? 0x1328 : s->game == PK_NDS_HGSS ? 0x12B8 : 0x12DC);
 		if (at + 0x84 > s->size || rd32(s->data + at) != 0xBEEFCAFEu) return false;
 		or_bits(caught, s->data + at + 4, 0x40, 493);

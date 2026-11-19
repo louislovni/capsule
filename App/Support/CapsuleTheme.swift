@@ -50,6 +50,7 @@ enum CapsuleTheme {
             (has("noire", "noir", "black"), Tint(r: 0.4, g: 0.42, b: 0.5)),
             (has("blanche", "blanc", "white"), Tint(r: 0.84, g: 0.82, b: 0.78)),
             (has("cristal", "crystal"), Tint(r: 0.4, g: 0.78, b: 0.86)),
+            (has("violet", "purple", "chaospurple"), Tint(r: 0.62, g: 0.42, b: 0.86)),
             (has("argent", "silver"), Tint(r: 0.66, g: 0.7, b: 0.78)),
             (has("or", "gold"), Tint(r: 0.9, g: 0.74, b: 0.3)),
             (has("jaune", "yellow"), Tint(r: 0.95, g: 0.82, b: 0.3)),

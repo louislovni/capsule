@@ -449,7 +449,8 @@ struct MonDetails: Codable, Equatable {
 
 extension MonDetails {
     static func ndsSpeciesName(_ dex: Int) -> String {
-        pk_nds_species_name(UInt32(dex)).map { String(cString: $0) } ?? "Pokémon n°\(dex)"
+        if dex == 0 { return "Forme spéciale" }   // an hg-engine hack's form (pk_nds_national)
+        return pk_nds_species_name(UInt32(dex)).map { String(cString: $0) } ?? "Pokémon n°\(dex)"
     }
 
     static let ndsGameNames = [

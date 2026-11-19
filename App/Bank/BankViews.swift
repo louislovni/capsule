@@ -221,7 +221,7 @@ struct TransferView: View {
         if generation == 3 {
             return (storage as? SaveFile)?.rom?.nationalDex(species: mon.species) ?? (mon.species <= 251 ? mon.species : nil)
         }
-        return mon.species
+        return mon.species > 0 ? mon.species : nil
     }
 
     private var compatibleEntries: [BankEntry] {

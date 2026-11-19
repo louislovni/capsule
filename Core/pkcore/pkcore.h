@@ -370,7 +370,8 @@ typedef struct {
 	bool isNicknamed;
 	bool fatefulEncounter;
 	bool hiddenAbility; /* generation 5 */
-	uint16_t species; /* National Pokedex number */
+	uint16_t species; /* National Pokedex number (0: an hg-engine hack's form or egg) */
+	uint16_t storedSpecies; /* the game's own id: an hg-engine hack's go past 493 (pk_nds_national) */
 	uint8_t form;
 	uint8_t gender; /* 0 male, 1 female, 2 genderless */
 	uint16_t heldItem;
@@ -459,6 +460,11 @@ PKNDSSave* pk_nds_save_open(const uint8_t* data, size_t size, int* err);
 void pk_nds_save_free(PKNDSSave* save);
 int pk_nds_save_game(const PKNDSSave* save); /* PK_NDS_* */
 int pk_nds_save_generation(const PKNDSSave* save); /* 4 or 5 */
+/* An hg-engine HeartGold hack's save (Chaos Purple, Heartfelt Gold): 30 boxes, species ids past 493. */
+bool pk_nds_save_hg_engine(const PKNDSSave* save);
+/* A generation 4 species id's National Pokedex number: an hg-engine hack's Dex numbers to ARCEUS, then its egg and
+ * 48 forms, VICTINI at 544 (50 past its number); 0 for a form or an egg. */
+unsigned pk_nds_national(unsigned storedSpecies);
 void pk_nds_save_trainer_name(const PKNDSSave* save, char* out, size_t outSize);
 uint16_t pk_nds_save_trainer_id(const PKNDSSave* save);
 /* Boxes the player can use (Black/White unlock theirs as they fill up). */
