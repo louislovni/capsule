@@ -13,6 +13,8 @@ struct LibraryView: View {
     @State private var playing: Game?
     @State private var transferGame: Game?
     @State private var pendingDelete: Game?
+    @State private var pendingRestore: Game?
+    @State private var restoreMessage: String?
     @State private var message: String?
 
     var body: some View {
@@ -34,6 +36,12 @@ struct LibraryView: View {
                                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                     Button("Supprimer", role: .destructive) {
                                         pendingDelete = game
+                                    }
+                                    if SafetySave.date(for: game) != nil {
+                                        Button("Secours") {
+                                            pendingRestore = game
+                                        }
+                                        .tint(.orange)
                                     }
                                 }
                         }
@@ -113,6 +121,32 @@ struct LibraryView: View {
                 }
             }
             .confirmationDialog(
+                "Revenir à la sauvegarde de secours ?",
+                isPresented: restoreBinding,
+                titleVisibility: .visible,
+                presenting: pendingRestore
+            ) { game in
+                Button("Revenir à la copie de secours", role: .destructive) {
+                    do {
+                        try SafetySave.restore(game)
+                        restoreMessage = "La sauvegarde de \(game.name) est revenue à sa copie de secours."
+                    } catch {
+                        restoreMessage = "La copie de secours n'a pas pu être remise : \(error.localizedDescription)"
+                    }
+                    pendingRestore = nil
+                }
+                Button("Annuler", role: .cancel) {
+                    pendingRestore = nil
+                }
+            } message: { game in
+                Text(SafetySave.date(for: game).map {
+                    "La copie de secours est la sauvegarde du \($0.formatted(date: .long, time: .shortened)), gardée au dernier lancement du jeu. La sauvegarde actuelle sera conservée dans les copies datées."
+                } ?? "")
+            }
+            .alert(restoreMessage ?? "", isPresented: Binding(get: { restoreMessage != nil }, set: { if !$0 { restoreMessage = nil } })) {
+                Button("OK", role: .cancel) {}
+            }
+            .confirmationDialog(
                 "Supprimer la ROM ?",
                 isPresented: deleteBinding,
                 titleVisibility: .visible,
@@ -126,7 +160,7 @@ struct LibraryView: View {
                     pendingDelete = nil
                 }
             } message: { _ in
-                Text("Seul le fichier du jeu est supprimé. La sauvegarde, les états et les copies de secours sont conservés.")
+                Text("Seul le fichier du jeu est supprimé. La sauvegarde et ses copies de secours sont conservées.")
             }
             .alert("Capsule", isPresented: messageBinding) {
                 Button("OK", role: .cancel) {
@@ -168,6 +202,10 @@ struct LibraryView: View {
         case 1: return "1 Pokémon en banque"
         default: return "\(bank.entries.count) Pokémon en banque"
         }
+    }
+
+    private var restoreBinding: Binding<Bool> {
+        Binding(get: { pendingRestore != nil }, set: { if !$0 { pendingRestore = nil } })
     }
 
     private var deleteBinding: Binding<Bool> {

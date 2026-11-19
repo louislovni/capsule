@@ -7,15 +7,12 @@ struct GameView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
 
-    @State private var staleStateSlot: Int?
     @State private var userPaused = false
     /// Sideways forced by the plein écran button (works with the rotation lock on).
     @State private var forcedLandscape = false
     @AppStorage(PadSkin.storageKey) private var skinName = PadSkin.capsule.rawValue
 
     private var skin: PadSkin { PadSkin(rawValue: skinName) ?? .capsule }
-
-    private static let stateSlots = [1, 2, 3]
 
     init(game: Game) {
         _session = StateObject(wrappedValue: EmulatorSession(game: game))
@@ -37,6 +34,7 @@ struct GameView: View {
                 }
             }
             .onAppear {
+                SafetySave.refresh(session.game)
                 gamepad.onKeys = { [weak session] keys in session?.setControllerKeys(keys) }
                 gamepad.onSpeed = { [weak session] in session?.cycleSpeed() }
                 session.start(landscape: isLandscape, pictureArea: isLandscape ? nil : pictureArea,
@@ -69,54 +67,6 @@ struct GameView: View {
                 session.setPaused(true)
             }
         }
-        .alert("État antérieur à un transfert", isPresented: staleAlertBinding) {
-            Button("Charger quand même", role: .destructive) {
-                if let slot = staleStateSlot {
-                    session.loadState(slot: slot)
-                }
-                staleStateSlot = nil
-            }
-            Button("Annuler", role: .cancel) {
-                staleStateSlot = nil
-            }
-        } message: {
-            Text("Cet état date d'avant ton dernier échange avec la banque. Si tu le charges puis sauvegardes dans le jeu, le PC reviendra à son contenu d'avant : des Pokémon retirés de la banque peuvent être perdus, ou des Pokémon déposés dupliqués.")
-        }
-    }
-
-    /// When the state in this slot was saved (nil: none yet).
-    private func stateDate(_ slot: Int) -> Date? {
-        let url = session.game.stateURL(slot: slot)
-        return (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
-    }
-
-    /// "Emplacement 2" over "17 nov. à 17:32", or "vide".
-    private func slotLabel(_ slot: Int) -> some View {
-        let subtitle: String
-        if let date = stateDate(slot) {
-            subtitle = Calendar.current.isDateInToday(date)
-                ? "Aujourd'hui à \(date.formatted(date: .omitted, time: .shortened))"
-                : date.formatted(date: .abbreviated, time: .shortened)
-        } else {
-            subtitle = "vide"
-        }
-        return Label {
-            Text("Emplacement \(slot)")
-            Text(subtitle)
-        } icon: {
-            Image(systemName: stateDate(slot) == nil ? "square.dashed" : "clock.arrow.circlepath")
-        }
-    }
-
-    private var staleAlertBinding: Binding<Bool> {
-        Binding(
-            get: { staleStateSlot != nil },
-            set: { shown in
-                if !shown {
-                    staleStateSlot = nil
-                }
-            }
-        )
     }
 
     // MARK: - Layouts
@@ -192,8 +142,6 @@ struct GameView: View {
             ]
         }
         tools += [
-            WheelTool(id: "Sauvegarde rapide", short: "SAUV.", icon: "square.and.arrow.down") { session.saveState(slot: 1) },
-            WheelTool(id: "Charger la sauvegarde rapide", short: "CHARG.", icon: "clock.arrow.circlepath") { requestLoad(slot: 1) },
             WheelTool(id: session.isPaused ? "Reprendre" : "Pause", short: session.isPaused ? "REPR." : "PAUSE", icon: session.isPaused ? "play.fill" : "pause.fill") {
                 userPaused.toggle()
                 session.setPaused(userPaused)
@@ -378,7 +326,8 @@ struct GameView: View {
         .fixedSize()
     }
 
-    /// The menu behind "…": save states, the controller's look, restarting.
+    /// The menu behind "…": the controller's look, restarting. No save states: one save per
+    /// game, the game's own (the player's rule: the adventure as it is).
     @ViewBuilder
     private var moreMenu: some View {
         if let info = session.companionInfo {
@@ -386,29 +335,12 @@ struct GameView: View {
                 Text(info)
             }
         }
-        Section("Enregistrer un état") {
-            ForEach(Self.stateSlots, id: \.self) { slot in
-                Button {
-                    session.saveState(slot: slot)
-                } label: {
-                    slotLabel(slot)
-                }
-            }
-        }
-        Section("Charger un état") {
-            ForEach(Self.stateSlots, id: \.self) { slot in
-                Button {
-                    requestLoad(slot: slot)
-                } label: {
-                    slotLabel(slot)
-                }
-                .disabled(stateDate(slot) == nil)
-            }
-        }
         Section {
             Button("Redémarrer le jeu", role: .destructive) {
                 session.reset()
             }
+        } footer: {
+            Text("Ce qui n'est pas sauvegardé dans le jeu sera perdu.")
         }
         Section {
             // One line that opens the choice, so the menu stays short.
@@ -468,17 +400,5 @@ struct GameView: View {
         .foregroundStyle(.white)
         .padding(32)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    /// Loading a state from before a bank transfer would bring the old PC back.
-    private func requestLoad(slot: Int) {
-        let game = session.game
-        if let transfer = game.lastBankTransfer,
-           let saved = Storage.modificationDate(of: game.stateURL(slot: slot)),
-           saved < transfer {
-            staleStateSlot = slot
-        } else {
-            session.loadState(slot: slot)
-        }
     }
 }
