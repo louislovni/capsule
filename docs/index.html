@@ -233,7 +233,101 @@ table.ivs td:first-child, table.ivs th:first-child { text-align: left; color: va
 .ghost { border: 1px solid var(--line); background: var(--panel); padding: 12px 18px; border-radius: 14px; margin: 6px; font-size: 15px; }
 .note { font-size: 13px; color: var(--dim); margin-top: 14px; }
 .toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 18px); transform: translateX(-50%); background: #2b2b33; border: 1px solid var(--line); padding: 10px 16px; border-radius: 12px; font-size: 14px; z-index: 60; box-shadow: 0 8px 30px #0009; max-width: 92vw; }
+
+/* ---------- Capsule look (2026-11): dark, soft, the species card like the app's ---------- */
+:root { --bg: #0b0a09; --panel: #171513; --panel2: #221f1c; --line: #2c2824; }
+header { background: #0b0a09; box-shadow: none; border-bottom: 1px solid #1c1a18; }
+.lens { background: radial-gradient(circle at 35% 30%, #fff6, #fff1 70%), linear-gradient(135deg, #9fc9a6, #e0dcae); border: 0; box-shadow: none; }
+.leds { display: none; }
+h1 { font-weight: 800; letter-spacing: -.4px; }
+nav { gap: 6px; padding-bottom: 10px; }
+nav button { flex: none; padding: 8px 16px; border-radius: 999px; border: 0; color: #b8b0a8; }
+nav button.on { background: #f4efe9; color: #120f0d; }
+.cell { border-radius: 18px; }
+.cell.own { background: var(--tint, var(--panel)); border-color: transparent; color: #1d1712; }
+.cell.own .no, .cell.own .cnt { color: #1d1712b0; background: none; }
+.gen { border-radius: 16px; }
+.gen.on { border-color: #f4efe9; background: #221f1c; }
+.bar i { background: #f4efe9; }
+.ring { background: conic-gradient(#f4efe9 calc(var(--p) * 1%), #2c2824 0); }
+
+#card { position: fixed; inset: 0; z-index: 45; background: #0b0a09; display: none; justify-content: center; align-items: stretch; }
+#card.on { display: flex; }
+.cap { width: min(440px, 100vw); height: 100dvh; max-height: 940px; margin: auto 0; padding: 5px; display: flex; flex-direction: column; color: #1d1712; font-family: Inter, var(--font); }
+.face { flex: 1; min-height: 0; border-radius: 40px; position: relative; overflow: hidden; display: flex; flex-direction: column;
+  background-image: var(--g); background-size: 220% 220%; animation: drift 18s ease-in-out infinite; transition: background-image .5s; }
+.face::before { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(120% 60% at 85% 18%, #ffffff61, #fff0 60%), radial-gradient(90% 50% at 10% 90%, #0000001a, #0000 70%); }
+@keyframes drift { 0%, 100% { background-position: 0% 0%; } 50% { background-position: 100% 100%; } }
+.face > * { position: relative; }
+.ctop { display: flex; align-items: center; gap: 8px; padding: calc(env(safe-area-inset-top) + 16px) 16px 0; }
+.glass { width: 48px; height: 48px; border-radius: 24px; border: 1px solid #fff9; display: grid; place-items: center; font-size: 19px; color: #1d1712;
+  background: radial-gradient(circle at 35% 30%, #ffffffc0, #ffffff47 70%); box-shadow: 0 8px 18px #3c1e0a24, inset 0 -2px 4px #3c1e0a14;
+  transition: transform .38s cubic-bezier(.34,1.56,.64,1); }
+.glass:active, .arrowb:active { transform: scale(.88) translateY(2px); }
+.glass.lit { background: radial-gradient(circle at 35% 30%, #fff3c0, #ffd166 75%); }
+.glass.region { width: auto; padding: 0 20px; font-size: 16px; font-weight: 600; }
+.cfacts { padding: 18px 22px 0; font-size: 11px; line-height: 19px; letter-spacing: 1.7px; text-transform: uppercase; color: #1d1712c7; }
+.crow { display: flex; align-items: center; padding-left: 22px; margin-top: 4px; }
+.orb { width: 140px; height: 140px; border-radius: 50%; display: grid; place-items: center; flex: none;
+  background: radial-gradient(circle at 40% 35%, #ffffff8c, #ffffff26 70%); animation: float 4s ease-in-out infinite; }
+.orb img { width: 118px; height: 118px; object-fit: contain; animation: pop .45s cubic-bezier(.2,.9,.3,1.2) both; }
+.orb.unknown img { filter: brightness(0); opacity: .8; }
+.orb.seen img { opacity: .55; }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes pop { 0% { opacity: 0; transform: scale(.6); } 100% { opacity: 1; transform: none; } }
+.wheel { margin-left: auto; position: relative; width: 56px; height: 164px; flex: none; touch-action: none; user-select: none; }
+.wheel svg { position: absolute; inset: 0; }
+.wheel .win { position: absolute; right: 0; top: 23px; width: 46px; height: 118px; overflow: hidden; cursor: grab; }
+.wheel .pill { position: absolute; left: 4px; top: 32px; width: 38px; height: 54px; border-radius: 19px; background: linear-gradient(180deg, var(--a2), var(--a1));
+  box-shadow: inset 0 1px 0 #fff5, 0 4px 10px #0006; transition: transform .2s; }
+.wheel .pill.bounce { transform: scale(1.14); }
+.wheel .strip { position: absolute; left: 0; top: 0; width: 46px; }
+.wheel .strip.snap { transition: transform .45s cubic-bezier(.34,1.4,.64,1); }
+.wheel .it { height: 34px; display: grid; place-items: center; font-size: 8px; font-weight: 800; letter-spacing: .4px; color: #becbc4; transition: color .25s, opacity .25s; }
+.wheel .it.on { color: #fff; }
+.wheel .cap2 { position: absolute; right: 62px; top: 68px; white-space: nowrap; background: #0b0a09e0; color: #fff; font-size: 11px; font-weight: 600;
+  padding: 6px 10px; border-radius: 999px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+.wheel .cap2.on { opacity: 1; }
+.cname { padding: 0 60px 0 22px; font-family: "Bricolage Grotesque", Inter, var(--font); font-weight: 800; line-height: 1.02; letter-spacing: -1.6px; color: #120f0d;
+  white-space: nowrap; animation: rise .45s cubic-bezier(.2,.9,.3,1.2) both; }
+@keyframes rise { 0% { opacity: 0; transform: translateY(14px); } 100% { opacity: 1; transform: none; } }
+.cbody { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 22px 12px; scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(#000 88%, #0000); mask-image: linear-gradient(#000 88%, #0000); }
+.cbody::-webkit-scrollbar { display: none; }
+.cbody > div { animation: rise .4s cubic-bezier(.2,.9,.3,1.2) both; }
+.lbl { font-size: 11px; letter-spacing: 1.7px; text-transform: uppercase; color: #1d1712b3; margin: 10px 0 8px; }
+.lbl:first-child { margin-top: 0; }
+.chip { display: inline-block; padding: 9px 16px; border-radius: 20px; background: #ffffff73; font-size: 14px; font-weight: 500; margin: 0 6px 6px 0; }
+.chip small { color: #1d171299; font-size: 12px; }
+.ctext { font-size: 15px; line-height: 21px; }
+.cstat { display: grid; grid-template-columns: 78px 34px 1fr; gap: 8px; align-items: center; margin: 7px 0; }
+.cstat span { font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; color: #1d1712b8; }
+.cstat b { text-align: right; font-variant-numeric: tabular-nums; font-size: 14px; }
+.cstat i { height: 10px; border-radius: 5px; background: #1d17121f; overflow: hidden; display: block; }
+.cstat i em { display: block; height: 100%; border-radius: 5px; background: #1d1712bf; }
+.crowb { display: flex; align-items: center; gap: 12px; width: 100%; border: 0; text-align: left; padding: 6px 16px 6px 6px; border-radius: 26px; background: #ffffff66; margin-bottom: 6px; color: #1d1712; }
+.crowb.on { background: #ffffffb3; }
+.crowb img { width: 40px; height: 40px; border-radius: 50%; background: #1d171214; }
+.crowb b { flex: 1; font-size: 15px; }
+.crowb small { font-size: 12px; color: #1d1712a8; text-align: right; }
+.cplace { display: flex; justify-content: space-between; gap: 10px; padding: 10px 16px; border-radius: 22px; background: #ffffff61; margin-bottom: 6px; font-size: 14px; }
+.cplace.mine { background: #ffffff9c; }
+.cplace small { display: block; font-size: 12px; color: #1d1712a8; }
+.cplace em { font-style: normal; font-size: 12px; color: #1d1712a8; white-space: nowrap; }
+.cfoot { display: flex; align-items: flex-end; justify-content: space-between; padding: 0 14px 14px 22px; }
+.cfoot .cnt2 { font-size: 11px; line-height: 16px; letter-spacing: 1.7px; text-transform: uppercase; color: #1d1712b8; }
+.arrows { display: flex; gap: 6px; padding: 5px; border-radius: 40px; border: 1px solid #1d171229; background: #ffffff1f; }
+.arrowb { width: 58px; height: 58px; border-radius: 29px; border: 0; display: grid; place-items: center; color: #e8571c; font-size: 22px; font-weight: 900;
+  background: radial-gradient(circle at 40% 30%, #fffaea, #ead9b0 75%); box-shadow: inset 0 -3px 6px #78501e2e, 0 4px 10px #3c1e0a26;
+  transition: transform .38s cubic-bezier(.34,1.56,.64,1); }
+.cbar { display: flex; gap: 10px; padding: 12px 11px calc(env(safe-area-inset-bottom) + 8px); }
+.cbar label { flex: 1; min-width: 0; height: 54px; border-radius: 27px; background: #1f1c1a; display: flex; align-items: center; gap: 10px; padding: 0 20px; color: #c9c2bb; }
+.cbar input { flex: 1; min-width: 0; background: none; border: 0; outline: 0; color: #f4efe9; font-size: 16px; }
+.cbar select { flex: none; max-width: 42%; height: 54px; border-radius: 27px; background: #1f1c1a; border: 0; color: #f4efe9; padding: 0 18px; font-weight: 600; font-size: 15px; }
 </style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
 </head>
 <body>
 <header>
@@ -299,6 +393,7 @@ table.ivs td:first-child, table.ivs th:first-child { text-align: left; color: va
   <section id="trades" class="hidden"></section>
 </main>
 
+<div id="card"></div>
 <div class="veil" id="veil"></div>
 <div class="sheet" id="sheet"></div>
 
@@ -436,7 +531,7 @@ function renderDex() {
       if (state.own === "shiny" && !shiny) continue;
       if (state.type !== "" && t1 != state.type && t2 != state.type) continue;
       if (q && !norm(name).includes(q) && String(n) !== q.replace(/^#?0*/, "")) continue;
-      cells.push(`<button class="cell ${have ? "" : seen ? "seen" : "missing"}" data-dex="${n}">
+      cells.push(`<button class="cell ${have ? "own" : seen ? "seen" : "missing"}" data-dex="${n}"${have ? ` style="--tint:${pastelGradient(t1, t2, shiny, 140)}"` : ""}>
         <span class="no">${pad(n)}</span>${list && list.length > 1 ? `<span class="cnt">×${list.length}</span>` : onlyGames ? '<span class="cnt" title="Dans tes jeux">🎮</span>' : seen ? '<span class="cnt" title="Vu">👁</span>' : ""}
         <img class="sprite" loading="lazy" alt="" src="${sprite(n, shiny)}">
         ${shiny ? '<span class="star">★</span>' : ""}<div class="nm">${have || seen ? esc(name) : (state.own === "miss" || q ? esc(name) : "???")}</div></button>`);
@@ -504,6 +599,259 @@ async function openSpecies(n) {
     sheetClick(ev);
   };
 }
+
+// ---------- The species card (Capsule's look, like the app's Pokédex) ----------
+
+function hexHsl(hex) {
+  const v = parseInt(hex.slice(1), 16), r = (v >> 16 & 255) / 255, g = (v >> 8 & 255) / 255, b = (v & 255) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2;
+  if (max === min) return [0, 0, l];
+  const d = max - min, s = l > .5 ? d / (2 - max - min) : d / (max + min);
+  const h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return [h * 60, s, l];
+}
+// Pastel stops from the types (shinies lean another way), as the app draws its card.
+function pastelGradient(t1, t2, shiny, angle = 135) {
+  const p = (t, light, shift = 0) => {
+    const [h, sat] = hexHsl(TYPE_COLORS[t]);
+    return `hsl(${(h + shift + (shiny ? 45 : 0) + 360) % 360} ${Math.round(Math.min(sat, .6) * 100)}% ${light}%)`;
+  };
+  return `linear-gradient(${angle}deg, ${p(t1, 80)} 0%, ${p(t1, 86, 10)} 35%, ${p(t2, 81)} 68%, ${p(t1, 84, -10)} 100%)`;
+}
+const accentOf = t => { const [h, sat] = hexHsl(TYPE_COLORS[t]); return [`hsl(${h} ${Math.round(Math.min(Math.max(sat, .3), .6) * 100)}% 30%)`, `hsl(${h} ${Math.round(Math.min(Math.max(sat, .3), .6) * 100)}% 42%)`]; };
+
+const SECTIONS = [["FICHE", "Fiche"], ["STATS", "Statistiques"], ["ÉVOL.", "Évolutions"], ["LIEUX", "Où l'attraper"]];
+const card = { n: 1, sec: 0, shiny: false };
+
+// The Pokémon the arrows step through: the grid's filters (got / missing / shiny, type).
+function passes(n) {
+  const [, t1, t2] = DEX[n];
+  const have = owned(n);
+  if (state.own === "have" && !have) return false;
+  if (state.own === "miss" && have) return false;
+  if (state.own === "shiny" && !(have && shinyOf(n))) return false;
+  if (state.type !== "" && t1 != state.type && t2 != state.type) return false;
+  return true;
+}
+
+async function openCard(n) {
+  if (!INFO) await infoReady;
+  card.n = n;
+  card.shiny = owned(n) && shinyOf(n);
+  renderCard();
+  $("card").classList.add("on");
+  document.body.style.overflow = "hidden";
+}
+function closeCard() {
+  $("card").classList.remove("on");
+  document.body.style.overflow = "";
+  if (state.tab === "dex") renderDex();
+}
+function stepCard(by) {
+  let n = card.n;
+  for (let i = 0; i < MAX; i++) {
+    n = (n - 1 + by + MAX) % MAX + 1;
+    if (passes(n)) break;
+  }
+  card.n = n;
+  card.shiny = owned(n) && shinyOf(n);
+  renderCard();
+}
+
+function cardStatus(n) {
+  if (seenOnly(n)) return "vu";
+  if (!owned(n)) return "pas encore rencontré";
+  const rec = gameRec(n) || {}, list = state.byDex.get(n) || [];
+  const where = [list.length ? "banque" : "", (rec.g || []).length ? ((rec.g.length > 1 ? rec.g.length + " jeux" : "1 jeu")) : ""].filter(Boolean);
+  return "obtenu" + (where.length ? " · " + where.join(" · ") : "") + (shinyOf(n) ? " · ★" : "");
+}
+
+function sectionHtml(n) {
+  const [, t1, t2, base] = DEX[n];
+  const have = owned(n), seen = seenOnly(n), known = have || seen;
+  const info = INFO?.species?.[n - 1];
+  const rec = gameRec(n) || {}, list = state.byDex.get(n) || [];
+  if (card.sec === 0) {
+    const games = (rec.g || []).map(([i, c]) => `${gameName(i)} × ${c}${(rec.t || []).includes(i) ? " (équipe)" : ""}`);
+    const dexOnly = (rec.d || []).filter(i => !(rec.g || []).some(([g]) => g === i)).map(i => "attrapé dans " + gameName(i));
+    const parts = [...(list.length ? [`Banque × ${list.length}`] : []), ...games, ...dexOnly];
+    const where = have ? parts.join(" · ") : seen ? `Vu dans ${(rec.v || []).map(gameName).join(", ")}, pas encore attrapé.` : "Pas encore rencontré.";
+    return `<div>${known && info ? `<div class="lbl">Talents</div><div>${info.a.map(a => Array.isArray(a)
+        ? `<span class="chip">${esc(a[0])} <small>caché</small></span>` : `<span class="chip">${esc(a)}</span>`).join("")}</div>` : ""}
+      <div class="lbl">Où tu l'as</div><div class="ctext">${esc(where)}</div>
+      ${list.length ? `<div class="lbl">Dans la banque</div><div>${list.map(e => `<button class="chip" data-id="${esc(e.id)}">${esc(e.nickname || e.speciesName)}${e.isShiny ? " ★" : ""} <small>Nv. ${esc(e.details?.level ?? "?")} · ${esc(prettyGame(e.sourceGame || ""))}</small></button>`).join("")}</div>` : ""}</div>`;
+  }
+  if (card.sec === 1) {
+    if (!known) return `<div class="ctext">Rencontre-le pour voir ses statistiques.</div>`;
+    const labels = ["PV", "Attaque", "Défense", "Vitesse", "Atq. Spé.", "Déf. Spé."];
+    return `<div>${[0, 1, 2, 4, 5, 3].map(i => `<div class="cstat"><span>${labels[i]}</span><b>${base[i]}</b><i><em style="width:${Math.min(100, base[i] / 180 * 100)}%"></em></i></div>`).join("")}
+      <div class="lbl">Total ${base.reduce((a, b) => a + b, 0)}</div></div>`;
+  }
+  if (card.sec === 2) {
+    const members = family(n).flat();
+    if (members.length < 2) return `<div class="ctext">N'évolue pas.</div>`;
+    return `<div>${members.map(m => { const k = owned(m.dex) || seenOnly(m.dex);
+      return `<button class="crowb ${m.dex === n ? "on" : ""}" data-card="${m.dex}"><img class="sprite" alt="" style="${owned(m.dex) ? "" : k ? "opacity:.5" : "filter:brightness(0);opacity:.6"}" src="${sprite(m.dex)}">
+        <b>${k ? esc(DEX[m.dex][0]) : "???"}</b>${m.how ? `<small>${esc(m.how)}</small>` : ""}</button>`; }).join("")}</div>`;
+  }
+  const mine = [...new Set(state.inGames.games.flatMap(versionsOfGame))];
+  const versions = info?.where ? Object.keys(INFO.versions).map(Number).filter(v => info.where[v]) : [];
+  const sorted = [...versions.filter(v => mine.includes(v)), ...versions.filter(v => !mine.includes(v))];
+  if (!sorted.length) return `<div class="ctext">Pas dans la nature : évolution, œuf, échange ou événement.</div>`;
+  return `<div>${sorted.flatMap(v => info.where[v].map(([loc, how, lo, hi]) =>
+    `<div class="cplace ${mine.includes(v) ? "mine" : ""}"><div><b>${esc(INFO.versions[v])}</b> · ${esc(loc)}<small>${esc(how)}</small></div><em>Nv. ${lo}${hi !== lo ? "-" + hi : ""}</em></div>`)).join("")}</div>`;
+}
+
+function renderCard() {
+  const n = card.n;
+  const [name, t1, t2] = DEX[n];
+  const have = owned(n), seen = seenOnly(n), known = have || seen;
+  const info = INFO?.species?.[n - 1];
+  const fmt = x => (x / 10).toFixed(1).replace(".", ",");
+  const types = t1 === t2 ? [t1] : [t1, t2];
+  const region = GENS.find(g => n >= g.from && n <= g.to);
+  const [a1, a2] = known ? accentOf(t1) : ["#3a3a3a", "#555"];
+  const gradient = known ? pastelGradient(t1, t2, card.shiny) : "linear-gradient(135deg, #cfcfcf, #e6e6e6 40%, #c4c4c4 70%, #dcdcdc)";
+  const shown = known ? name : "???";
+  const size = Math.max(30, Math.min(64, Math.floor(340 / (shown.length * 0.6))));
+  $("card").innerHTML = `<div class="cap"><div class="face" style="--g:${gradient};--a1:${a1};--a2:${a2}">
+    <div class="ctop">
+      <button class="glass" data-act="close" title="Fermer">‹</button>
+      <div style="flex:1"></div>
+      ${have ? `<button class="glass ${card.shiny ? "lit" : ""}" data-act="shiny" title="Couleurs chromatiques">✦</button>` : ""}
+      <select class="glass region" data-act="region" aria-label="Région">${GENS.map((g, i) => `<option value="${i}" ${g === region ? "selected" : ""}>${g.name}</option>`).join("")}</select>
+    </div>
+    <div class="cfacts">
+      <div>N° ${String(n).padStart(3, "0")}${known && info?.c ? " · " + esc(info.c) : ""}</div>
+      <div>Type : ${known ? types.map(t => esc(TYPES[t])).join(" · ") : "?"}</div>
+      <div>Taille : ${known && info ? fmt(info.h) + " m" : "?"} · Poids : ${known && info ? fmt(info.w) + " kg" : "?"}</div>
+      <div>Statut : ${cardStatus(n)}</div>
+    </div>
+    <div class="crow">
+      <div class="orb ${have ? "" : seen ? "seen" : "unknown"}"><img class="sprite" alt="" src="${sprite(n, card.shiny, have)}" onerror="this.onerror=null;this.src='${sprite(n, card.shiny)}'"></div>
+      <div class="wheel">
+        <svg width="56" height="164" viewBox="0 0 56 164" aria-hidden="true"><path d="M56 0 C56 22 10 18 10 48 L10 116 C10 146 56 142 56 164 Z" fill="#0b0a09"/></svg>
+        <div class="win"><div class="pill"></div><div class="strip snap">${SECTIONS.map(([s], i) => `<div class="it">${s}</div>`).join("")}</div></div>
+        <div class="cap2"></div>
+      </div>
+    </div>
+    <div class="cname" style="font-size:${size}px">${esc(shown)}</div>
+    <div class="cbody">${sectionHtml(n)}</div>
+    <div class="cfoot"><div class="cnt2">${ownedCount()} / ${MAX}<br>espèces obtenues</div>
+      <div class="arrows"><button class="arrowb" data-act="prev" title="Précédent">⌃</button><button class="arrowb" data-act="next" title="Suivant">⌄</button></div></div>
+  </div>
+  <div class="cbar"><label>🔎<input id="cq" placeholder="Nom ou numéro" autocomplete="off" enterkeyhint="go"></label>
+    <select id="cown">${[["all", "Tous"], ["have", "Obtenus"], ["miss", "Manquants"], ["shiny", "Chromatiques"]].map(([v, t]) => `<option value="${v}" ${state.own === v ? "selected" : ""}>${t}</option>`).join("")}</select></div></div>`;
+  placeWheel(card.sec);
+  bindWheel();
+}
+
+function placeWheel(at, snap = true) {
+  const strip = $("card").querySelector(".strip");
+  if (!strip) return;
+  strip.classList.toggle("snap", snap);
+  strip.style.transform = `translateY(${59 - 17 - at * 34}px)`;
+  [...strip.children].forEach((el, i) => {
+    const d = Math.abs(i - at);
+    el.classList.toggle("on", d < .5);
+    el.style.opacity = d < .5 ? 1 : Math.max(0, .65 - (d - .5) * .45);
+  });
+}
+let captionTimer = 0;
+function setSection(i) {
+  i = Math.max(0, Math.min(SECTIONS.length - 1, i));
+  const changed = i !== card.sec;
+  card.sec = i;
+  placeWheel(i);
+  const cap = $("card").querySelector(".cap2");
+  cap.textContent = SECTIONS[i][1];
+  cap.classList.add("on");
+  clearTimeout(captionTimer);
+  captionTimer = setTimeout(() => cap.classList.remove("on"), 1500);
+  if (changed) {
+    const body = $("card").querySelector(".cbody");
+    body.innerHTML = sectionHtml(card.n);
+    body.scrollTop = 0;
+    navigator.vibrate?.(8);
+  }
+}
+function bindWheel() {
+  const win = $("card").querySelector(".win");
+  let y0 = 0, start = 0, dragging = false, down = false;
+  win.onpointerdown = e => { down = true; dragging = false; y0 = e.clientY; start = card.sec; win.setPointerCapture(e.pointerId); };
+  win.onpointermove = e => {
+    if (!down) return;
+    const dy = e.clientY - y0;
+    if (!dragging && Math.abs(dy) > 6) dragging = true;
+    if (!dragging) return;
+    let at = start - dy / 34;
+    const last = SECTIONS.length - 1;
+    if (at < 0) at /= 3; else if (at > last) at = last + (at - last) / 3;
+    placeWheel(at, false);
+  };
+  win.onpointerup = e => {
+    if (!down) return;
+    down = false;
+    if (dragging) {
+      setSection(Math.round(start - (e.clientY - y0) / 34));
+    } else {
+      const slot = Math.round((e.clientY - win.getBoundingClientRect().top - 59) / 34);
+      if (slot) setSection(card.sec + slot);
+      const pill = win.querySelector(".pill");
+      pill.classList.add("bounce");
+      setTimeout(() => pill.classList.remove("bounce"), 160);
+    }
+  };
+  win.onpointercancel = () => { down = false; placeWheel(card.sec); };
+}
+
+$("card").addEventListener("click", ev => {
+  const act = ev.target.closest("[data-act]")?.dataset.act;
+  if (act === "close") return closeCard();
+  if (act === "prev") return stepCard(-1);
+  if (act === "next") return stepCard(1);
+  if (act === "shiny") { card.shiny = !card.shiny; return renderCard(); }
+  const to = ev.target.closest("[data-card]");
+  if (to) { card.n = +to.dataset.card; card.shiny = owned(card.n) && shinyOf(card.n); return renderCard(); }
+  const mon = ev.target.closest("[data-id]");
+  if (mon) return openMon(mon.dataset.id);
+});
+$("card").addEventListener("change", ev => {
+  if (ev.target.dataset.act === "region") {
+    const g = GENS[+ev.target.value];
+    for (let d = g.from; d <= g.to; d++) if (passes(d)) { card.n = d; card.shiny = owned(d) && shinyOf(d); break; }
+    renderCard();
+  }
+  if (ev.target.id === "cown") {
+    state.own = ev.target.value;
+    for (const x of $("own").children) x.classList.toggle("on", x.dataset.v === state.own);
+    if (!passes(card.n)) stepCard(1); else renderCard();
+  }
+});
+$("card").addEventListener("keydown", ev => {
+  if (ev.target.id !== "cq" || ev.key !== "Enter") return;
+  const q = norm(ev.target.value.trim());
+  if (!q) return;
+  for (let d = 1; d <= MAX; d++) {
+    if (String(d) === q.replace(/^#?0*/, "") || ((owned(d) || seenOnly(d)) && norm(DEX[d][0]).includes(q))) {
+      card.n = d; card.shiny = owned(d) && shinyOf(d); return renderCard();
+    }
+  }
+  toast("Aucun Pokémon rencontré ne correspond.");
+});
+addEventListener("keydown", ev => {
+  if (!$("card").classList.contains("on") || ev.target.tagName === "INPUT" || $("sheet").classList.contains("on")) return;
+  if (ev.key === "Escape") closeCard();
+  if (ev.key === "ArrowDown" || ev.key === "ArrowRight") { ev.preventDefault(); stepCard(1); }
+  if (ev.key === "ArrowUp" || ev.key === "ArrowLeft") { ev.preventDefault(); stepCard(-1); }
+});
+let touchX = 0, touchY = 0;
+$("card").addEventListener("touchstart", ev => { touchX = ev.touches[0].clientX; touchY = ev.touches[0].clientY; }, { passive: true });
+$("card").addEventListener("touchend", ev => {
+  if (ev.target.closest(".wheel")) return;
+  const dx = ev.changedTouches[0].clientX - touchX, dy = ev.changedTouches[0].clientY - touchY;
+  if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.6) stepCard(dx < 0 ? 1 : -1);
+});
 
 // ---------- Bank ----------
 
@@ -627,7 +975,7 @@ function closeSheet() {
 function sheetClick(ev) {
   if (ev.target.closest("[data-close]")) return closeSheet();
   const dex = ev.target.closest("[data-dex]");
-  if (dex) return openSpecies(+dex.dataset.dex);
+  if (dex) { closeSheet(); return openCard(+dex.dataset.dex); }
   const mon = ev.target.closest("[data-id]");
   if (mon) return openMon(mon.dataset.id);
 }
