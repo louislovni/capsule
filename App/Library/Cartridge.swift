@@ -13,7 +13,7 @@ final class PhoneTilt: ObservableObject {
     func start() {
         guard motion.isDeviceMotionAvailable, !motion.isDeviceMotionActive else { return }
         rest = nil
-        motion.deviceMotionUpdateInterval = 1.0 / 30
+        motion.deviceMotionUpdateInterval = 1.0 / 24
         motion.startDeviceMotionUpdates(to: .main) { [weak self] data, _ in
             guard let self = self, let attitude = data?.attitude else { return }
             let now = (attitude.roll, attitude.pitch)
@@ -23,8 +23,13 @@ final class PhoneTilt: ObservableObject {
             self.rest!.1 += (now.1 - self.rest!.1) * 0.01
             let targetX = max(-0.35, min(0.35, now.0 - self.rest!.0))
             let targetY = max(-0.35, min(0.35, now.1 - self.rest!.1))
-            self.x += (targetX - self.x) * 0.25
-            self.y += (targetY - self.y) * 0.25
+            let nextX = self.x + (targetX - self.x) * 0.3
+            let nextY = self.y + (targetY - self.y) * 0.3
+            // Only a change that shows: a still phone redraws nothing.
+            if abs(nextX - self.x) > 0.002 || abs(nextY - self.y) > 0.002 {
+                self.x = nextX
+                self.y = nextY
+            }
         }
     }
 
@@ -115,11 +120,23 @@ struct CartridgeShape: Shape {
 }
 
 /// A game as a cartridge in its colour, with a label of our own (its name, its console), drawn with some depth and
-/// turning a little with the phone and under the finger.
+/// turning a little with the phone. The drawing is flattened once into one image (drawingGroup); only its turn
+/// changes as the phone moves, which costs nothing to redraw. The finger doesn't turn it: a swipe scrolls the list.
 struct CartridgeView: View {
     let game: Game
     @ObservedObject var tilt: PhoneTilt
-    @State private var drag: CGSize = .zero
+
+    var body: some View {
+        CartridgeFace(game: game)
+            .rotation3DEffect(.degrees(tilt.y * 22), axis: (x: 1, y: 0, z: 0), perspective: 0.6)
+            .rotation3DEffect(.degrees(tilt.x * 22), axis: (x: 0, y: 1, z: 0), perspective: 0.6)
+            .accessibilityHidden(true)
+    }
+}
+
+/// The cartridge itself, still.
+private struct CartridgeFace: View {
+    let game: Game
 
     private var kind: CartridgeKind { CartridgeKind(game) }
 
@@ -127,18 +144,16 @@ struct CartridgeView: View {
         let tint = CapsuleTheme.tint(for: game)
         let plastic = Color(UIColor(red: tint.r, green: tint.g, blue: tint.b, alpha: 1).mixed(with: .black, 0.18))
         let edge = Color(UIColor(red: tint.r, green: tint.g, blue: tint.b, alpha: 1).mixed(with: .black, 0.5))
-        let angleX = tilt.y * 22 - Double(drag.height) / 9
-        let angleY = tilt.x * 22 + Double(drag.width) / 9
         GeometryReader { geometry in
             let depth = min(geometry.size.width, geometry.size.height) * 0.05
             // The face: the outline's size, the thickness below it.
             let size = CGSize(width: geometry.size.width, height: geometry.size.height - depth)
             ZStack {
                 // The thickness: the outline repeated downwards in the plastic's dark side.
-                ForEach(0..<6, id: \.self) { layer in
+                ForEach(0..<3, id: \.self) { layer in
                     CartridgeShape(kind: kind)
                         .fill(edge)
-                        .offset(y: depth * CGFloat(6 - layer) / 6)
+                        .offset(y: depth * CGFloat(3 - layer) / 3)
                 }
                 CartridgeShape(kind: kind)
                     .fill(LinearGradient(colors: [plastic.opacity(0.95), plastic], startPoint: .top, endPoint: .bottom))
@@ -146,32 +161,24 @@ struct CartridgeView: View {
                 label(size, tint: tint)
                 // Light on the plastic, moving as it turns.
                 CartridgeShape(kind: kind)
-                    .fill(LinearGradient(colors: [.white.opacity(0.32), .white.opacity(0), .white.opacity(0.12)],
-                                         startPoint: UnitPoint(x: 0.2 + angleY / 60, y: 0),
-                                         endPoint: UnitPoint(x: 0.8 + angleY / 60, y: 1)))
-                    .blendMode(.screen)
+                    .fill(LinearGradient(colors: [.white.opacity(0.3), .white.opacity(0), .white.opacity(0.1)],
+                                         startPoint: UnitPoint(x: 0.2, y: 0), endPoint: UnitPoint(x: 0.8, y: 1)))
                 CartridgeShape(kind: kind)
                     .stroke(.white.opacity(0.25), lineWidth: 1)
             }
             .frame(width: size.width, height: size.height)
             .frame(maxHeight: .infinity, alignment: .top)
-            .shadow(color: .black.opacity(0.45), radius: 16, x: -angleY / 2, y: 14)
         }
         .aspectRatio(kind.aspect, contentMode: .fit)
-        .rotation3DEffect(.degrees(angleX), axis: (x: 1, y: 0, z: 0), perspective: 0.6)
-        .rotation3DEffect(.degrees(angleY), axis: (x: 0, y: 1, z: 0), perspective: 0.6)
-        .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.7), value: drag)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 4)
-                .onChanged { value in
-                    drag = CGSize(width: max(-140, min(140, value.translation.width)),
-                                  height: max(-140, min(140, value.translation.height)))
-                }
-                .onEnded { _ in
-                    withAnimation(.spring(response: 0.6, dampingFraction: 0.45)) { drag = .zero }
-                }
-        )
-        .accessibilityHidden(true)
+        .padding(.bottom, 16)
+        .background(alignment: .bottom) {
+            // Its shadow on the card: a soft dark oval, cheaper than a blurred copy of the whole cartridge.
+            Ellipse()
+                .fill(RadialGradient(colors: [.black.opacity(0.45), .clear], center: .center, startRadius: 0, endRadius: 140))
+                .frame(height: 34)
+                .padding(.horizontal, 10)
+        }
+        .drawingGroup()
     }
 
     /// Ridges where the fingers hold it.

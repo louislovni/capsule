@@ -7,7 +7,8 @@ struct LibraryView: View {
     @StateObject private var account = AccountStore()
     @StateObject private var cloud = CloudSync()
     @StateObject private var pokedex = PokedexStore()
-    @StateObject private var tilt = PhoneTilt()
+    /// Held, not watched: only the cartridges redraw as the phone moves, not the whole screen.
+    @State private var tilt = PhoneTilt()
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var importing = false
@@ -324,7 +325,8 @@ struct LibraryView: View {
 /// cartridge plays it.
 private struct GameCard: View {
     let game: Game
-    @ObservedObject var tilt: PhoneTilt
+    /// Passed on to the cartridge, which alone redraws as the phone moves.
+    let tilt: PhoneTilt
     let play: () -> Void
     let openBank: () -> Void
     let history: () -> Void
