@@ -268,6 +268,8 @@ struct TintedPad: View {
 struct CapsuleWheel: View {
     @ObservedObject var tint: PictureTint
     let tools: [WheelTool]
+    /// Sideways: the notch comes down from the top edge and the tools roll left and right.
+    var horizontal = false
 
     @State private var index = 0
     @State private var drag: CGFloat = 0
@@ -291,15 +293,17 @@ struct CapsuleWheel: View {
     }
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
+        ZStack(alignment: horizontal ? .topLeading : .topTrailing) {
             NotchShape()
                 .fill(Color(red: 0.043, green: 0.051, blue: 0.047))
                 .frame(width: 56, height: 164)
+                .rotationEffect(.degrees(horizontal ? -90 : 0))
+                .frame(width: horizontal ? 164 : 56, height: horizontal ? 56 : 164)
             window
-                .padding(.top, 23)
+                .padding(horizontal ? .leading : .top, 23)
         }
-        .frame(width: 56, height: 164)
-        .overlay(alignment: .topTrailing) {
+        .frame(width: horizontal ? 164 : 56, height: horizontal ? 56 : 164)
+        .overlay(alignment: horizontal ? .top : .topTrailing) {
             if let caption = caption {
                 Text(caption)
                     .font(.system(size: 11, weight: .semibold))
@@ -309,7 +313,7 @@ struct CapsuleWheel: View {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(Color(red: 0.043, green: 0.051, blue: 0.047).opacity(0.88), in: Capsule())
-                    .offset(x: -60, y: 23 + middle - 14)
+                    .offset(x: horizontal ? 0 : -60, y: horizontal ? 62 : 23 + middle - 14)
                     .transition(.opacity.combined(with: .offset(x: 12)))
                     .allowsHitTesting(false)
             }
@@ -320,15 +324,15 @@ struct CapsuleWheel: View {
     private var window: some View {
         let accent = CardColors.accent(tint.value)
         let rolled = self.rolled
-        return ZStack(alignment: .top) {
+        return ZStack(alignment: horizontal ? .topLeading : .top) {
             RoundedRectangle(cornerRadius: 19, style: .continuous)
                 .fill(LinearGradient(colors: [Color(accent.mixed(with: .white, 0.25)), Color(accent)],
                                      startPoint: .top, endPoint: .bottom))
                 .overlay(RoundedRectangle(cornerRadius: 19, style: .continuous).stroke(.white.opacity(0.3), lineWidth: 0.5))
                 .shadow(color: .black.opacity(0.35), radius: 5, y: 4)
-                .frame(width: 38, height: 54)
+                .frame(width: horizontal ? 54 : 38, height: horizontal ? 38 : 54)
                 .scaleEffect(bounce ? 1.14 : 1)
-                .offset(y: middle - 27)
+                .offset(x: horizontal ? middle - 27 : 0, y: horizontal ? 4 : middle - 27)
             ForEach(Array(tools.enumerated()), id: \.offset) { offset, tool in
                 let distance = abs(CGFloat(offset) - rolled)
                 let picked = distance < 0.5
@@ -344,22 +348,24 @@ struct CapsuleWheel: View {
                 }
                 .foregroundStyle(picked ? Color.white : Color(red: 0.75, green: 0.8, blue: 0.77))
                 .opacity(distance < 0.5 ? 1 : max(0, 0.65 - (distance - 0.5) * 0.45))
-                .frame(width: 46, height: item)
-                .offset(y: middle - item / 2 + (CGFloat(offset) - rolled) * item)
+                .frame(width: horizontal ? item : 46, height: horizontal ? 46 : item)
+                .offset(x: horizontal ? middle - item / 2 + (CGFloat(offset) - rolled) * item : 0,
+                        y: horizontal ? 0 : middle - item / 2 + (CGFloat(offset) - rolled) * item)
             }
         }
-        .frame(width: 46, height: 118, alignment: .top)
+        .frame(width: horizontal ? 118 : 46, height: horizontal ? 46 : 118, alignment: .topLeading)
         .clipped()
         .contentShape(Rectangle())
         .gesture(
             DragGesture(minimumDistance: 0)
                 .onChanged { value in
-                    if !moved && abs(value.translation.height) > 6 {
+                    let along = horizontal ? value.translation.width : value.translation.height
+                    if !moved && abs(along) > 6 {
                         moved = true
                     }
                     guard moved else { return }
                     let before = Int(self.rolled.rounded())
-                    drag = value.translation.height
+                    drag = along
                     let now = Int(self.rolled.rounded())
                     if now != before, (0..<tools.count).contains(now) {
                         UISelectionFeedbackGenerator().selectionChanged()
@@ -375,7 +381,7 @@ struct CapsuleWheel: View {
                         moved = false
                         show(tools[target].id)
                     } else {
-                        tap(at: value.location.y)
+                        tap(at: horizontal ? value.location.x : value.location.y)
                     }
                 }
         )
@@ -425,5 +431,17 @@ struct CapsuleWheel: View {
         let task = DispatchWorkItem { caption = nil }
         captionTask = task
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.6, execute: task)
+    }
+}
+
+extension View {
+    /// A capsule of Liquid Glass (iOS 26), else a thin blur.
+    @ViewBuilder
+    func glassCapsule() -> some View {
+        if #available(iOS 26.0, *) {
+            self.glassEffect(.regular, in: Capsule())
+        } else {
+            self.background(.ultraThinMaterial, in: Capsule())
+        }
     }
 }

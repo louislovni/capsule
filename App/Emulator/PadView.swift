@@ -71,6 +71,28 @@ final class PadView: UIView {
         }
     }
 
+    /// Over a light card (Capsule sideways): dark letters, which read on its light glass.
+    var lightBackdrop = false {
+        didSet {
+            guard lightBackdrop != oldValue else { return }
+            applyInk()
+        }
+    }
+
+    private var ink: UIColor {
+        lightBackdrop ? UIColor(red: 0.094, green: 0.141, blue: 0.114, alpha: 1) : UIColor(white: 1, alpha: 0.95)
+    }
+
+    private func applyInk() {
+        for item in buttons {
+            item.view.textColor = ink
+            item.view.layer.shadowOpacity = lightBackdrop ? 0 : 0.35
+        }
+        dpadThumb.backgroundColor = lightBackdrop ? ink : UIColor(white: 1, alpha: 0.9)
+        dpadThumb.layer.shadowColor = (lightBackdrop ? UIColor.white : UIColor.white).cgColor
+        setNeedsLayout()
+    }
+
     private var buttons: [PadButton] = []
     private let dpad = UIView()
     /// Liquid Glass behind each button (iOS 26; a dark blur before), kept beside its label.
@@ -304,7 +326,7 @@ final class PadView: UIView {
         button(PadKey.start)?.frame = CGRect(x: rightX + (column - pillWidth) / 2, y: startY,
                                              width: pillWidth, height: pillHeight)
         var lowest = startY
-        if isDS {
+        if isDS && showsShortcuts {
             let rowHeight: CGFloat = 26
             let leftItems = [Self.shortcuts[0].0, Self.shortcuts[1].0]
             let rightItems = [Self.shortcuts[2].0, Self.shortcuts[3].0]
@@ -356,7 +378,7 @@ final class PadView: UIView {
         for (index, chevron) in chevrons.enumerated() {
             chevron.bounds = CGRect(x: 0, y: 0, width: 30, height: 30)
             chevron.center = places[index]
-            chevron.tintColor = UIColor(white: 1, alpha: currentKeys & held[index] != 0 ? 1 : 0.6)
+            chevron.tintColor = ink.withAlphaComponent(currentKeys & held[index] != 0 ? 1 : 0.6)
         }
         var lean = CGPoint.zero
         if currentKeys & PadKey.left != 0 { lean.x -= 1 }
@@ -492,6 +514,7 @@ struct PadRepresentable: UIViewRepresentable {
     var isDS = false
     var pictureAspect: CGFloat = 1.5
     var showsShortcuts = true
+    var lightBackdrop = false
     let onKeys: (UInt32) -> Void
 
     func makeUIView(context: Context) -> PadView {
@@ -499,6 +522,7 @@ struct PadRepresentable: UIViewRepresentable {
         view.onKeys = onKeys
         view.showsShoulders = showsShoulders
         view.showsShortcuts = showsShortcuts
+        view.lightBackdrop = lightBackdrop
         view.isDS = isDS
         view.pictureAspect = pictureAspect
         return view
@@ -508,6 +532,7 @@ struct PadRepresentable: UIViewRepresentable {
         uiView.onKeys = onKeys
         uiView.showsShoulders = showsShoulders
         uiView.showsShortcuts = showsShortcuts
+        uiView.lightBackdrop = lightBackdrop
         uiView.isDS = isDS
         uiView.pictureAspect = pictureAspect
     }

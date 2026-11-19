@@ -26,7 +26,7 @@ struct GameView: View {
             let pictureArea = portraitPictureArea(geometry.size, topInset: topInset, screenHeight: screenHeight)
             Group {
                 if isLandscape {
-                    landscapeLayout(bandsBeside: picturesLeavesBands(geometry))
+                    landscapeLayout(bandsBeside: picturesLeavesBands(geometry), band: bandWidth(geometry))
                 } else if skin == .capsule {
                     capsuleLayout(pictureArea: pictureArea, screenHeight: screenHeight)
                 } else {
@@ -217,6 +217,14 @@ struct GameView: View {
     }
 
     /// Sideways, whether the picture (full height) leaves black bands wide enough for the controls.
+    /// Sideways, the width of the black band each side of the picture (whole screen, points).
+    private func bandWidth(_ geometry: GeometryProxy) -> CGFloat {
+        let insets = geometry.safeAreaInsets
+        let fullWidth = geometry.size.width + insets.leading + insets.trailing
+        let fullHeight = geometry.size.height + insets.top + insets.bottom
+        return max((fullWidth - fullHeight * session.screenAspect) / 2, 0)
+    }
+
     private func picturesLeavesBands(_ geometry: GeometryProxy) -> Bool {
         let insets = geometry.safeAreaInsets
         let fullWidth = geometry.size.width + insets.leading + insets.trailing
@@ -226,8 +234,19 @@ struct GameView: View {
 
     /// Sideways: the picture as large as the screen allows, the controls over it (or beside it,
     /// in the bands a narrower picture leaves, such as a DS game's).
-    private func landscapeLayout(bandsBeside: Bool) -> some View {
-        ZStack {
+    private func landscapeLayout(bandsBeside: Bool, band: CGFloat) -> some View {
+        let cards = skin == .capsule && bandsBeside && !session.loadFailed
+        return ZStack {
+            if cards {
+                // Capsule sideways: a tinted card in each band, the controls on them.
+                HStack(spacing: 0) {
+                    bandCard(width: band - 2 * Self.cardGap)
+                    Spacer(minLength: 0)
+                    bandCard(width: band - 2 * Self.cardGap)
+                }
+                .padding(Self.cardGap)
+                .ignoresSafeArea()
+            }
             if session.loadFailed {
                 loadFailure
             } else {
@@ -235,18 +254,41 @@ struct GameView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .ignoresSafeArea()
                 if gamepad.controllerName == nil {
-                    pad
-                        .ignoresSafeArea(edges: bandsBeside ? .all : .vertical)
+                    PadRepresentable(isDS: session.game.isDS, pictureAspect: session.screenAspect,
+                                     showsShortcuts: false, lightBackdrop: cards, onKeys: { [weak session] keys in
+                        session?.setKeys(keys)
+                    })
+                    .ignoresSafeArea(edges: bandsBeside ? .all : .vertical)
                 }
             }
+            // The wheel comes down from the top edge, the tools in glass beside it.
             VStack {
-                toolbar(compact: false)
-                    .background(Color.black.opacity(0.35), in: Capsule())
-                    .fixedSize()
+                if !session.loadFailed {
+                    CapsuleWheel(tint: session.pictureTint, tools: wheelTools, horizontal: true)
+                        .overlay(alignment: .topLeading) {
+                            toolbar(compact: true)
+                                .padding(.horizontal, 14)
+                                .glassCapsule()
+                                .fixedSize()
+                                .offset(x: 164 + 10, y: 8)
+                        }
+                } else {
+                    toolbar(compact: false)
+                        .glassCapsule()
+                        .fixedSize()
+                }
                 Spacer()
             }
+            .ignoresSafeArea(edges: .top)
         }
     }
+
+    private func bandCard(width: CGFloat) -> some View {
+        TintedBackground(tint: session.pictureTint)
+            .frame(width: max(width, 0))
+            .clipShape(RoundedRectangle(cornerRadius: 40, style: .continuous))
+    }
+
 
     private var screen: some View {
         ScreenRepresentable(session: session)
@@ -258,12 +300,6 @@ struct GameView: View {
     private var portraitPad: some View {
         PadRepresentable(isDS: session.game.isDS, pictureAspect: session.screenAspect, showsShortcuts: false,
                          onKeys: { [weak session] keys in
-            session?.setKeys(keys)
-        })
-    }
-
-    private var pad: some View {
-        PadRepresentable(isDS: session.game.isDS, pictureAspect: session.screenAspect, onKeys: { [weak session] keys in
             session?.setKeys(keys)
         })
     }
