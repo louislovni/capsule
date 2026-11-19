@@ -7,6 +7,7 @@ struct LibraryView: View {
     @StateObject private var account = AccountStore()
     @StateObject private var cloud = CloudSync()
     @StateObject private var pokedex = PokedexStore()
+    @StateObject private var tilt = PhoneTilt()
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var importing = false
@@ -148,7 +149,7 @@ struct LibraryView: View {
                     emptyCard
                 }
                 ForEach(library.games) { game in
-                    GameCard(game: game,
+                    GameCard(game: game, tilt: tilt,
                              play: { playing = game },
                              openBank: { transferGame = game },
                              history: { historyGame = game },
@@ -191,6 +192,11 @@ struct LibraryView: View {
         }
         .background(Color.capsuleBlack.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
+        .onAppear { tilt.start() }
+        .onDisappear { tilt.stop() }
+        .onChange(of: playing) { game in
+            if game == nil { tilt.start() } else { tilt.stop() }
+        }
     }
 
     private var header: some View {
@@ -314,9 +320,11 @@ struct LibraryView: View {
     }
 }
 
-/// A game on the home screen: a card in its colours, its name large, when it was last saved; a tap plays it.
+/// A game on the home screen: its cartridge in 3D, when it was last saved, and its buttons; a tap on the
+/// cartridge plays it.
 private struct GameCard: View {
     let game: Game
+    @ObservedObject var tilt: PhoneTilt
     let play: () -> Void
     let openBank: () -> Void
     let history: () -> Void
@@ -324,71 +332,72 @@ private struct GameCard: View {
 
     var body: some View {
         let tint = CapsuleTheme.tint(for: game)
-        VStack(alignment: .leading, spacing: 0) {
+        let kind = CartridgeKind(game)
+        VStack(spacing: 16) {
+            CartridgeView(game: game, tilt: tilt)
+                .frame(maxWidth: kind == .wide ? 330 : 230)
+                .padding(.top, 10)
+                .contentShape(Rectangle())
+                .onTapGesture(perform: play)
+                .accessibilityElement()
+                .accessibilityLabel(CapsuleCard<EmptyView>.displayTitle(game.name))
+                .accessibilityAddTraits(.isButton)
+                .accessibilityAction(named: "Jouer", play)
+            HStack(spacing: 8) {
                 TimelineView(.periodic(from: .now, by: 60)) { context in
                     Text("\(game.platformLabel)\n\(CapsuleTheme.savedLine(game.saveURL, now: context.date))")
                         .lineSpacing(3)
-                        .smallCaps()
+                        .smallCaps(.capsuleCream, opacity: 0.55)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
                 }
-                Text(CapsuleCard<EmptyView>.displayTitle(game.name))
-                    .font(.system(size: 34, weight: .heavy))
-                    .tracking(-1)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.5)
-                    .multilineTextAlignment(.leading)
-                    .foregroundStyle(Color(red: 0.063, green: 0.06, blue: 0.05))
-                    .padding(.top, 14)
-                    .padding(.trailing, 20)
-                HStack(spacing: 8) {
+                Spacer(minLength: 4)
+                Button(action: play) {
                     HStack(spacing: 6) {
                         Image(systemName: "play.fill")
                         Text("Jouer")
                     }
                     .font(.system(size: 15, weight: .bold))
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, 18)
                     .frame(height: 44)
                     .background(
-                        LinearGradient(colors: [Color(CardColors.accent(tint).mixed(with: .white, 0.2)), Color(CardColors.accent(tint))],
+                        LinearGradient(colors: [Color(CardColors.accent(tint).mixed(with: .white, 0.25)), Color(CardColors.accent(tint))],
                                        startPoint: .top, endPoint: .bottom),
                         in: Capsule()
                     )
-                    .shadow(color: .black.opacity(0.2), radius: 6, y: 4)
-                    Spacer()
-                    if game.supportsPokemonTools {
-                        Button(action: openBank) {
-                            GlassCircle(icon: "archivebox")
-                        }
-                        .buttonStyle(SquishStyle())
-                        .disabled(!game.hasSave)
-                        .opacity(game.hasSave ? 1 : 0.5)
-                        .accessibilityLabel("Boîtes et banque")
-                    }
-                    Menu {
-                        menuItems
-                    } label: {
-                        GlassCircle(icon: "ellipsis")
-                    }
-                    .accessibilityLabel("Plus")
                 }
-                .padding(.top, 18)
+                .buttonStyle(SquishStyle())
+                if game.supportsPokemonTools {
+                    Button(action: openBank) {
+                        GlassCircle(icon: "archivebox")
+                    }
+                    .buttonStyle(SquishStyle())
+                    .disabled(!game.hasSave)
+                    .opacity(game.hasSave ? 1 : 0.5)
+                    .accessibilityLabel("Boîtes et banque")
+                }
+                Menu {
+                    menuItems
+                } label: {
+                    GlassCircle(icon: "ellipsis")
+                }
+                .accessibilityLabel("Plus")
             }
-            .padding(22)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                ZStack {
-                    LinearGradient(colors: CardColors.stops(tint), startPoint: .topLeading, endPoint: .bottomTrailing)
-                    RadialGradient(colors: [.white.opacity(0.36), .white.opacity(0)],
-                                   center: UnitPoint(x: 0.85, y: 0.15), startRadius: 0, endRadius: 260)
-                }
-                .clipShape(RoundedRectangle(cornerRadius: 34, style: .continuous))
-            )
-            .contentShape(RoundedRectangle(cornerRadius: 34, style: .continuous))
-            // The whole card plays the game; its own buttons (bank, more) take their taps first.
-            .onTapGesture(perform: play)
-            .accessibilityAddTraits(.isButton)
-            .accessibilityAction(named: "Jouer", play)
-            .contextMenu { menuItems }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity)
+        .background(
+            ZStack {
+                Color.capsulePanel
+                // The game's colour glowing under its cartridge.
+                RadialGradient(colors: [Color(red: tint.r, green: tint.g, blue: tint.b).opacity(0.28), .clear],
+                               center: UnitPoint(x: 0.5, y: 0.35), startRadius: 0, endRadius: 240)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 34, style: .continuous))
+        )
+        .overlay(RoundedRectangle(cornerRadius: 34, style: .continuous).stroke(Color.capsuleCream.opacity(0.06), lineWidth: 1))
+        .contextMenu { menuItems }
     }
 
     @ViewBuilder private var menuItems: some View {
