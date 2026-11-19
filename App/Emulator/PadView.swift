@@ -10,8 +10,12 @@ final class PadView: UIView {
     var showsShoulders = true {
         didSet {
             guard showsShoulders != oldValue else { return }
-            button(PadKey.l)?.isHidden = !showsShoulders
-            button(PadKey.r)?.isHidden = !showsShoulders
+            for key in [PadKey.l, PadKey.r] {
+                if let label = button(key) {
+                    label.isHidden = !showsShoulders
+                    glass(for: label)?.isHidden = !showsShoulders
+                }
+            }
             setNeedsLayout()
         }
     }
@@ -31,7 +35,8 @@ final class PadView: UIView {
         didSet {
             guard isDS != oldValue else { return }
             for item in buttons where item.isShortcut {
-                item.view.isHidden = !isDS
+                item.view.isHidden = !(isDS && showsShortcuts)
+                glass(for: item.view)?.isHidden = item.view.isHidden
             }
             setNeedsLayout()
         }
@@ -54,18 +59,61 @@ final class PadView: UIView {
         ("TACTILE", PadKey.select | PadKey.r2),
     ]
 
+    /// Upright with the side wheel, the DS shortcuts are on the wheel and leave the pad.
+    var showsShortcuts = true {
+        didSet {
+            guard showsShortcuts != oldValue else { return }
+            for item in buttons where item.isShortcut {
+                item.view.isHidden = !(isDS && showsShortcuts)
+                glass(for: item.view)?.isHidden = item.view.isHidden
+            }
+            setNeedsLayout()
+        }
+    }
+
     private var buttons: [PadButton] = []
     private let dpad = UIView()
-    private let dpadHorizontal = UIView()
-    private let dpadVertical = UIView()
+    /// Liquid Glass behind each button (iOS 26; a dark blur before), kept beside its label.
+    private var glassViews: [ObjectIdentifier: UIVisualEffectView] = [:]
+    private let dpadGlass = PadView.makeGlass()
+    private let dpadThumb = UIView()
+    private var chevrons: [UIImageView] = []
     private var activeTouches = Set<UITouch>()
     private var currentKeys: UInt32 = 0
     private let feedback = UIImpactFeedbackGenerator(style: .light)
 
-    /// Dark with a light outline: readable over a light game picture as over a dark one.
-    private let buttonColor = UIColor(white: 0.18, alpha: 0.55)
-    private let pressedColor = UIColor(white: 1.0, alpha: 0.45)
-    private let outlineColor = UIColor(white: 1.0, alpha: 0.4).cgColor
+    /// A pane of Liquid Glass (iOS 26), else a dark blur with a light rim; a white sheen
+    /// inside it (tag 7) lights up while pressed.
+    static func makeGlass() -> UIVisualEffectView {
+        let view: UIVisualEffectView
+        if #available(iOS 26.0, *) {
+            view = UIVisualEffectView(effect: UIGlassEffect())
+        } else {
+            view = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterialDark))
+            view.layer.borderWidth = 1
+            view.layer.borderColor = UIColor(white: 1, alpha: 0.35).cgColor
+        }
+        view.isUserInteractionEnabled = false
+        view.clipsToBounds = true
+        let sheen = UIView()
+        sheen.backgroundColor = .white
+        sheen.alpha = 0
+        sheen.tag = 7
+        sheen.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        view.contentView.addSubview(sheen)
+        return view
+    }
+
+    private func glass(for label: UILabel) -> UIVisualEffectView? {
+        glassViews[ObjectIdentifier(label)]
+    }
+
+    private func addGlass(under label: UILabel) {
+        let pane = Self.makeGlass()
+        pane.isHidden = label.isHidden
+        insertSubview(pane, belowSubview: label)
+        glassViews[ObjectIdentifier(label)] = pane
+    }
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -81,15 +129,25 @@ final class PadView: UIView {
         isMultipleTouchEnabled = true
         backgroundColor = .clear
 
+        // The D-pad: a round pane of glass, a chevron each way and a lit dot that leans
+        // towards the direction held.
         dpad.isUserInteractionEnabled = false
-        for bar in [dpadHorizontal, dpadVertical] {
-            bar.backgroundColor = buttonColor
-            bar.layer.cornerRadius = 10
-            bar.layer.borderWidth = 1
-            bar.layer.borderColor = outlineColor
-            bar.isUserInteractionEnabled = false
-            dpad.addSubview(bar)
+        dpad.addSubview(dpadGlass)
+        for name in ["chevron.up", "chevron.right", "chevron.down", "chevron.left"] {
+            let chevron = UIImageView(image: UIImage(systemName: name,
+                                                     withConfiguration: UIImage.SymbolConfiguration(pointSize: 15, weight: .bold)))
+            chevron.tintColor = UIColor(white: 1, alpha: 0.75)
+            chevron.contentMode = .center
+            dpad.addSubview(chevron)
+            chevrons.append(chevron)
         }
+        dpadThumb.backgroundColor = UIColor(white: 1, alpha: 0.9)
+        dpadThumb.isUserInteractionEnabled = false
+        dpadThumb.layer.shadowColor = UIColor.white.cgColor
+        dpadThumb.layer.shadowOpacity = 0.7
+        dpadThumb.layer.shadowRadius = 8
+        dpadThumb.layer.shadowOffset = .zero
+        dpad.addSubview(dpadThumb)
         addSubview(dpad)
 
         // X opens PokeDaisy's companion, Y its quick menu.
@@ -102,15 +160,17 @@ final class PadView: UIView {
             label.text = title
             label.textAlignment = .center
             label.textColor = UIColor(white: 1.0, alpha: 0.92)
-            label.font = .systemFont(ofSize: title.count > 1 ? 11 : 22, weight: .semibold)
-            label.backgroundColor = buttonColor
-            label.layer.borderWidth = 1
-            label.layer.borderColor = outlineColor
-            label.layer.masksToBounds = true
+            label.font = .systemFont(ofSize: title.count > 1 ? 11 : 22, weight: title.count > 1 ? .semibold : .bold)
+            label.backgroundColor = .clear
+            label.layer.shadowColor = UIColor.black.cgColor
+            label.layer.shadowOpacity = 0.35
+            label.layer.shadowRadius = 2
+            label.layer.shadowOffset = CGSize(width: 0, height: 1)
             label.isUserInteractionEnabled = false
             label.isAccessibilityElement = true
             label.accessibilityTraits = .button
             addSubview(label)
+            addGlass(under: label)
             buttons.append(PadButton(key: key, view: label))
         }
         for (title, key) in Self.shortcuts {
@@ -121,15 +181,13 @@ final class PadView: UIView {
             label.font = .systemFont(ofSize: 10, weight: .semibold)
             label.adjustsFontSizeToFitWidth = true
             label.minimumScaleFactor = 0.7
-            label.backgroundColor = buttonColor
-            label.layer.borderWidth = 1
-            label.layer.borderColor = outlineColor
-            label.layer.masksToBounds = true
+            label.backgroundColor = .clear
             label.isUserInteractionEnabled = false
             label.isAccessibilityElement = true
             label.accessibilityTraits = .button
             label.isHidden = true
             addSubview(label)
+            addGlass(under: label)
             buttons.append(PadButton(key: key, view: label, isShortcut: true))
         }
     }
@@ -149,8 +207,12 @@ final class PadView: UIView {
         guard width > 0, height > 0 else { return }
         defer {
             for item in buttons {
-                item.view.layer.cornerRadius = item.view.bounds.height / 2
+                guard let pane = glass(for: item.view) else { continue }
+                pane.bounds = item.view.bounds
+                pane.center = item.view.center
+                pane.layer.cornerRadius = item.view.bounds.height / 2
             }
+            layoutDpad()
         }
         if width > height {
             let side = (width - min(width, height * pictureAspect)) / 2
@@ -173,7 +235,7 @@ final class PadView: UIView {
 
         // DS: the shortcut row sits just above START / SELECT, off the picture's middle.
         var lowest = bottom
-        if isDS {
+        if isDS && showsShortcuts {
             let count = CGFloat(Self.shortcuts.count)
             let spacing: CGFloat = 6
             let rowHeight: CGFloat = 28
@@ -197,9 +259,6 @@ final class PadView: UIView {
 
         let dpadSize = min(width * 0.42, clusterHeight, 170)
         dpad.frame = CGRect(x: 20, y: centerY - dpadSize / 2, width: dpadSize, height: dpadSize)
-        let arm = dpadSize / 3
-        dpadHorizontal.frame = CGRect(x: 0, y: (dpadSize - arm) / 2, width: dpadSize, height: arm)
-        dpadVertical.frame = CGRect(x: (dpadSize - arm) / 2, y: 0, width: arm, height: dpadSize)
 
         // Four face buttons in a diamond: X top, A right, B bottom, Y left.
         let diameter = min(width * 0.15, clusterHeight * 0.32, 62)
@@ -269,9 +328,6 @@ final class PadView: UIView {
 
         let dpadSize = min(column, clusterHeight, 160)
         dpad.frame = CGRect(x: leftX + (column - dpadSize) / 2, y: centerY - dpadSize / 2, width: dpadSize, height: dpadSize)
-        let arm = dpadSize / 3
-        dpadHorizontal.frame = CGRect(x: 0, y: (dpadSize - arm) / 2, width: dpadSize, height: arm)
-        dpadVertical.frame = CGRect(x: (dpadSize - arm) / 2, y: 0, width: arm, height: dpadSize)
 
         let diameter = min(column / 2.9, clusterHeight / 2.9, 58)
         let gap = diameter * 0.95
@@ -284,6 +340,63 @@ final class PadView: UIView {
         ]
         for (key, point) in places {
             button(key)?.frame = CGRect(x: point.x - diameter / 2, y: point.y - diameter / 2, width: diameter, height: diameter)
+        }
+    }
+
+    /// The D-pad's glass, chevrons and dot, for its frame and the direction held.
+    private func layoutDpad(animated: Bool = false) {
+        let size = dpad.bounds.width
+        guard size > 0 else { return }
+        dpadGlass.frame = dpad.bounds
+        dpadGlass.layer.cornerRadius = size / 2
+        let reach = size * 0.36
+        let places = [CGPoint(x: size / 2, y: size / 2 - reach), CGPoint(x: size / 2 + reach, y: size / 2),
+                      CGPoint(x: size / 2, y: size / 2 + reach), CGPoint(x: size / 2 - reach, y: size / 2)]
+        let held = [PadKey.up, PadKey.right, PadKey.down, PadKey.left]
+        for (index, chevron) in chevrons.enumerated() {
+            chevron.bounds = CGRect(x: 0, y: 0, width: 30, height: 30)
+            chevron.center = places[index]
+            chevron.tintColor = UIColor(white: 1, alpha: currentKeys & held[index] != 0 ? 1 : 0.6)
+        }
+        var lean = CGPoint.zero
+        if currentKeys & PadKey.left != 0 { lean.x -= 1 }
+        if currentKeys & PadKey.right != 0 { lean.x += 1 }
+        if currentKeys & PadKey.up != 0 { lean.y -= 1 }
+        if currentKeys & PadKey.down != 0 { lean.y += 1 }
+        let pressed = lean != .zero
+        let side: CGFloat = pressed ? 22 : 14
+        let change = {
+            self.dpadThumb.bounds = CGRect(x: 0, y: 0, width: side, height: side)
+            self.dpadThumb.layer.cornerRadius = side / 2
+            self.dpadThumb.center = CGPoint(x: size / 2 + lean.x * size * 0.2, y: size / 2 + lean.y * size * 0.2)
+            self.dpadThumb.alpha = pressed ? 1 : 0.55
+        }
+        if animated {
+            UIView.animate(withDuration: 0.3, delay: 0, usingSpringWithDamping: 0.6, initialSpringVelocity: 0.4,
+                           options: [.allowUserInteraction, .beginFromCurrentState], animations: change)
+        } else {
+            change()
+        }
+    }
+
+    /// Pressed: squeezed, its glass lit; let go: springs back past its size.
+    private func setPressed(_ label: UILabel, _ down: Bool) {
+        let pane = glass(for: label)
+        let sheen = pane?.contentView.viewWithTag(7)
+        let transform = down ? CGAffineTransform(scaleX: 0.88, y: 0.88) : .identity
+        if down {
+            UIView.animate(withDuration: 0.1, delay: 0, options: [.allowUserInteraction, .beginFromCurrentState]) {
+                label.transform = transform
+                pane?.transform = transform
+                sheen?.alpha = 0.28
+            }
+        } else {
+            UIView.animate(withDuration: 0.45, delay: 0, usingSpringWithDamping: 0.45, initialSpringVelocity: 0.8,
+                           options: [.allowUserInteraction, .beginFromCurrentState]) {
+                label.transform = transform
+                pane?.transform = transform
+                sheen?.alpha = 0
+            }
         }
     }
 
@@ -351,15 +464,19 @@ final class PadView: UIView {
         if keys & ~currentKeys != 0 {
             feedback.impactOccurred()
         }
+        let before = currentKeys
         currentKeys = keys
         for item in buttons {
             let down = item.isShortcut ? keys & item.key == item.key : keys & item.key != 0
-            item.view.backgroundColor = down ? pressedColor : buttonColor
+            let was = item.isShortcut ? before & item.key == item.key : before & item.key != 0
+            if down != was {
+                setPressed(item.view, down)
+            }
         }
-        let horizontal = keys & (PadKey.left | PadKey.right) != 0
-        let vertical = keys & (PadKey.up | PadKey.down) != 0
-        dpadHorizontal.backgroundColor = horizontal ? pressedColor : buttonColor
-        dpadVertical.backgroundColor = vertical ? pressedColor : buttonColor
+        let directions = PadKey.up | PadKey.down | PadKey.left | PadKey.right
+        if keys & directions != before & directions {
+            layoutDpad(animated: true)
+        }
         onKeys?(keys)
     }
 
@@ -374,12 +491,14 @@ struct PadRepresentable: UIViewRepresentable {
     var showsShoulders = true
     var isDS = false
     var pictureAspect: CGFloat = 1.5
+    var showsShortcuts = true
     let onKeys: (UInt32) -> Void
 
     func makeUIView(context: Context) -> PadView {
         let view = PadView()
         view.onKeys = onKeys
         view.showsShoulders = showsShoulders
+        view.showsShortcuts = showsShortcuts
         view.isDS = isDS
         view.pictureAspect = pictureAspect
         return view
@@ -388,6 +507,7 @@ struct PadRepresentable: UIViewRepresentable {
     func updateUIView(_ uiView: PadView, context: Context) {
         uiView.onKeys = onKeys
         uiView.showsShoulders = showsShoulders
+        uiView.showsShortcuts = showsShortcuts
         uiView.isDS = isDS
         uiView.pictureAspect = pictureAspect
     }

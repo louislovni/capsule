@@ -215,9 +215,17 @@ struct GameView: View {
         VStack(spacing: 0) {
             Color.clear
                 .frame(height: pictureArea.height)
+                .overlay(alignment: .trailing) {
+                    // The tools' wheel on the edge, solid black, half way down the picture: clear
+                    // of PokeDaisy's minimap (top right) and its buttons (bottom right).
+                    if !session.loadFailed {
+                        CapsuleWheel(tint: session.pictureTint, tools: wheelTools)
+                            .offset(y: 20)
+                    }
+                }
             ZStack(alignment: .top) {
                 if !session.loadFailed && gamepad.controllerName == nil {
-                    pad
+                    portraitPad
                 }
                 toolbar(compact: true)
                     .padding(.top, 10)
@@ -296,6 +304,14 @@ struct GameView: View {
         ScreenRepresentable(session: session)
             .aspectRatio(session.screenAspect, contentMode: .fit)
             .overlay(alignment: .bottom) { noticeBanner }
+    }
+
+    /// Upright, the DS shortcuts are on the wheel.
+    private var portraitPad: some View {
+        PadRepresentable(isDS: session.game.isDS, pictureAspect: session.screenAspect, showsShortcuts: false,
+                         onKeys: { [weak session] keys in
+            session?.setKeys(keys)
+        })
     }
 
     private var pad: some View {
