@@ -25,6 +25,7 @@ struct AccountView: View {
             }
         }
         .navigationTitle("Amis")
+        .capsuleScreen()
         .overlay {
             if account.busy {
                 ProgressView()
@@ -256,6 +257,7 @@ struct RemoteTradeView: View {
     var body: some View {
         content
             .navigationTitle(trade.friendName.isEmpty ? "Échange" : "Échange avec \(trade.friendName)")
+            .capsuleScreen()
             .navigationBarTitleDisplayMode(.inline)
             .onAppear { trade.start() }
             .onDisappear { trade.stop() }
@@ -377,5 +379,6 @@ private struct RemoteTradePicker: View {
             .buttonStyle(.plain)
         }
         .navigationTitle("Tu donnes…")
+        .capsuleScreen()
     }
 }

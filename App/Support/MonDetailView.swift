@@ -21,6 +21,7 @@ struct MonDetailView: View {
             }
         }
         .navigationTitle(details.isEgg ? "Œuf" : details.speciesName)
+        .capsuleScreen()
         .navigationBarTitleDisplayMode(.inline)
     }
 

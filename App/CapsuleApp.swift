@@ -8,11 +8,14 @@ struct CapsuleApp: App {
         Storage.prepare()
         CoreLog.start()
         EmulatorSession.prepareCompanionSettings()
+        CapsuleTheme.apply()
     }
 
     var body: some Scene {
         WindowGroup {
             LibraryView()
+                .preferredColorScheme(.dark)
+                .tint(.capsuleAccent)
         }
     }
 }

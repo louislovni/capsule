@@ -18,6 +18,7 @@ struct TradeView: View {
         NavigationStack {
             content
                 .navigationTitle("Échange")
+                .capsuleScreen()
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
@@ -208,5 +209,6 @@ private struct TradePicker: View {
             .buttonStyle(.plain)
         }
         .navigationTitle("Tu donnes…")
+        .capsuleScreen()
     }
 }

@@ -6,24 +6,35 @@ struct BankView: View {
     @State private var trading = false
 
     var body: some View {
-        List {
-            if bank.entries.isEmpty {
-                Text("La banque est vide. Ouvre la boîte d'un jeu depuis la liste des jeux pour y déposer des Pokémon.")
-                    .foregroundStyle(.secondary)
-            } else {
-                Section {
-                    ForEach(bank.entries) { entry in
-                        NavigationLink {
-                            MonDetailLoader(load: { entry.resolvedDetails() }, bankDate: entry.depositedAt)
-                        } label: {
-                            BankEntryRow(entry: entry)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                Text(bank.entries.count == 1 ? "1 Pokémon" : "\(bank.entries.count) Pokémon")
+                    .smallCaps(.capsuleCream, opacity: 0.55)
+                if bank.entries.isEmpty {
+                    Text("La banque est vide. Touche l'icône de boîte sur la carte d'un jeu pour y déposer des Pokémon.")
+                        .foregroundStyle(Color.capsuleCream.opacity(0.7))
+                } else {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 10)], spacing: 10) {
+                        ForEach(bank.entries) { entry in
+                            NavigationLink {
+                                MonDetailLoader(load: { entry.resolvedDetails() }, bankDate: entry.depositedAt)
+                                    .capsuleScreen()
+                            } label: {
+                                BankCard(entry: entry)
+                            }
+                            .buttonStyle(SquishStyle())
                         }
                     }
-                } footer: {
-                    Text("La banque est un fichier dans Capsule > Bank. Exporte-le pour le garder ailleurs ; importe-le depuis l'écran des jeux pour fusionner.")
+                    Text("La banque est un fichier dans Capsule > Bank. Exporte-le pour le garder ailleurs ; importe-le depuis l'accueil pour fusionner.")
+                        .font(.footnote)
+                        .foregroundStyle(Color.capsuleCream.opacity(0.4))
+                        .padding(.top, 6)
                 }
             }
+            .padding(.horizontal, 14)
+            .padding(.bottom, 30)
         }
+        .background(Color.capsuleBlack.ignoresSafeArea())
         .navigationTitle("Banque")
         .sheet(isPresented: $trading) {
             TradeView(bank: bank)
@@ -47,10 +58,67 @@ struct BankView: View {
     }
 }
 
+/// A banked Pokémon on a card in its types' colours.
+private struct BankCard: View {
+    let entry: BankEntry
+
+    var body: some View {
+        let dex = TradeEvolution.nationalDex(of: entry)
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .top) {
+                Group {
+                    if let dex = dex, !entry.isEgg {
+                        PokedexSprite(dex: dex, shiny: entry.isShiny)
+                    } else {
+                        Image(systemName: "oval.portrait").font(.system(size: 30)).foregroundStyle(Color.capsuleInk.opacity(0.4))
+                    }
+                }
+                .frame(width: 64, height: 64)
+                .background(Circle().fill(.white.opacity(0.35)))
+                Spacer()
+                if entry.isShiny {
+                    Image(systemName: "sparkles").foregroundStyle(Color(red: 0.75, green: 0.5, blue: 0)).accessibilityLabel("Chromatique")
+                }
+            }
+            Text(entry.displayName)
+                .font(.system(size: 18, weight: .heavy))
+                .foregroundStyle(Color(red: 0.063, green: 0.06, blue: 0.05))
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                .padding(.top, 4)
+            Text(PokedexStore.gameTitle(entry.sourceGame))
+                .smallCaps(opacity: 0.65)
+                .lineLimit(1)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(LinearGradient(colors: Self.stops(dex), startPoint: .topLeading, endPoint: .bottomTrailing),
+                    in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+    }
+
+    /// Its types' pastel colours, as the Pokédex draws them.
+    static func stops(_ dex: Int?) -> [Color] {
+        guard let dex = dex, let base = PokedexStore.base(dex) else { return CardColors.stops(.standard) }
+        func pastel(_ type: UInt8, _ light: CGFloat) -> Color {
+            Color(UIColor(PokedexView.typeColors[Int(type) % 17]).mixed(with: .white, light))
+        }
+        return [pastel(base.type1, 0.55), pastel(base.type1, 0.7), pastel(base.type2, 0.6)]
+    }
+}
+
 struct BankEntryRow: View {
     let entry: BankEntry
 
     var body: some View {
+        HStack(spacing: 10) {
+            if let dex = TradeEvolution.nationalDex(of: entry), !entry.isEgg {
+                PokedexSprite(dex: dex, shiny: entry.isShiny).frame(width: 44, height: 44)
+            }
+            details
+        }
+    }
+
+    private var details: some View {
         VStack(alignment: .leading, spacing: 3) {
             HStack {
                 Text(entry.displayName)
@@ -107,10 +175,11 @@ struct TransferView: View {
                 }
                 .padding(32)
             } else {
-                content
+                content.capsuleScreen()
             }
         }
-        .navigationTitle(game.name)
+        .background(Color.capsuleBlack.ignoresSafeArea())
+        .navigationTitle(PokedexStore.gameTitle(game.name))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
@@ -145,6 +214,15 @@ struct TransferView: View {
     }
 
     private var generation: Int { storage?.generation ?? 3 }
+
+    /// A boxed Pokémon's National Pokédex number, for its sprite (a GBA game numbers Hoenn its own way).
+    private func nationalDex(_ mon: BoxedMon) -> Int? {
+        guard !mon.isEgg else { return nil }
+        if generation == 3 {
+            return (storage as? SaveFile)?.rom?.nationalDex(species: mon.species) ?? (mon.species <= 251 ? mon.species : nil)
+        }
+        return mon.species
+    }
 
     private var compatibleEntries: [BankEntry] {
         bank.entries.filter { $0.effectiveGeneration == generation }
@@ -192,7 +270,10 @@ struct TransferView: View {
                                     shownBankDate = nil
                                     shownDetails = storage?.details(of: mon)
                                 } label: {
-                                    HStack {
+                                    HStack(spacing: 10) {
+                                        if let dex = nationalDex(mon) {
+                                            PokedexSprite(dex: dex, shiny: mon.isShiny).frame(width: 44, height: 44)
+                                        }
                                         MonLabel(name: mon.displayName, trainer: mon.trainer, isShiny: mon.isShiny)
                                         Spacer()
                                         Image(systemName: "info.circle")

@@ -17,90 +17,27 @@ struct LibraryView: View {
     @State private var historyGame: Game?
     @State private var restoreMessage: String?
     @State private var message: String?
+    @State private var path: [Route] = []
+
+    enum Route: Hashable {
+        case pokedex, bank, account, settings, gamepad
+    }
 
     var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    if library.games.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Aucun jeu pour l'instant")
-                                .font(.headline)
-                            Text("Touche + pour importer tes ROM (.gba, .gb, .gbc, .nds) et tes sauvegardes .sav si tu en as. Tu peux aussi les déposer dans le dossier Capsule > ROMs de l'app Fichiers.")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-                        .padding(.vertical, 6)
-                    } else {
-                        ForEach(library.games) { game in
-                            GameRow(game: game, play: { playing = game }, openBank: { transferGame = game })
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                    Button("Supprimer", role: .destructive) {
-                                        pendingDelete = game
-                                    }
-                                    if game.hasSave || SafetySave.date(for: game) != nil {
-                                        Button("Sauvegardes") {
-                                            historyGame = game
-                                        }
-                                        .tint(.orange)
-                                    }
-                                }
-                        }
-                    }
-                } header: {
-                    Text("Jeux")
-                }
-
-                Section {
-                    NavigationLink {
-                        PokedexBrowser(pokedex: pokedex, games: library.games, refresh: refreshPokedex)
-                    } label: {
-                        Label("Pokédex · \(pokedex.caught) / \(PokedexStore.maxDex)", systemImage: "book.closed")
-                    }
-                    NavigationLink {
-                        BankView(bank: bank)
-                    } label: {
-                        Label(bankSummary, systemImage: "tray.full")
-                    }
-                    NavigationLink {
-                        AccountView(account: account, bank: bank, cloud: cloud)
-                    } label: {
-                        Label("Amis et échanges en ligne", systemImage: "person.2")
-                    }
-                    Link(destination: URL(string: "https://louislovni.github.io/capsule/")!) {
-                        Label("Pokédex en ligne", systemImage: "globe")
-                    }
-                } header: {
-                    Text("Banque")
-                } footer: {
-                    Text("Pour déposer ou retirer des Pokémon, touche l'icône de boîte à côté d'un jeu.")
-                }
-
-                Section {
-                    NavigationLink {
-                        PokeDaisySettingsView()
-                    } label: {
-                        Label("Réglages PokeDaisy", systemImage: "slider.horizontal.3")
-                    }
-                    NavigationLink {
-                        GamepadSettingsView()
-                    } label: {
-                        Label("Manette Bluetooth", systemImage: "gamecontroller")
-                    }
-                } footer: {
-                    Text("Capsule \(Self.version)")
-                        .frame(maxWidth: .infinity)
-                        .padding(.top, 12)
-                }
-            }
-            .navigationTitle("Capsule")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        importing = true
-                    } label: {
-                        Label("Importer", systemImage: "plus")
-                    }
+        NavigationStack(path: $path) {
+            home
+            .navigationDestination(for: Route.self) { route in
+                switch route {
+                case .pokedex:
+                    PokedexBrowser(pokedex: pokedex, games: library.games, refresh: refreshPokedex)
+                case .bank:
+                    BankView(bank: bank)
+                case .account:
+                    AccountView(account: account, bank: bank, cloud: cloud)
+                case .settings:
+                    PokeDaisySettingsView().capsuleScreen()
+                case .gamepad:
+                    GamepadSettingsView().capsuleScreen()
                 }
             }
             .fileImporter(isPresented: $importing, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
@@ -200,6 +137,111 @@ struct LibraryView: View {
         }
     }
 
+    // MARK: Home
+
+    /// The games as cards in their colours, then the Pokédex, the bank and the trades as tiles.
+    private var home: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                header
+                if library.games.isEmpty {
+                    emptyCard
+                }
+                ForEach(library.games) { game in
+                    GameCard(game: game,
+                             play: { playing = game },
+                             openBank: { transferGame = game },
+                             history: { historyGame = game },
+                             delete: { pendingDelete = game })
+                }
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                    NavigationLink(value: Route.pokedex) {
+                        HomeTile(icon: "book.closed", title: "Pokédex",
+                                 detail: "\(pokedex.caught) / \(PokedexStore.maxDex)",
+                                 progress: Double(pokedex.caught) / Double(PokedexStore.maxDex))
+                    }
+                    NavigationLink(value: Route.bank) {
+                        HomeTile(icon: "tray.full", title: "Banque", detail: bankSummary)
+                    }
+                    NavigationLink(value: Route.account) {
+                        HomeTile(icon: "person.2", title: "Échanges", detail: "Amis et échanges en ligne")
+                    }
+                    Link(destination: URL(string: "https://louislovni.github.io/capsule/")!) {
+                        HomeTile(icon: "globe", title: "Pokédex web", detail: "Sur ton ordinateur")
+                    }
+                }
+                .buttonStyle(SquishStyle())
+                .padding(.top, 6)
+                HStack(spacing: 10) {
+                    NavigationLink(value: Route.settings) {
+                        pill("slider.horizontal.3", "Réglages PokeDaisy")
+                    }
+                    NavigationLink(value: Route.gamepad) {
+                        pill("gamecontroller", "Manette")
+                    }
+                }
+                .buttonStyle(SquishStyle())
+                Text("Capsule \(Self.version)")
+                    .smallCaps(.capsuleCream, opacity: 0.35)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 16)
+            }
+            .padding(.horizontal, 14)
+            .padding(.bottom, 30)
+        }
+        .background(Color.capsuleBlack.ignoresSafeArea())
+        .toolbar(.hidden, for: .navigationBar)
+    }
+
+    private var header: some View {
+        HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Capsule")
+                    .font(.system(size: 44, weight: .heavy))
+                    .tracking(-1.4)
+                    .foregroundStyle(Color.capsuleCream)
+                Text("\(library.games.count) jeu\(library.games.count > 1 ? "x" : "") · \(pokedex.caught) espèces obtenues")
+                    .smallCaps(.capsuleCream, opacity: 0.55)
+            }
+            Spacer()
+            Button {
+                importing = true
+            } label: {
+                GlassCircle(icon: "plus", size: 48)
+            }
+            .buttonStyle(SquishStyle())
+            .accessibilityLabel("Importer des jeux ou des sauvegardes")
+        }
+        .padding(.top, 8)
+        .padding(.bottom, 4)
+    }
+
+    private var emptyCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Aucun jeu pour l'instant")
+                .font(.system(size: 26, weight: .heavy))
+                .foregroundStyle(Color.capsuleInk)
+            Text("Touche + pour importer tes ROM (.gba, .gb, .gbc, .nds) et tes sauvegardes .sav si tu en as. Tu peux aussi les déposer dans le dossier Capsule > ROMs de l'app Fichiers.")
+                .font(.subheadline)
+                .foregroundStyle(Color.capsuleInk.opacity(0.75))
+        }
+        .padding(22)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(LinearGradient(colors: CardColors.stops(.standard), startPoint: .topLeading, endPoint: .bottomTrailing),
+                    in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+    }
+
+    private func pill(_ icon: String, _ title: String) -> some View {
+        Label(title, systemImage: icon)
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(Color.capsuleCream)
+            .padding(.horizontal, 18)
+            .frame(height: 48)
+            .frame(maxWidth: .infinity)
+            .background(Color.capsulePanel, in: Capsule())
+            .overlay(Capsule().stroke(Color.capsuleCream.opacity(0.08), lineWidth: 1))
+    }
+
     /// "0.1.36", the number AltStore shows too.
     private static var version: String {
         let info = Bundle.main.infoDictionary
@@ -272,38 +314,129 @@ struct LibraryView: View {
     }
 }
 
-private struct GameRow: View {
+/// A game on the home screen: a card in its colours, its name large, when it was last saved; a tap plays it.
+private struct GameCard: View {
     let game: Game
     let play: () -> Void
     let openBank: () -> Void
+    let history: () -> Void
+    let delete: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
-            Button(action: play) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(game.name)
-                        .font(.body.weight(.medium))
-                        .foregroundStyle(.primary)
-                        .lineLimit(2)
-                    Text(game.platformLabel + " · " + (game.hasSave ? "sauvegarde présente" : "pas encore de sauvegarde"))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+        let tint = CapsuleTheme.tint(for: game)
+        VStack(alignment: .leading, spacing: 0) {
+                TimelineView(.periodic(from: .now, by: 60)) { context in
+                    Text("\(game.platformLabel)\n\(CapsuleTheme.savedLine(game.saveURL, now: context.date))")
+                        .lineSpacing(3)
+                        .smallCaps()
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
+                Text(CapsuleCard.displayTitle(game.name))
+                    .font(.system(size: 34, weight: .heavy))
+                    .tracking(-1)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.5)
+                    .multilineTextAlignment(.leading)
+                    .foregroundStyle(Color(red: 0.063, green: 0.06, blue: 0.05))
+                    .padding(.top, 14)
+                    .padding(.trailing, 20)
+                HStack(spacing: 8) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "play.fill")
+                        Text("Jouer")
+                    }
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 20)
+                    .frame(height: 44)
+                    .background(
+                        LinearGradient(colors: [Color(CardColors.accent(tint).mixed(with: .white, 0.2)), Color(CardColors.accent(tint))],
+                                       startPoint: .top, endPoint: .bottom),
+                        in: Capsule()
+                    )
+                    .shadow(color: .black.opacity(0.2), radius: 6, y: 4)
+                    Spacer()
+                    if game.supportsPokemonTools {
+                        Button(action: openBank) {
+                            GlassCircle(icon: "archivebox")
+                        }
+                        .buttonStyle(SquishStyle())
+                        .disabled(!game.hasSave)
+                        .opacity(game.hasSave ? 1 : 0.5)
+                        .accessibilityLabel("Boîtes et banque")
+                    }
+                    Menu {
+                        menuItems
+                    } label: {
+                        GlassCircle(icon: "ellipsis")
+                    }
+                    .accessibilityLabel("Plus")
+                }
+                .padding(.top, 18)
             }
-            .buttonStyle(.plain)
+            .padding(22)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                ZStack {
+                    LinearGradient(colors: CardColors.stops(tint), startPoint: .topLeading, endPoint: .bottomTrailing)
+                    RadialGradient(colors: [.white.opacity(0.36), .white.opacity(0)],
+                                   center: UnitPoint(x: 0.85, y: 0.15), startRadius: 0, endRadius: 260)
+                },
+                in: RoundedRectangle(cornerRadius: 34, style: .continuous)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 34, style: .continuous))
+            // The whole card plays the game; its own buttons (bank, more) take their taps first.
+            .onTapGesture(perform: play)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction(named: "Jouer", play)
+            .contextMenu { menuItems }
+    }
 
-            if game.supportsPokemonTools {
-                Button(action: openBank) {
-                    Label("Banque", systemImage: "archivebox")
-                        .labelStyle(.iconOnly)
-                        .font(.title3)
-                        .padding(8)
-                }
-                .buttonStyle(.borderless)
-                .disabled(!game.hasSave)
+    @ViewBuilder private var menuItems: some View {
+        if game.hasSave || SafetySave.date(for: game) != nil {
+            Button(action: history) {
+                Label("Revenir à une sauvegarde", systemImage: "clock.arrow.circlepath")
             }
         }
+        Button(role: .destructive, action: delete) {
+            Label("Supprimer le jeu", systemImage: "trash")
+        }
+    }
+}
+
+/// The home screen's Pokédex, bank, trades and web tiles.
+private struct HomeTile: View {
+    let icon: String
+    let title: String
+    let detail: String
+    var progress: Double?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ZStack {
+                if let progress = progress {
+                    Circle().stroke(Color.capsuleCream.opacity(0.12), lineWidth: 4)
+                    Circle().trim(from: 0, to: progress)
+                        .stroke(Color.capsuleAccent, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                }
+                Image(systemName: icon)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Color.capsuleCream)
+            }
+            .frame(width: 44, height: 44)
+            .background(Color.capsuleCream.opacity(progress == nil ? 0.08 : 0), in: Circle())
+            Spacer(minLength: 0)
+            Text(title)
+                .font(.system(size: 20, weight: .heavy))
+                .foregroundStyle(Color.capsuleCream)
+            Text(detail)
+                .smallCaps(.capsuleCream, opacity: 0.5)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, minHeight: 150, alignment: .topLeading)
+        .background(Color.capsulePanel, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).stroke(Color.capsuleCream.opacity(0.06), lineWidth: 1))
     }
 }

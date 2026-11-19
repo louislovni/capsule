@@ -59,6 +59,7 @@ struct SaveHistoryView: View {
                 }
             }
             .navigationTitle(PokedexStore.gameTitle(game.name))
+            .capsuleScreen()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

@@ -90,6 +90,7 @@ struct PokedexView: View {
             .padding()
         }
         .navigationTitle("Pokédex")
+        .capsuleScreen()
         .searchable(text: $search, prompt: "Nom ou numéro")
         .refreshable { await refresh() }
         .sheet(item: Binding(get: { selected.map(SelectedDex.init) }, set: { selected = $0?.id })) { item in
