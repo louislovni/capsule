@@ -20,6 +20,11 @@ struct LibraryView: View {
     @State private var restoreMessage: String?
     @State private var message: String?
     @State private var path: [Route] = []
+    /// The game being started: its cartridge out of its card, full screen, going into the console.
+    @State private var launching: Game?
+    @State private var launchStep = 0
+    @State private var launchClipped = false
+    @Namespace private var cartridges
 
     enum Route: Hashable {
         case pokedex, bank, account, settings, gamepad
@@ -150,13 +155,8 @@ struct LibraryView: View {
                     emptyCard
                 }
                 ForEach(library.games) { game in
-                    GameCard(game: game, tilt: tilt,
-                             play: {
-                                 // No slide-up: the game's screen lights up where the cartridge went in (GameView).
-                                 var instant = Transaction()
-                                 instant.disablesAnimations = true
-                                 withTransaction(instant) { playing = game }
-                             },
+                    GameCard(game: game, tilt: tilt, cartridges: cartridges, launching: launching == game,
+                             play: { launch(game) },
                              openBank: { transferGame = game },
                              history: { historyGame = game },
                              delete: { pendingDelete = game })
@@ -197,11 +197,93 @@ struct LibraryView: View {
             .padding(.bottom, 30)
         }
         .background(Color.capsuleBlack.ignoresSafeArea())
+        .overlay { launchOverlay }
         .toolbar(.hidden, for: .navigationBar)
         .onAppear { tilt.start() }
         .onDisappear { tilt.stop() }
         .onChange(of: playing) { game in
             if game == nil { tilt.start() } else { tilt.stop() }
+        }
+    }
+
+    // MARK: Starting a game
+
+    /// Full screen: the cartridge comes out of its card to the middle, then goes down into the console's slot; the
+    /// slot's light comes on and the game starts.
+    @ViewBuilder private var launchOverlay: some View {
+        if let game = launching {
+            let kind = CartridgeKind(game)
+            GeometryReader { geometry in
+                let width = min(geometry.size.width * (kind == .wide ? 0.82 : 0.62), 420)
+                let height = width / kind.aspect
+                let slotY = geometry.size.height * 0.66
+                ZStack(alignment: .top) {
+                    Color.black.opacity(launchStep >= 1 ? 0.96 : 0)
+                    // The cartridge, its bottom going under the slot's edge (once it's above the slot: on its way
+                    // from its card nothing cuts it).
+                    VStack(spacing: 0) {
+                        Color.clear.frame(height: launchStep >= 2 ? slotY - 30 : slotY - height - 70)
+                        CartridgeFace(game: game)
+                            .frame(width: width, height: height + 16)
+                            .matchedGeometryEffect(id: game.id, in: cartridges)
+                        Spacer(minLength: 0)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .mask(alignment: .top) {
+                        Rectangle().frame(height: launchClipped ? slotY : geometry.size.height + 400)
+                    }
+                    // The console's slot and its light.
+                    VStack(spacing: 18) {
+                        Capsule()
+                            .fill(LinearGradient(colors: [.black, Color(white: 0.2)], startPoint: .top, endPoint: .bottom))
+                            .overlay(Capsule().stroke(.white.opacity(0.14), lineWidth: 1))
+                            .frame(width: width + 24, height: 14)
+                        Circle()
+                            .fill(launchStep >= 3 ? Color(red: 0.35, green: 1, blue: 0.5) : Color(white: 0.18))
+                            .frame(width: 10, height: 10)
+                            .shadow(color: launchStep >= 3 ? Color(red: 0.35, green: 1, blue: 0.5) : .clear, radius: 8)
+                    }
+                    .offset(y: slotY - 7)
+                    .opacity(launchStep >= 1 ? 1 : 0)
+                    .scaleEffect(x: launchStep >= 1 ? 1 : 0.7)
+                }
+            }
+            .ignoresSafeArea()
+            .allowsHitTesting(true)
+        }
+    }
+
+    private func launch(_ game: Game) {
+        guard launching == nil else { return }
+        UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.82)) {
+            launching = game
+            launchStep = 1
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            var instant = Transaction()
+            instant.disablesAnimations = true
+            withTransaction(instant) { launchClipped = true }
+            withAnimation(.easeIn(duration: 0.32)) { launchStep = 2 }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.92) {
+            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+            withAnimation(.easeOut(duration: 0.15)) { launchStep = 3 }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.25) {
+            // No slide-up: the game's screen turns on where the cartridge went in (GameView).
+            var instant = Transaction()
+            instant.disablesAnimations = true
+            withTransaction(instant) { playing = game }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.9) {
+            var instant = Transaction()
+            instant.disablesAnimations = true
+            withTransaction(instant) {
+                launching = nil
+                launchStep = 0
+                launchClipped = false
+            }
         }
     }
 
@@ -332,42 +414,31 @@ private struct GameCard: View {
     let game: Game
     /// Passed on to the cartridge, which alone redraws as the phone moves.
     let tilt: PhoneTilt
+    let cartridges: Namespace.ID
+    /// Its cartridge is out, full screen (LibraryView.launchOverlay).
+    let launching: Bool
     let play: () -> Void
     let openBank: () -> Void
     let history: () -> Void
     let delete: () -> Void
 
-    /// The cartridge going down into its slot before the game starts.
-    @State private var inserting = false
-    /// The slot showing under it, a moment before.
-    @State private var slotOpen = false
-
     var body: some View {
         let tint = CapsuleTheme.tint(for: game)
         let kind = CartridgeKind(game)
         VStack(spacing: 16) {
-            CartridgeView(game: game, tilt: tilt)
-                .frame(maxWidth: kind == .wide ? 330 : 230)
-                .scaleEffect(inserting ? 0.94 : 1, anchor: .bottom)
-                .offset(y: inserting ? 150 : 0)
-                // Its slot: what goes below this edge is inside the console. The mask reaches far up and to the
-                // sides, so the cartridge's turn is never cut there.
-                .mask(alignment: .bottom) {
-                    Rectangle().padding(.top, -300).padding(.horizontal, -120)
+            ZStack {
+                if launching {
+                    // Its place kept while it's out.
+                    CartridgeFace(game: game).hidden()
+                } else {
+                    CartridgeView(game: game, tilt: tilt)
+                        .matchedGeometryEffect(id: game.id, in: cartridges)
                 }
-                .overlay(alignment: .bottom) {
-                    Capsule()
-                        .fill(LinearGradient(colors: [.black, Color(white: 0.16)], startPoint: .top, endPoint: .bottom))
-                        .frame(height: 10)
-                        .padding(.horizontal, kind == .wide ? 6 : 26)
-                        .overlay(Capsule().stroke(.white.opacity(0.12), lineWidth: 1))
-                        .opacity(slotOpen ? 1 : 0)
-                        .scaleEffect(x: slotOpen ? 1 : 0.6)
-                        .offset(y: 4)
-                }
+            }
+            .frame(maxWidth: kind == .wide ? 330 : 230)
                 .padding(.top, 10)
                 .contentShape(Rectangle())
-                .onTapGesture(perform: insertAndPlay)
+                .onTapGesture(perform: play)
                 .accessibilityElement()
                 .accessibilityLabel(CapsuleCard<EmptyView>.displayTitle(game.name))
                 .accessibilityAddTraits(.isButton)
@@ -381,7 +452,7 @@ private struct GameCard: View {
                         .minimumScaleFactor(0.8)
                 }
                 Spacer(minLength: 4)
-                Button(action: insertAndPlay) {
+                Button(action: play) {
                     HStack(spacing: 6) {
                         Image(systemName: "play.fill")
                         Text("Jouer")
@@ -427,28 +498,6 @@ private struct GameCard: View {
         )
         .overlay(RoundedRectangle(cornerRadius: 34, style: .continuous).stroke(Color.capsuleCream.opacity(0.06), lineWidth: 1))
         .contextMenu { menuItems }
-    }
-
-    /// The slot opens, the cartridge clicks in, the game starts; it's back in place for when the game closes.
-    private func insertAndPlay() {
-        guard !inserting, !slotOpen else { return }
-        UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
-        withAnimation(.spring(response: 0.22, dampingFraction: 0.7)) { slotOpen = true }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
-            withAnimation(.easeIn(duration: 0.3)) { inserting = true }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.42) {
-            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { play() }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-            var instant = Transaction()
-            instant.disablesAnimations = true
-            withTransaction(instant) {
-                inserting = false
-                slotOpen = false
-            }
-        }
     }
 
     @ViewBuilder private var menuItems: some View {

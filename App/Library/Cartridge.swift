@@ -135,7 +135,7 @@ struct CartridgeView: View {
 }
 
 /// The cartridge itself, still.
-private struct CartridgeFace: View {
+struct CartridgeFace: View {
     let game: Game
 
     private var kind: CartridgeKind { CartridgeKind(game) }
