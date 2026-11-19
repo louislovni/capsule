@@ -15,7 +15,8 @@ add_executable(pokedaisy WIN32 ${POKEDAISY_DIR}/linux/main.c ${PD_CORE} ${POKEDA
 target_include_directories(pokedaisy PRIVATE ${POKEDAISY_DIR}/3ds/core ${POKEDAISY_DIR}/third_party/mgba/src/platform/libretro
   ${SDL2_ROOT}/include/SDL2)
 target_include_directories(pokedaisy BEFORE PRIVATE ${WIN}/include)
-target_compile_definitions(pokedaisy PRIVATE _GNU_SOURCE)
+# POCKET_PURE: one save per game, no save states or rewind (Capsule's rule).
+target_compile_definitions(pokedaisy PRIVATE _GNU_SOURCE POCKET_PURE)
 target_compile_options(pokedaisy PRIVATE -include ${WIN}/compat.h -O2)
 target_link_directories(pokedaisy PRIVATE ${SDL2_ROOT}/lib)
 target_link_libraries(pokedaisy PRIVATE mingw32 SDL2main SDL2 m)
