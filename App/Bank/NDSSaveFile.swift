@@ -123,17 +123,17 @@ final class NDSSaveFile: PCStorage {
         let lastAbility = gen5 ? 164 : 123, lastItem = gen5 ? 638 : 536
         let species = Int(mon.species)
         if species > lastSpecies {
-            return "Ce Pokémon n'existe pas dans \(PokedexStore.gameTitle(sourceGame))."
+            return "Ce Pokémon n'existe pas dans ce jeu."
         }
         let moves = [mon.moves.0, mon.moves.1, mon.moves.2, mon.moves.3].map(Int.init)
         if let move = moves.first(where: { $0 > lastMove }) {
-            return "Il connaît une capacité (n° \(move)) qui n'existe pas dans \(PokedexStore.gameTitle(sourceGame))."
+            return "Il connaît une capacité (n° \(move)) qui n'existe pas dans ce jeu."
         }
         if Int(mon.ability) > lastAbility {
-            return "Son talent n'existe pas dans \(PokedexStore.gameTitle(sourceGame))."
+            return "Son talent n'existe pas dans ce jeu."
         }
         if Int(mon.heldItem) > lastItem {
-            return "L'objet qu'il tient n'existe pas dans \(PokedexStore.gameTitle(sourceGame)) : retire-le dans le jeu d'origine d'abord."
+            return "L'objet qu'il tient n'existe pas dans ce jeu : retire-le dans le jeu d'origine d'abord."
         }
         return nil
     }
