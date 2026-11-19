@@ -2,49 +2,21 @@
  "generatedFrom": "PokeDaisy fork, 3ds/core/pd_game.c and website/src/data/compat.json",
  "games": [
   {
-   "title": "Pokémon Blattgrüne Edition",
+   "title": "Pokémon Emerald",
    "console": "GBA",
    "kind": "official",
    "version": "",
    "revisions": [
     0
    ],
-   "code": "BPGD",
+   "code": "BPEE",
    "sha1": [],
    "companion": true,
    "pokedaisy": true,
    "bank": "yes"
   },
   {
-   "title": "Pokémon Edición Esmeralda",
-   "console": "GBA",
-   "kind": "official",
-   "version": "",
-   "revisions": [
-    0
-   ],
-   "code": "BPES",
-   "sha1": [],
-   "companion": true,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "Pokémon Edición Rojo Fuego",
-   "console": "GBA",
-   "kind": "official",
-   "version": "",
-   "revisions": [
-    0
-   ],
-   "code": "BPRS",
-   "sha1": [],
-   "companion": true,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "Pokémon Edición Rubí",
+   "title": "Pokémon FireRed",
    "console": "GBA",
    "kind": "official",
    "version": "",
@@ -52,50 +24,7 @@
     0,
     1
    ],
-   "code": "AXVS",
-   "sha1": [],
-   "companion": true,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "Pokémon Edición Verde Hoja",
-   "console": "GBA",
-   "kind": "official",
-   "version": "",
-   "revisions": [
-    0
-   ],
-   "code": "BPGS",
-   "sha1": [],
-   "companion": true,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "Pokémon Edición Zafiro",
-   "console": "GBA",
-   "kind": "official",
-   "version": "",
-   "revisions": [
-    0,
-    1
-   ],
-   "code": "AXPS",
-   "sha1": [],
-   "companion": true,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "Pokémon Feuerrote Edition",
-   "console": "GBA",
-   "kind": "official",
-   "version": "",
-   "revisions": [
-    0
-   ],
-   "code": "BPRD",
+   "code": "BPRE",
    "sha1": [],
    "companion": true,
    "pokedaisy": true,
@@ -111,21 +40,6 @@
     1
    ],
    "code": "BPGE",
-   "sha1": [],
-   "companion": true,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "Pokémon Rubin-Edition",
-   "console": "GBA",
-   "kind": "official",
-   "version": "",
-   "revisions": [
-    0,
-    1
-   ],
-   "code": "AXVD",
    "sha1": [],
    "companion": true,
    "pokedaisy": true,
@@ -148,21 +62,6 @@
    "bank": "yes"
   },
   {
-   "title": "Pokémon Saphir-Edition",
-   "console": "GBA",
-   "kind": "official",
-   "version": "",
-   "revisions": [
-    0,
-    1
-   ],
-   "code": "AXPD",
-   "sha1": [],
-   "companion": true,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
    "title": "Pokémon Sapphire",
    "console": "GBA",
    "kind": "official",
@@ -173,20 +72,6 @@
     2
    ],
    "code": "AXPE",
-   "sha1": [],
-   "companion": true,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "Pokémon Smaragd-Edition",
-   "console": "GBA",
-   "kind": "official",
-   "version": "",
-   "revisions": [
-    0
-   ],
-   "code": "BPED",
    "sha1": [],
    "companion": true,
    "pokedaisy": true,
@@ -263,165 +148,6 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "yes"
-  },
-  {
-   "title": "Pokémon Versione Rosso Fuoco",
-   "console": "GBA",
-   "kind": "official",
-   "version": "",
-   "revisions": [
-    0
-   ],
-   "code": "BPRI",
-   "sha1": [],
-   "companion": true,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "Pokémon Versione Rubino",
-   "console": "GBA",
-   "kind": "official",
-   "version": "",
-   "revisions": [
-    0,
-    1
-   ],
-   "code": "AXVI",
-   "sha1": [],
-   "companion": true,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "Pokémon Versione Smeraldo",
-   "console": "GBA",
-   "kind": "official",
-   "version": "",
-   "revisions": [
-    0
-   ],
-   "code": "BPEI",
-   "sha1": [],
-   "companion": true,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "Pokémon Versione Verde Foglia",
-   "console": "GBA",
-   "kind": "official",
-   "version": "",
-   "revisions": [
-    0
-   ],
-   "code": "BPGI",
-   "sha1": [],
-   "companion": true,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "Pokémon Versione Zaffiro",
-   "console": "GBA",
-   "kind": "official",
-   "version": "",
-   "revisions": [
-    0,
-    1
-   ],
-   "code": "AXPI",
-   "sha1": [],
-   "companion": true,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "ポケットモンスター エメラルド",
-   "console": "GBA",
-   "kind": "official",
-   "version": "",
-   "revisions": [
-    0
-   ],
-   "code": "BPEJ",
-   "sha1": [],
-   "companion": true,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "ポケットモンスター サファイア",
-   "console": "GBA",
-   "kind": "official",
-   "version": "",
-   "revisions": [
-    0,
-    1
-   ],
-   "code": "AXPJ",
-   "sha1": [],
-   "companion": true,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "ポケットモンスター ファイアレッド",
-   "console": "GBA",
-   "kind": "official",
-   "version": "",
-   "revisions": [
-    0,
-    1
-   ],
-   "code": "BPRJ",
-   "sha1": [],
-   "companion": true,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "ポケットモンスター リーフグリーン",
-   "console": "GBA",
-   "kind": "official",
-   "version": "",
-   "revisions": [
-    0,
-    1
-   ],
-   "code": "BPGJ",
-   "sha1": [],
-   "companion": true,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "ポケットモンスター ルビー",
-   "console": "GBA",
-   "kind": "official",
-   "version": "",
-   "revisions": [
-    0,
-    1
-   ],
-   "code": "AXVJ",
-   "sha1": [],
-   "companion": true,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "Moemon Quetzal",
-   "console": "GBA",
-   "kind": "hack",
-   "version": "v0.8.4-ALPHA-ES-Hotfix",
-   "sha1": [
-    "ae5d88bb823a8f9d0d07e8784da2376ff7c1ae43"
-   ],
-   "companion": true,
-   "pokedaisy": true,
-   "bank": "no",
-   "unverified": false
   },
   {
    "title": "Moemon Quetzal",
@@ -891,19 +617,6 @@
    "title": "Pokémon Quetzal",
    "console": "GBA",
    "kind": "hack",
-   "version": "v0.8.4-ALPHA-ES",
-   "sha1": [
-    "b6542c7dbb40cf6ea96714a7a0e30cb468102861"
-   ],
-   "companion": true,
-   "pokedaisy": true,
-   "bank": "no",
-   "unverified": false
-  },
-  {
-   "title": "Pokémon Quetzal",
-   "console": "GBA",
-   "kind": "hack",
    "version": "v9.0-ALPHA",
    "sha1": [
     "d0658315da1e8827f66f15c3d3a000fe747e163e"
@@ -917,35 +630,9 @@
    "title": "Pokémon Quetzal",
    "console": "GBA",
    "kind": "hack",
-   "version": "v9.0-ALPHA-ES",
-   "sha1": [
-    "fe346b5b0eb022e3a103f81e7dcefba6f1dc542f"
-   ],
-   "companion": true,
-   "pokedaisy": true,
-   "bank": "no",
-   "unverified": false
-  },
-  {
-   "title": "Pokémon Quetzal",
-   "console": "GBA",
-   "kind": "hack",
    "version": "v9.1-ALPHA",
    "sha1": [
     "c108cec750a35775084c0806cc704d8abd1994e7"
-   ],
-   "companion": true,
-   "pokedaisy": true,
-   "bank": "no",
-   "unverified": false
-  },
-  {
-   "title": "Pokémon Quetzal",
-   "console": "GBA",
-   "kind": "hack",
-   "version": "v9.1-ALPHA-ES",
-   "sha1": [
-    "ff008b70b6f2b330da9ffa8a405fc951a9e54147"
    ],
    "companion": true,
    "pokedaisy": true,
@@ -1226,30 +913,6 @@
    "unverified": false
   },
   {
-   "title": "Pokémon Team Rocket Edition 2026 (ES)",
-   "console": "GBA",
-   "kind": "hack",
-   "version": "v3.0.9-ES",
-   "sha1": [
-    "0d8bdaeeca0856175037a75679c1a2b73ad2b68a"
-   ],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "no"
-  },
-  {
-   "title": "Pokémon Team Rocket Edition 2026 (ES)",
-   "console": "GBA",
-   "kind": "hack",
-   "version": "v3.1-ES",
-   "sha1": [
-    "32d9e438ab791a0477fffe9f1cca750cab5a4a80"
-   ],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "no"
-  },
-  {
    "title": "Pokémon Too Many Types 2",
    "console": "GBA",
    "kind": "hack",
@@ -1406,18 +1069,6 @@
    "unverified": false
   },
   {
-   "title": "Pokémon Blaue Edition",
-   "console": "GB",
-   "kind": "official",
-   "version": "",
-   "sha1": [
-    "20e72dc6f41493eee1fdd0cef54214e6c3389688"
-   ],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "likely"
-  },
-  {
    "title": "Pokémon Blue",
    "console": "GB",
    "kind": "official",
@@ -1446,32 +1097,6 @@
    "unverified": false
   },
   {
-   "title": "Pokémon Edición Amarilla",
-   "console": "GB",
-   "kind": "official",
-   "version": "",
-   "sha1": [
-    "1dc242039218fba50928d1afb66b70565b6b9daf"
-   ],
-   "companion": true,
-   "pokedaisy": true,
-   "bank": "yes",
-   "unverified": false
-  },
-  {
-   "title": "Pokémon Gelbe Edition",
-   "console": "GB",
-   "kind": "official",
-   "version": "",
-   "sha1": [
-    "42f3714eec6eca25200d42461ff08d57c98f6d1d"
-   ],
-   "companion": true,
-   "pokedaisy": true,
-   "bank": "yes",
-   "unverified": false
-  },
-  {
    "title": "Pokémon Gold",
    "console": "GB",
    "kind": "official",
@@ -1485,30 +1110,6 @@
    "unverified": false
   },
   {
-   "title": "Pokémon Goldene Edition",
-   "console": "GB",
-   "kind": "official",
-   "version": "",
-   "sha1": [
-    "9254195d461ea942eaaa08cc4b83de3cf82aea0d"
-   ],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "likely"
-  },
-  {
-   "title": "Pokémon Kristall",
-   "console": "GB",
-   "kind": "official",
-   "version": "",
-   "sha1": [
-    "accb584293ba056152f1fd908439b019017ff2fe"
-   ],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "likely"
-  },
-  {
    "title": "Pokémon Red",
    "console": "GB",
    "kind": "official",
@@ -1520,30 +1121,6 @@
    "pokedaisy": true,
    "bank": "yes",
    "unverified": false
-  },
-  {
-   "title": "Pokémon Rote Edition",
-   "console": "GB",
-   "kind": "official",
-   "version": "",
-   "sha1": [
-    "87d523fe1a0c548db7c5477b451ddec1eb083c06"
-   ],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "likely"
-  },
-  {
-   "title": "Pokémon Silberne Edition",
-   "console": "GB",
-   "kind": "official",
-   "version": "",
-   "sha1": [
-    "8ecc58d621faaedf2a934bd2583d527220df7bb9"
-   ],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "likely"
   },
   {
    "title": "Pokémon Silver",
@@ -1565,19 +1142,6 @@
    "version": "",
    "sha1": [
     "0aceec0ef7aa2ca5aa831554598d91f61a925591"
-   ],
-   "companion": true,
-   "pokedaisy": true,
-   "bank": "yes",
-   "unverified": false
-  },
-  {
-   "title": "Pokémon Versione Gialla",
-   "console": "GB",
-   "kind": "official",
-   "version": "",
-   "sha1": [
-    "05bb8e99f24d498613930949730afa8024e77d08"
    ],
    "companion": true,
    "pokedaisy": true,
@@ -1836,118 +1400,6 @@
    "bank": "yes"
   },
   {
-   "title": "Pokémon Edición Blanca",
-   "console": "DS",
-   "kind": "official",
-   "version": "",
-   "code": "IRAS",
-   "revisions": [
-    0
-   ],
-   "sha1": [],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "Pokémon Edición Blanca 2",
-   "console": "DS",
-   "kind": "official",
-   "version": "",
-   "code": "IRDS",
-   "revisions": [
-    0
-   ],
-   "sha1": [],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "Pokémon Edición Negra",
-   "console": "DS",
-   "kind": "official",
-   "version": "",
-   "code": "IRBS",
-   "revisions": [
-    0
-   ],
-   "sha1": [],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "Pokémon Edición Negra 2",
-   "console": "DS",
-   "kind": "official",
-   "version": "",
-   "code": "IRES",
-   "revisions": [
-    0
-   ],
-   "sha1": [],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "Pokémon Edición Oro HeartGold",
-   "console": "DS",
-   "kind": "official",
-   "version": "",
-   "code": "IPKS",
-   "revisions": [
-    0
-   ],
-   "sha1": [],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "Pokémon Edición Plata SoulSilver",
-   "console": "DS",
-   "kind": "official",
-   "version": "",
-   "code": "IPGS",
-   "revisions": [
-    0
-   ],
-   "sha1": [],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "Pokémon Edición Platino",
-   "console": "DS",
-   "kind": "official",
-   "version": "",
-   "code": "CPUS",
-   "revisions": [
-    0
-   ],
-   "sha1": [],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "Pokémon Goldene Edition HeartGold",
-   "console": "DS",
-   "kind": "official",
-   "version": "",
-   "code": "IPKD",
-   "revisions": [
-    0
-   ],
-   "sha1": [],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
    "title": "Pokémon HeartGold",
    "console": "DS",
    "kind": "official",
@@ -1972,48 +1424,6 @@
    ],
    "sha1": [],
    "companion": true,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "Pokémon Schwarze Edition",
-   "console": "DS",
-   "kind": "official",
-   "version": "",
-   "code": "IRBD",
-   "revisions": [
-    0
-   ],
-   "sha1": [],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "Pokémon Schwarze Edition 2",
-   "console": "DS",
-   "kind": "official",
-   "version": "",
-   "code": "IRED",
-   "revisions": [
-    0
-   ],
-   "sha1": [],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "Pokémon Silberne Edition SoulSilver",
-   "console": "DS",
-   "kind": "official",
-   "version": "",
-   "code": "IPGD",
-   "revisions": [
-    0
-   ],
-   "sha1": [],
-   "companion": false,
    "pokedaisy": true,
    "bank": "yes"
   },
@@ -2130,118 +1540,6 @@
    "bank": "yes"
   },
   {
-   "title": "Pokémon Versione Argento SoulSilver",
-   "console": "DS",
-   "kind": "official",
-   "version": "",
-   "code": "IPGI",
-   "revisions": [
-    0
-   ],
-   "sha1": [],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "Pokémon Versione Bianca",
-   "console": "DS",
-   "kind": "official",
-   "version": "",
-   "code": "IRAI",
-   "revisions": [
-    0
-   ],
-   "sha1": [],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "Pokémon Versione Bianca 2",
-   "console": "DS",
-   "kind": "official",
-   "version": "",
-   "code": "IRDI",
-   "revisions": [
-    0
-   ],
-   "sha1": [],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "Pokémon Versione Nera",
-   "console": "DS",
-   "kind": "official",
-   "version": "",
-   "code": "IRBI",
-   "revisions": [
-    0
-   ],
-   "sha1": [],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "Pokémon Versione Nera 2",
-   "console": "DS",
-   "kind": "official",
-   "version": "",
-   "code": "IREI",
-   "revisions": [
-    0
-   ],
-   "sha1": [],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "Pokémon Versione Oro HeartGold",
-   "console": "DS",
-   "kind": "official",
-   "version": "",
-   "code": "IPKI",
-   "revisions": [
-    0
-   ],
-   "sha1": [],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "Pokémon Weiße Edition",
-   "console": "DS",
-   "kind": "official",
-   "version": "",
-   "code": "IRAD",
-   "revisions": [
-    0
-   ],
-   "sha1": [],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "Pokémon Weiße Edition 2",
-   "console": "DS",
-   "kind": "official",
-   "version": "",
-   "code": "IRDD",
-   "revisions": [
-    0
-   ],
-   "sha1": [],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
    "title": "Pokémon White",
    "console": "DS",
    "kind": "official",
@@ -2266,174 +1564,6 @@
    ],
    "sha1": [],
    "companion": true,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "ポケットモンスター ソウルシルバー",
-   "console": "DS",
-   "kind": "official",
-   "version": "",
-   "code": "IPGJ",
-   "revisions": [
-    0
-   ],
-   "sha1": [],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "ポケットモンスター ハートゴールド",
-   "console": "DS",
-   "kind": "official",
-   "version": "",
-   "code": "IPKJ",
-   "revisions": [
-    0
-   ],
-   "sha1": [],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "ポケットモンスター ブラック",
-   "console": "DS",
-   "kind": "official",
-   "version": "",
-   "code": "IRBJ",
-   "revisions": [
-    0
-   ],
-   "sha1": [],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "ポケットモンスター ブラック2",
-   "console": "DS",
-   "kind": "official",
-   "version": "",
-   "code": "IREJ",
-   "revisions": [
-    1
-   ],
-   "sha1": [],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "ポケットモンスター ホワイト",
-   "console": "DS",
-   "kind": "official",
-   "version": "",
-   "code": "IRAJ",
-   "revisions": [
-    0
-   ],
-   "sha1": [],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "ポケットモンスター ホワイト2",
-   "console": "DS",
-   "kind": "official",
-   "version": "",
-   "code": "IRDJ",
-   "revisions": [
-    1
-   ],
-   "sha1": [],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "포켓몬스터 블랙",
-   "console": "DS",
-   "kind": "official",
-   "version": "",
-   "code": "IRBK",
-   "revisions": [
-    0
-   ],
-   "sha1": [],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "포켓몬스터 블랙2",
-   "console": "DS",
-   "kind": "official",
-   "version": "",
-   "code": "IREK",
-   "revisions": [
-    0
-   ],
-   "sha1": [],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "포켓몬스터 소울실버",
-   "console": "DS",
-   "kind": "official",
-   "version": "",
-   "code": "IPGK",
-   "revisions": [
-    0
-   ],
-   "sha1": [],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "포켓몬스터 하트골드",
-   "console": "DS",
-   "kind": "official",
-   "version": "",
-   "code": "IPKK",
-   "revisions": [
-    0
-   ],
-   "sha1": [],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "포켓몬스터 화이트",
-   "console": "DS",
-   "kind": "official",
-   "version": "",
-   "code": "IRAK",
-   "revisions": [
-    0
-   ],
-   "sha1": [],
-   "companion": false,
-   "pokedaisy": true,
-   "bank": "yes"
-  },
-  {
-   "title": "포켓몬스터 화이트2",
-   "console": "DS",
-   "kind": "official",
-   "version": "",
-   "code": "IRDK",
-   "revisions": [
-    0
-   ],
-   "sha1": [],
-   "companion": false,
    "pokedaisy": true,
    "bank": "yes"
   },

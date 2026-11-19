@@ -41,6 +41,11 @@ for r in site["retail"]:
     add(title=r["title"], console="GBA", kind="official", version="", revisions=r["revs"], code=r["code"],
         sha1=[], companion=True, pokedaisy=True, bank="yes")
 
+# The English FireRed and Emerald: the site keeps them apart, as the hacks' bases.
+for code, title in site["baseCodes"].items():
+    add(title=title, console="GBA", kind="official", version="", revisions=[0, 1] if code == "BPRE" else [0],
+        code=code, sha1=[], companion=True, pokedaisy=True, bank="yes")
+
 # Game Boy Advance hacks (by SHA-1).
 hacks = {}
 for sha, cfg, _kind, title in re.findall(r'\{"([0-9a-f]{40})", &(PD_CONFIG_\w+), (PD_GAME_\w+), "([^"]+)"', src):
@@ -109,6 +114,21 @@ for h in site["dsHacks"]:
 add(title="Pokémon Chaos Purple", console="DS", kind="hack", version="démo (Silph Co. fix)",
     sha1=["330d9eb56e069df13c09bbcb3c748c269c94a88e"], companion=False, pokedaisy=False, bank="yes",
     note="Banque et Pokédex vérifiés sur une sauvegarde ; Pokémon après Arceus réservés aux jeux du même moteur")
+
+# French and English versions only (the player's call): a cart by its code's region letter (E USA, P Europe, O
+# international, F France), a hack or a Game Boy cart by its title / version's language.
+OTHER_LANGUAGES = ("Gelbe", "Rote", "Blaue", "Goldene", "Silberne", "Kristall", "Schwarze", "Weiße", "Weisse",
+                   "Feuerrote", "Blattgrüne", "Rubin", "Smaragd", "Saphir-", "Platin-", "Perl-", "Diamant-",
+                   "Versione", "Edición", "Edicion", "(Japan)", "(Korea)", "(ES)", "(DE)", "(IT)", "(JP)")
+def french_or_english(g):
+    if g.get("code"):
+        if g["code"][3] not in "EPOF":
+            return False
+    text = g["title"] + " " + g.get("version", "")
+    if any(word in text for word in OTHER_LANGUAGES) or re.search(r"\b(ES|DE|IT|JP|JA|KR)\b", g.get("version", "")):
+        return False
+    return True
+games = [g for g in games if french_or_english(g)]
 
 order = {"GBA": 0, "GB": 1, "DS": 2}
 games.sort(key=lambda g: (order[g["console"]], g["kind"] != "official", g["title"], g.get("version", "")))
