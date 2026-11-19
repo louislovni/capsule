@@ -11,6 +11,8 @@ struct GameView: View {
     /// Sideways forced by the plein écran button (works with the rotation lock on).
     @State private var forcedLandscape = false
     @AppStorage(PadSkin.storageKey) private var skinName = PadSkin.capsule.rawValue
+    /// The console turning on: black, a white glow, then the game.
+    @State private var power = 0
 
     private var skin: PadSkin { PadSkin(rawValue: skinName) ?? .capsule }
 
@@ -47,6 +49,20 @@ struct GameView: View {
         }
         .background(Color.black.ignoresSafeArea())
         .preferredColorScheme(.dark)
+        .overlay {
+            ZStack {
+                Color.black.opacity(power == 0 ? 1 : 0)
+                Color.white.opacity(power == 1 ? 0.55 : 0)
+            }
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.14).delay(0.08)) { power = 1 }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.24) {
+                withAnimation(.easeOut(duration: 0.5)) { power = 2 }
+            }
+        }
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
         .onChange(of: gamepad.controllerName) { name in

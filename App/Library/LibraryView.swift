@@ -151,7 +151,12 @@ struct LibraryView: View {
                 }
                 ForEach(library.games) { game in
                     GameCard(game: game, tilt: tilt,
-                             play: { playing = game },
+                             play: {
+                                 // No slide-up: the game's screen lights up where the cartridge went in (GameView).
+                                 var instant = Transaction()
+                                 instant.disablesAnimations = true
+                                 withTransaction(instant) { playing = game }
+                             },
                              openBank: { transferGame = game },
                              history: { historyGame = game },
                              delete: { pendingDelete = game })
@@ -332,15 +337,37 @@ private struct GameCard: View {
     let history: () -> Void
     let delete: () -> Void
 
+    /// The cartridge going down into its slot before the game starts.
+    @State private var inserting = false
+    /// The slot showing under it, a moment before.
+    @State private var slotOpen = false
+
     var body: some View {
         let tint = CapsuleTheme.tint(for: game)
         let kind = CartridgeKind(game)
         VStack(spacing: 16) {
             CartridgeView(game: game, tilt: tilt)
                 .frame(maxWidth: kind == .wide ? 330 : 230)
+                .scaleEffect(inserting ? 0.94 : 1, anchor: .bottom)
+                .offset(y: inserting ? 150 : 0)
+                // Its slot: what goes below this edge is inside the console. The mask reaches far up and to the
+                // sides, so the cartridge's turn is never cut there.
+                .mask(alignment: .bottom) {
+                    Rectangle().padding(.top, -300).padding(.horizontal, -120)
+                }
+                .overlay(alignment: .bottom) {
+                    Capsule()
+                        .fill(LinearGradient(colors: [.black, Color(white: 0.16)], startPoint: .top, endPoint: .bottom))
+                        .frame(height: 10)
+                        .padding(.horizontal, kind == .wide ? 6 : 26)
+                        .overlay(Capsule().stroke(.white.opacity(0.12), lineWidth: 1))
+                        .opacity(slotOpen ? 1 : 0)
+                        .scaleEffect(x: slotOpen ? 1 : 0.6)
+                        .offset(y: 4)
+                }
                 .padding(.top, 10)
                 .contentShape(Rectangle())
-                .onTapGesture(perform: play)
+                .onTapGesture(perform: insertAndPlay)
                 .accessibilityElement()
                 .accessibilityLabel(CapsuleCard<EmptyView>.displayTitle(game.name))
                 .accessibilityAddTraits(.isButton)
@@ -354,7 +381,7 @@ private struct GameCard: View {
                         .minimumScaleFactor(0.8)
                 }
                 Spacer(minLength: 4)
-                Button(action: play) {
+                Button(action: insertAndPlay) {
                     HStack(spacing: 6) {
                         Image(systemName: "play.fill")
                         Text("Jouer")
@@ -400,6 +427,28 @@ private struct GameCard: View {
         )
         .overlay(RoundedRectangle(cornerRadius: 34, style: .continuous).stroke(Color.capsuleCream.opacity(0.06), lineWidth: 1))
         .contextMenu { menuItems }
+    }
+
+    /// The slot opens, the cartridge clicks in, the game starts; it's back in place for when the game closes.
+    private func insertAndPlay() {
+        guard !inserting, !slotOpen else { return }
+        UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+        withAnimation(.spring(response: 0.22, dampingFraction: 0.7)) { slotOpen = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            withAnimation(.easeIn(duration: 0.3)) { inserting = true }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.42) {
+            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { play() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            var instant = Transaction()
+            instant.disablesAnimations = true
+            withTransaction(instant) {
+                inserting = false
+                slotOpen = false
+            }
+        }
     }
 
     @ViewBuilder private var menuItems: some View {
