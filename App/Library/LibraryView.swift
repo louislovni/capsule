@@ -330,7 +330,7 @@ private struct GameCard: View {
                         .lineSpacing(3)
                         .smallCaps()
                 }
-                Text(CapsuleCard.displayTitle(game.name))
+                Text(CapsuleCard<EmptyView>.displayTitle(game.name))
                     .font(.system(size: 34, weight: .heavy))
                     .tracking(-1)
                     .lineLimit(2)
@@ -380,8 +380,8 @@ private struct GameCard: View {
                     LinearGradient(colors: CardColors.stops(tint), startPoint: .topLeading, endPoint: .bottomTrailing)
                     RadialGradient(colors: [.white.opacity(0.36), .white.opacity(0)],
                                    center: UnitPoint(x: 0.85, y: 0.15), startRadius: 0, endRadius: 260)
-                },
-                in: RoundedRectangle(cornerRadius: 34, style: .continuous)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 34, style: .continuous))
             )
             .contentShape(RoundedRectangle(cornerRadius: 34, style: .continuous))
             // The whole card plays the game; its own buttons (bank, more) take their taps first.
