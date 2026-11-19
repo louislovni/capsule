@@ -44,17 +44,28 @@ add_library(pkcore OBJECT
 	pkcore/pk_gb.c
 	pkcore/pk_gbdata_gen.c
 	pkcore/pk_nds.c
+	pkcore/pk_patch.c
 	pkcore/pk_ndsdata_gen.c
 	pkcore/pk_profiles_gen.c)
 target_include_directories(pkcore PUBLIC pkcore)
 target_compile_options(pkcore PRIVATE -Wall -Wextra)
+
+# xdelta3's decoder and XZ Embedded's LZMA2, for compressed .xdelta patches (pk_patch.c); see third_party/xdelta3/README.capsule.
+add_library(xdelta OBJECT
+	third_party/xd3_capsule.c
+	third_party/xz-shim/lzma_shim.c
+	third_party/xz-embedded/xz_crc32.c
+	third_party/xz-embedded/xz_dec_lzma2.c
+	third_party/xz-embedded/xz_dec_stream.c)
+target_include_directories(xdelta PRIVATE third_party/xz-shim third_party/xz-embedded)
+target_compile_options(xdelta PRIVATE -w)
 
 add_library(bridge OBJECT bridge/lr_bridge.c)
 target_include_directories(bridge PUBLIC bridge)
 target_include_directories(bridge PRIVATE "${POKEDAISY_DIR}/third_party/mgba/src/platform/libretro")
 target_compile_options(bridge PRIVATE -Wall -Wextra)
 
-add_library(capsulecore STATIC $<TARGET_OBJECTS:bridge> $<TARGET_OBJECTS:pkcore>)
+add_library(capsulecore STATIC $<TARGET_OBJECTS:bridge> $<TARGET_OBJECTS:pkcore> $<TARGET_OBJECTS:xdelta>)
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
 	enable_testing()
@@ -73,6 +84,12 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
 	target_include_directories(test_pknds PRIVATE pkcore)
 	target_compile_definitions(test_pknds PRIVATE TEST_DATA="${CMAKE_CURRENT_SOURCE_DIR}/tests/data")
 	add_test(NAME pknds COMMAND test_pknds)
+
+	add_executable(test_pkpatch tests/test_pkpatch.c)
+	target_link_libraries(test_pkpatch PRIVATE capsulecore m)
+	target_include_directories(test_pkpatch PRIVATE pkcore)
+	target_compile_definitions(test_pkpatch PRIVATE TEST_DATA="${CMAKE_CURRENT_SOURCE_DIR}/tests/data")
+	add_test(NAME pkpatch COMMAND test_pkpatch)
 
 	add_executable(test_bridge tests/test_bridge.c)
 	target_link_libraries(test_bridge PRIVATE capsulecore m pthread ${CMAKE_DL_LIBS})

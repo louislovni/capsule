@@ -20,11 +20,18 @@ struct LibraryView: View {
     @State private var restoreMessage: String?
     @State private var message: String?
     @State private var path: [Route] = []
+    /// The hack patcher, with the patch picked through + if there was one.
+    @State private var patching: PatchRequest?
     /// The game being started: its cartridge out of its card, full screen, going into the console.
     @State private var launching: Game?
     @State private var launchStep = 0
     @State private var launchClipped = false
     @Namespace private var cartridges
+
+    struct PatchRequest: Identifiable {
+        let id = UUID()
+        let patch: URL?
+    }
 
     enum Route: Hashable {
         case pokedex, bank, account, settings, gamepad, compat
@@ -65,6 +72,12 @@ struct LibraryView: View {
             .sheet(item: $transferGame) { game in
                 NavigationStack {
                     TransferView(game: game, bank: bank)
+                }
+            }
+            .sheet(item: $patching) { request in
+                PatchView(games: library.games, initialPatch: request.patch) { name in
+                    library.refresh()
+                    message = "\(name) est dans ta bibliothèque."
                 }
             }
             .sheet(item: $historyGame) { game in
@@ -181,8 +194,15 @@ struct LibraryView: View {
                 }
                 .buttonStyle(SquishStyle())
                 .padding(.top, 6)
-                NavigationLink(value: Route.compat) {
-                    pill("checklist", "Jeux compatibles")
+                HStack(spacing: 10) {
+                    NavigationLink(value: Route.compat) {
+                        pill("checklist", "Jeux compatibles")
+                    }
+                    Button {
+                        patching = PatchRequest(patch: nil)
+                    } label: {
+                        pill("bandage", "Patcher un hack")
+                    }
                 }
                 .buttonStyle(SquishStyle())
                 HStack(spacing: 10) {
@@ -321,7 +341,7 @@ struct LibraryView: View {
             Text("Aucun jeu pour l'instant")
                 .font(.system(size: 26, weight: .heavy))
                 .foregroundStyle(Color.capsuleInk)
-            Text("Touche + pour importer tes ROM (.gba, .gb, .gbc, .nds) et tes sauvegardes .sav si tu en as. Tu peux aussi les déposer dans le dossier Capsule > ROMs de l'app Fichiers.")
+            Text("Touche + pour importer tes ROM (.gba, .gb, .gbc, .nds), tes sauvegardes .sav si tu en as, ou un patch de hack (.ips, .ups, .bps, .xdelta). Tu peux aussi les déposer dans le dossier Capsule > ROMs de l'app Fichiers.")
                 .font(.subheadline)
                 .foregroundStyle(Color.capsuleInk.opacity(0.75))
         }
@@ -386,7 +406,20 @@ struct LibraryView: View {
         switch result {
         case .failure(let error):
             message = "Import impossible : \(error.localizedDescription)"
-        case .success(let urls):
+        case .success(let picked):
+            // Patches go to the patcher (the first one: one hack at a time), copied while the pick allows it.
+            let patches = picked.filter { PatchView.extensions.contains($0.pathExtension.lowercased()) }
+            let urls = picked.filter { !PatchView.extensions.contains($0.pathExtension.lowercased()) }
+            if let first = patches.first {
+                let scoped = first.startAccessingSecurityScopedResource()
+                let copy = FileManager.default.temporaryDirectory.appendingPathComponent(first.lastPathComponent)
+                try? FileManager.default.removeItem(at: copy)
+                if (try? FileManager.default.copyItem(at: first, to: copy)) != nil {
+                    patching = PatchRequest(patch: copy)
+                }
+                if scoped { first.stopAccessingSecurityScopedResource() }
+                if urls.isEmpty { return }
+            }
             let outcome = library.importFiles(urls)
             var lines: [String] = []
             if outcome.roms > 0 {

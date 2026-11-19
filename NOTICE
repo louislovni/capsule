@@ -53,3 +53,13 @@ PKHeX  -  https://github.com/kwsch/PKHeX
   names of species, moves, abilities, items, types and locations, and the
   generation 4 character table (tools/gen_ndsdata.py); four sample Pokemon
   files used by Core/tests/test_pknds.c.
+
+xdelta3  -  https://github.com/jmacd/xdelta
+  Core/third_party/xdelta3: its decoder applies .xdelta ROM patches (the hack
+  patcher). Copyright Joshua MacDonald. Apache License 2.0. Unchanged; built
+  decode-only by Core/third_party/xd3_capsule.c.
+
+XZ Embedded  -  https://github.com/tukaani-project/xz-embedded
+  Core/third_party/xz-embedded: the LZMA2 decoder behind xdelta3's LZMA
+  compression, through Core/third_party/xz-shim. Copyright the XZ Embedded
+  authors. Zero-clause BSD: use, copy, modify and distribute freely.
