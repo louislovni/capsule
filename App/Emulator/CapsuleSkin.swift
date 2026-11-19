@@ -270,6 +270,8 @@ struct CapsuleWheel: View {
     let tools: [WheelTool]
     /// Sideways: the notch comes down from the top edge and the tools roll left and right.
     var horizontal = false
+    /// Tabs rather than tools (the Pokédex's sections): the one rolled to the middle opens at once.
+    var opensOnRoll = false
 
     @State private var index = 0
     @State private var drag: CGFloat = 0
@@ -372,6 +374,7 @@ struct CapsuleWheel: View {
                     }
                 }
                 .onEnded { value in
+                    let before = index
                     if moved {
                         let target = min(max(Int(rolled.rounded()), 0), tools.count - 1)
                         withAnimation(.spring(response: 0.42, dampingFraction: 0.75)) {
@@ -380,6 +383,9 @@ struct CapsuleWheel: View {
                         }
                         moved = false
                         show(tools[target].id)
+                        if opensOnRoll && target != before {
+                            tools[target].action()
+                        }
                     } else {
                         tap(at: horizontal ? value.location.x : value.location.y)
                     }
@@ -411,6 +417,9 @@ struct CapsuleWheel: View {
                 index = target
             }
             show(tools[target].id)
+            if opensOnRoll {
+                tools[target].action()
+            }
         }
     }
 

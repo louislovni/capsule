@@ -6,6 +6,8 @@ struct PokedexView: View {
     @ObservedObject var pokedex: PokedexStore
     let games: [Game]
     let refresh: () async -> Void
+    /// Set when it's opened to jump to a Pokémon (from the one-at-a-time Pokédex).
+    var onPick: ((Int) -> Void)? = nil
 
     @State private var region = -1
     @State private var filter = Filter.all
@@ -71,7 +73,11 @@ struct PokedexView: View {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 78), spacing: 8)], spacing: 8) {
                             ForEach(list, id: \.self) { dex in
                                 Button {
-                                    selected = dex
+                                    if let onPick = onPick {
+                                        onPick(dex)
+                                    } else {
+                                        selected = dex
+                                    }
                                 } label: {
                                     PokedexCell(dex: dex, record: pokedex.record(dex))
                                 }
