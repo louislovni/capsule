@@ -14,6 +14,7 @@ struct LibraryView: View {
     @State private var transferGame: Game?
     @State private var pendingDelete: Game?
     @State private var pendingRestore: Game?
+    @State private var historyGame: Game?
     @State private var restoreMessage: String?
     @State private var message: String?
 
@@ -37,9 +38,9 @@ struct LibraryView: View {
                                     Button("Supprimer", role: .destructive) {
                                         pendingDelete = game
                                     }
-                                    if SafetySave.date(for: game) != nil {
-                                        Button("Secours") {
-                                            pendingRestore = game
+                                    if game.hasSave || SafetySave.date(for: game) != nil {
+                                        Button("Sauvegardes") {
+                                            historyGame = game
                                         }
                                         .tint(.orange)
                                     }
@@ -118,6 +119,15 @@ struct LibraryView: View {
             .sheet(item: $transferGame) { game in
                 NavigationStack {
                     TransferView(game: game, bank: bank)
+                }
+            }
+            .sheet(item: $historyGame) { game in
+                SaveHistoryView(game: game) { message in
+                    historyGame = nil
+                    restoreMessage = message
+                } onSafety: {
+                    historyGame = nil
+                    pendingRestore = game
                 }
             }
             .confirmationDialog(

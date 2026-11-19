@@ -35,6 +35,7 @@ struct GameView: View {
             }
             .onAppear {
                 SafetySave.refresh(session.game)
+                SaveHistory.start(session.game)
                 gamepad.onKeys = { [weak session] keys in session?.setControllerKeys(keys) }
                 gamepad.onSpeed = { [weak session] in session?.cycleSpeed() }
                 session.start(landscape: isLandscape, pictureArea: isLandscape ? nil : pictureArea,

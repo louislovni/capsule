@@ -388,9 +388,15 @@ final class EmulatorSession: ObservableObject {
             present(core)
 
             frameCount += 1
-            if frameCount % saveInterval == 0 && !lr_flush_save(core) {
-                DispatchQueue.main.async { [weak self] in
-                    self?.notice = "La sauvegarde n'a pas pu être écrite"
+            if frameCount % saveInterval == 0 {
+                let before = Storage.modificationDate(of: game.saveURL)
+                if !lr_flush_save(core) {
+                    DispatchQueue.main.async { [weak self] in
+                        self?.notice = "La sauvegarde n'a pas pu être écrite"
+                    }
+                } else if Storage.modificationDate(of: game.saveURL) != before {
+                    // The game saved: keep it among its save points.
+                    SaveHistory.record(game)
                 }
             }
 
