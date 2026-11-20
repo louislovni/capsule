@@ -16,6 +16,10 @@ final class CloudSync: ObservableObject {
     @Published private(set) var syncing = false
     @Published private(set) var lastSync: Date?
     @Published private(set) var lastReport = ""
+    /// The last sync or push failed (offline, mostly): the home screen's badge says so until one goes through.
+    @Published private(set) var lastFailed = false
+    /// Sending a save made in the game right now (the badge's "Envoi…").
+    @Published private(set) var pushing = false
     @Published var enabled: Bool {
         didSet { UserDefaults.standard.set(enabled, forKey: Self.enabledKey) }
     }
@@ -91,9 +95,11 @@ final class CloudSync: ObservableObject {
         guard enabled, !syncing, let account = account, let bank = bank,
               let db = account.database, let uid = account.user?.uid else { return }
         syncing = true
+        pushing = pushOnly != nil
         let task = UIApplication.shared.beginBackgroundTask(withName: "cloud-sync")
         defer {
             syncing = false
+            pushing = false
             UIApplication.shared.endBackgroundTask(task)
         }
         do {
@@ -228,9 +234,11 @@ final class CloudSync: ObservableObject {
             saveManifest(manifest)
             lastSync = Date()
             UserDefaults.standard.set(lastSync, forKey: "cloudLastSync")
-            lastReport = report.text
+            if pushOnly == nil || report.sent > 0 { lastReport = report.text }
+            lastFailed = false
         } catch {
             lastReport = "Échec : \(error.localizedDescription)"
+            lastFailed = true
         }
     }
 

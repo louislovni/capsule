@@ -328,6 +328,15 @@ struct LibraryView: View {
                     .foregroundStyle(Color.capsuleCream)
                 Text("\(library.games.count) jeu\(library.games.count > 1 ? "x" : "") · \(pokedex.caught) espèces obtenues")
                     .smallCaps(.capsuleCream, opacity: 0.55)
+                if cloud.enabled, account.user != nil {
+                    Button {
+                        path.append(.account)
+                    } label: {
+                        SyncBadge(cloud: cloud)
+                    }
+                    .buttonStyle(SquishStyle())
+                    .padding(.top, 4)
+                }
             }
             Spacer()
             Button {

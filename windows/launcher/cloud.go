@@ -453,6 +453,7 @@ func watchSaves(dir string, account *Account, every, settle time.Duration, done 
 		return m
 	}
 	sent := stamp()
+	offline := false
 	ticker := time.NewTicker(every)
 	defer ticker.Stop()
 	for {
@@ -473,6 +474,10 @@ func watchSaves(dir string, account *Account, every, settle time.Duration, done 
 		}
 		if err := pushSaves(dir, account); err == nil {
 			sent = now
+			offline = false
+		} else if !offline { // said once a streak
+			offline = true
+			fmt.Println("  Cloud injoignable pour l'instant (hors ligne ?) : nouvel essai dans quelques secondes.")
 		}
 	}
 }

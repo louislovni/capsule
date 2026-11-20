@@ -334,7 +334,6 @@ func TestPushWhilePlaying(t *testing.T) {
 	}
 }
 
-
 // Older versions of a save made on one device show up in another's SAVE HISTORY (its backups folder), once each, and
 // the cloud keeps the newest 20 per game.
 func TestCloudHistory(t *testing.T) {
