@@ -9,7 +9,7 @@
 #                                   Needs mingw-w64 and Go; GOOGLE_DESKTOP_CLIENT_ID / _SECRET for the sign-in.
 set -eu
 
-POKEDAISY_COMMIT=31869659cc50b252eba1d0bdab5a2d989212fce1   # louislovni/pokedaisy, branch capsule
+POKEDAISY_COMMIT=ef07863b25bd8ee153b70bc4996a6f534c20f91f   # louislovni/pokedaisy, branch capsule
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TARGET="${1:-host}"
 SRC="$ROOT/Vendor/pokedaisy"
@@ -112,6 +112,8 @@ windows)
 		-DCMAKE_TOOLCHAIN_FILE="$ROOT/Core/win/mingw.cmake" -DPOKEDAISY_DIR="$SRC" -DSDL2_ROOT="$SDL_ROOT"
 	cmake --build "$ROOT/build/win-frontend" -j 4
 	VERSION="${CAPSULE_VERSION:-dev}"
+	# The cloud sync against a fake Firestore first (cloud_test.go): two devices, clock footers, conflicts.
+	(cd "$ROOT/windows/launcher" && go test ./...)
 	(cd "$ROOT/windows/launcher" && GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath \
 		-ldflags "-s -w -X main.version=$VERSION -X main.googleClientID=${GOOGLE_DESKTOP_CLIENT_ID:-} -X main.googleClientSecret=${GOOGLE_DESKTOP_CLIENT_SECRET:-}" \
 		-o "$ROOT/build/win-launcher/Capsule.exe" .)

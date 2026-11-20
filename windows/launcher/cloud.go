@@ -60,8 +60,11 @@ type store struct {
 	root    string
 }
 
+// firestoreHost: tests point it at a fake (cloud_test.go).
+var firestoreHost = "https://firestore.googleapis.com"
+
 func (s store) url(path string) string {
-	return "https://firestore.googleapis.com/v1/projects/" + projectID + "/databases/(default)/documents/" + s.root + "/" + path
+	return firestoreHost + "/v1/projects/" + projectID + "/databases/(default)/documents/" + s.root + "/" + path
 }
 
 func (s store) request(method, path string, body any, out any) error {
@@ -140,7 +143,19 @@ func hashOf(data []byte) string {
 
 func fileID(name string) string { return hashOf([]byte(name))[:32] }
 
-func (s store) upload(name string, data []byte, hash string) error {
+// coreHash: the save's hash without mGBA's 16-byte clock footer (every save chip is a multiple of 512 bytes, the
+// footer is what's past the last whole 512). The footer moves with the clock alone, and PC's libretro core writes
+// none: two saves with the same core are the same save, whatever their clocks say.
+func coreHash(data []byte) string {
+	n := len(data) - len(data)%512
+	if n == 0 {
+		return hashOf(data)
+	}
+	return hashOf(data[:n])
+}
+
+// upload: [modified] is when the save was written on this device (conflicts go by it, not by the upload's time).
+func (s store) upload(name string, data []byte, hash string, modified time.Time) error {
 	id := fileID(name)
 	text := base64.StdEncoding.EncodeToString(data)
 	var pieces []string
@@ -166,13 +181,15 @@ func (s store) upload(name string, data []byte, hash string) error {
 	}
 	host, _ := os.Hostname()
 	err = s.set("files/"+id, map[string]any{
-		"name":      map[string]any{"stringValue": name},
-		"hash":      map[string]any{"stringValue": hash},
-		"size":      map[string]any{"integerValue": strconv.Itoa(len(data))},
-		"chunks":    map[string]any{"integerValue": strconv.Itoa(len(pieces))},
-		"version":   map[string]any{"stringValue": version},
-		"updatedAt": map[string]any{"timestampValue": time.Now().UTC().Format(time.RFC3339Nano)},
-		"device":    map[string]any{"stringValue": "PC " + host},
+		"name":       map[string]any{"stringValue": name},
+		"hash":       map[string]any{"stringValue": hash},
+		"core":       map[string]any{"stringValue": coreHash(data)},
+		"modifiedAt": map[string]any{"timestampValue": modified.UTC().Format(time.RFC3339Nano)},
+		"size":       map[string]any{"integerValue": strconv.Itoa(len(data))},
+		"chunks":     map[string]any{"integerValue": strconv.Itoa(len(pieces))},
+		"version":    map[string]any{"stringValue": version},
+		"updatedAt":  map[string]any{"timestampValue": time.Now().UTC().Format(time.RFC3339Nano)},
+		"device":     map[string]any{"stringValue": "PC " + host},
 	})
 	if err != nil {
 		return err
@@ -209,6 +226,13 @@ func (s store) download(d doc) ([]byte, error) {
 }
 
 // ---- The sync
+
+func modTime(dir, name string) time.Time {
+	if info, err := os.Stat(filepath.Join(dir, "saves", name)); err == nil {
+		return info.ModTime()
+	}
+	return time.Now()
+}
 
 func localSaves(dir string) map[string][]byte {
 	saves := map[string][]byte{}
@@ -301,20 +325,35 @@ func syncSaves(dir string, account *Account) (string, error) {
 		if haveCloud {
 			cloudHash = d.str("hash")
 		}
-		synced := manifest[name]
-		if localHash == cloudHash {
-			if localHash != "" {
-				manifest[name] = localHash
+		synced, syncedCore := manifest[name], manifest["core:"+name]
+		localCore, cloudCore := "", ""
+		if haveLocal {
+			localCore = coreHash(data)
+		}
+		if haveCloud {
+			cloudCore = d.str("core")
+		}
+		if localHash == cloudHash || (localCore != "" && localCore == cloudCore) {
+			// The same save (maybe with another clock footer): nothing to send.
+			if haveLocal {
+				manifest[name], manifest["core:"+name] = localHash, localCore
 			}
 			continue
 		}
+		// Changed since the last sync: by the save's core when the last sync noted it, else by the whole file.
 		localChanged := localHash != "" && localHash != synced
+		if localChanged && syncedCore != "" {
+			localChanged = localCore != syncedCore
+		}
 		cloudChanged := cloudHash != "" && cloudHash != synced
+		if cloudChanged && syncedCore != "" && cloudCore != "" {
+			cloudChanged = cloudCore != syncedCore
+		}
 		var err error
 		switch {
 		case haveLocal && (cloudHash == "" || (localChanged && !cloudChanged)):
-			if err = s.upload(name, data, localHash); err == nil {
-				manifest[name] = localHash
+			if err = s.upload(name, data, localHash, modTime(dir, name)); err == nil {
+				manifest[name], manifest["core:"+name] = localHash, localCore
 				sent++
 				fmt.Println("  ↑", strings.TrimSuffix(name, ".sav"))
 			}
@@ -322,28 +361,28 @@ func syncSaves(dir string, account *Account) (string, error) {
 			var theirs []byte
 			if theirs, err = s.download(d); err == nil {
 				if err = writeSave(dir, name, theirs, haveLocal); err == nil {
-					manifest[name] = cloudHash
+					manifest[name], manifest["core:"+name] = cloudHash, coreHash(theirs)
 					received++
 					fmt.Println("  ↓", strings.TrimSuffix(name, ".sav"))
 				}
 			}
 		case haveLocal && haveCloud:
-			// Changed on both sides: the newer goes on, the other is kept.
-			info, _ := os.Stat(filepath.Join(dir, "saves", name))
-			localDate := time.Time{}
-			if info != nil {
-				localDate = info.ModTime()
-			}
+			// Changed on both sides: the save made last goes on (when each was written, not uploaded), the other is kept.
+			localDate := modTime(dir, name)
 			var theirs []byte
 			if theirs, err = s.download(d); err == nil {
-				if !localDate.Before(d.time("updatedAt")) {
+				cloudDate := d.time("modifiedAt")
+				if cloudDate.IsZero() {
+					cloudDate = d.time("updatedAt") // uploaded before modifiedAt existed
+				}
+				if !localDate.Before(cloudDate) {
 					if err = backup(dir, name, "cloud", theirs); err == nil {
-						if err = s.upload(name, data, localHash); err == nil {
-							manifest[name] = localHash
+						if err = s.upload(name, data, localHash, modTime(dir, name)); err == nil {
+							manifest[name], manifest["core:"+name] = localHash, localCore
 						}
 					}
 				} else if err = writeSave(dir, name, theirs, true); err == nil {
-					manifest[name] = cloudHash
+					manifest[name], manifest["core:"+name] = cloudHash, coreHash(theirs)
 				}
 				if err == nil {
 					conflicts++

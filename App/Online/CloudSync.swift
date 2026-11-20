@@ -57,6 +57,19 @@ final class CloudSync: ObservableObject {
         SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 
+    /// The save's hash without mGBA's 16-byte clock footer (a save chip is a multiple of 512 bytes; the footer is
+    /// what's past the last whole 512). It moves with the clock alone, and the PC's core writes none: two saves with
+    /// the same core are the same save.
+    private static func coreHash(_ data: Data) -> String {
+        let n = data.count - data.count % 512
+        return n == 0 ? hash(data) : hash(data.prefix(n))
+    }
+
+    /// When a save was written here (conflicts go by it, not by when it was uploaded).
+    private static func modified(_ url: URL) -> Date {
+        (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? Date()
+    }
+
     /// A document ID for a file name (any characters in, letters and digits out).
     private static func fileID(_ name: String) -> String {
         String(hash(Data(name.utf8)).prefix(32))
@@ -96,32 +109,45 @@ final class CloudSync: ObservableObject {
                 let localHash = localData.map(Self.hash)
                 let cloudHash = cloud[name]?["hash"].stringValue
                 let synced = manifest[name]
-                if localHash == cloudHash {
-                    if let hash = localHash { manifest[name] = hash }
+                let syncedCore = manifest["core:" + name]
+                let localCore = localData.map(Self.coreHash)
+                let cloudCore = cloud[name]?["core"].stringValue
+                if localHash == cloudHash || (localCore != nil && localCore == cloudCore) {
+                    // The same save (maybe with another clock footer): nothing to send.
+                    if let hash = localHash { manifest[name] = hash; manifest["core:" + name] = localCore }
                     continue
                 }
-                let localChanged = localHash != nil && localHash != synced
-                let cloudChanged = cloudHash != nil && cloudHash != synced
+                // Changed since the last sync: by the save's core when the last sync noted it, else by the whole file.
+                var localChanged = localHash != nil && localHash != synced
+                if localChanged, let syncedCore = syncedCore { localChanged = localCore != syncedCore }
+                var cloudChanged = cloudHash != nil && cloudHash != synced
+                if cloudChanged, let syncedCore = syncedCore, let cloudCore = cloudCore { cloudChanged = cloudCore != syncedCore }
                 if let data = localData, let hash = localHash, cloudHash == nil || (localChanged && !cloudChanged) {
-                    try await upload(db: db, root: root, name: name, data: data, hash: hash)
+                    try await upload(db: db, root: root, name: name, data: data, hash: hash, modified: Self.modified(url))
                     manifest[name] = hash
+                    manifest["core:" + name] = localCore
                     report.sent += 1
                 } else if let doc = cloud[name], let hash = cloudHash, localData == nil || (cloudChanged && !localChanged) {
-                    try write(try await download(db: db, root: root, doc: doc), to: url, keepingOld: localData != nil)
+                    let theirs = try await download(db: db, root: root, doc: doc)
+                    try write(theirs, to: url, keepingOld: localData != nil)
                     manifest[name] = hash
+                    manifest["core:" + name] = Self.coreHash(theirs)
                     report.received += 1
                 } else if let data = localData, let hash = localHash, let doc = cloud[name], let theirHash = cloudHash {
-                    // Changed on both sides: the newer goes on, the other is kept.
-                    let localDate = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? .distantPast
-                    let cloudDate = doc["updatedAt"].dateValue ?? .distantPast
+                    // Changed on both sides: the save made last goes on (when each was written, not uploaded), the
+                    // other is kept.
+                    let localDate = Self.modified(url)
+                    let cloudDate = doc["modifiedAt"].dateValue ?? doc["updatedAt"].dateValue ?? .distantPast
+                    let theirs = try await download(db: db, root: root, doc: doc)
                     if localDate >= cloudDate {
-                        let theirs = try await download(db: db, root: root, doc: doc)
                         try backup(theirs, name: name, tag: "cloud")
-                        try await upload(db: db, root: root, name: name, data: data, hash: hash)
+                        try await upload(db: db, root: root, name: name, data: data, hash: hash, modified: localDate)
                         manifest[name] = hash
+                        manifest["core:" + name] = localCore
                     } else {
-                        try write(try await download(db: db, root: root, doc: doc), to: url, keepingOld: true)
+                        try write(theirs, to: url, keepingOld: true)
                         manifest[name] = theirHash
+                        manifest["core:" + name] = Self.coreHash(theirs)
                     }
                     report.conflicts += 1
                 }
@@ -164,7 +190,7 @@ final class CloudSync: ObservableObject {
         let payload = try bank.cloudPayload()
         let hash = Self.hash(payload)
         if hash != cloud?["hash"].stringValue && !(bank.entries.isEmpty && bank.removedIDs.isEmpty && cloud == nil) {
-            try await upload(db: db, root: root, name: Self.bankName, data: payload, hash: hash)
+            try await upload(db: db, root: root, name: Self.bankName, data: payload, hash: hash, modified: Date())
             if report.bank.isEmpty {
                 report.bank = "banque envoyée"
             }
@@ -185,7 +211,7 @@ final class CloudSync: ObservableObject {
 
     // MARK: - Files in pieces
 
-    private func upload(db: Firestore, root: String, name: String, data: Data, hash: String) async throws {
+    private func upload(db: Firestore, root: String, name: String, data: Data, hash: String, modified: Date) async throws {
         let id = Self.fileID(name)
         let text = data.base64EncodedString()
         var pieces: [Substring] = []
@@ -207,6 +233,8 @@ final class CloudSync: ObservableObject {
         try await db.set("\(root)/files/\(id)", fields: [
             "name": .string(name),
             "hash": .string(hash),
+            "core": .string(Self.coreHash(data)),
+            "modifiedAt": .timestamp(modified),
             "size": .int(data.count),
             "chunks": .int(pieces.count),
             "version": .string(version),
