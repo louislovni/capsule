@@ -63,6 +63,16 @@ func (f *fakeFirestore) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (f *fakeFirestore) count(part string) int {
+	n := 0
+	for k := range f.docs {
+		if strings.Contains(k, part) {
+			n++
+		}
+	}
+	return n
+}
+
 func (f *fakeFirestore) chunks() int {
 	n := 0
 	for k := range f.docs {
@@ -169,9 +179,9 @@ func TestSyncBetweenDevices(t *testing.T) {
 		t.Fatalf("iphone after the conflict: %s", r)
 	}
 
-	// Old versions' pieces are deleted: one file, one piece.
-	if n := fake.chunks(); n != 1 {
-		t.Fatalf("%d pieces left in the cloud", n)
+	// Every piece belongs to the file or to a version in its history.
+	if n, h := fake.chunks(), fake.count("/history/"); n != 1+h || h == 0 {
+		t.Fatalf("%d pieces for 1 file and %d old versions", n, h)
 	}
 
 	// A file uploaded before "core" existed (no core field) still syncs by its whole hash.
@@ -264,7 +274,7 @@ func TestSyncByGame(t *testing.T) {
 	if r := a.sync(); r != "Tout est déjà à jour." {
 		t.Fatalf("a ruby: %s", r)
 	}
-	if fake.chunks() != 2 {
+	if fake.chunks() != 2+fake.count("/history/") {
 		t.Fatalf("%d pieces", fake.chunks())
 	}
 
@@ -321,5 +331,44 @@ func TestPushWhilePlaying(t *testing.T) {
 	d.sync()
 	if !bytes.Equal(d.read("Ruby.sav"), save(4)) {
 		t.Fatal("the save made in the game didn't go up")
+	}
+}
+
+
+// Older versions of a save made on one device show up in another's SAVE HISTORY (its backups folder), once each, and
+// the cloud keeps the newest 20 per game.
+func TestCloudHistory(t *testing.T) {
+	fake := &fakeFirestore{docs: map[string]map[string]any{}}
+	server := httptest.NewServer(fake)
+	defer server.Close()
+	firestoreHost = server.URL
+	a, b := newDevice(t), newDevice(t)
+	start := time.Now().Add(-48 * time.Hour)
+	for i := 1; i <= 23; i++ {
+		a.write("Emerald.sav", save(byte(i)), start.Add(time.Duration(i)*time.Hour))
+		a.sync()
+	}
+	if h := fake.count("/history/"); h != historyKeep {
+		t.Fatalf("%d versions kept in the cloud", h)
+	}
+	b.sync()
+	backups, _ := filepath.Glob(filepath.Join(b.dir, "saves", "pokedaisy-backups", "Emerald.backup-*.sav"))
+	if len(backups) != historyKeep {
+		t.Fatalf("%d versions in b's history", len(backups))
+	}
+	newest := filepath.Join(b.dir, "saves", "pokedaisy-backups", "Emerald.backup-"+start.Add(22*time.Hour).Local().Format("20060102-150405")+".sav")
+	if data, _ := os.ReadFile(newest); !bytes.Equal(data, save(22)) {
+		t.Fatal("the version before the save isn't the newest backup")
+	}
+	// Nothing comes twice; a's own versions (already its backups) aren't copied back.
+	if r := b.sync(); r != "Tout est déjà à jour." {
+		t.Fatalf("b again: %s", r)
+	}
+	again, _ := filepath.Glob(filepath.Join(b.dir, "saves", "pokedaisy-backups", "*"))
+	if len(again) != historyKeep {
+		t.Fatalf("%d files after a second sync", len(again))
+	}
+	if n := fake.chunks(); n != 1+historyKeep {
+		t.Fatalf("%d pieces", n)
 	}
 }

@@ -198,11 +198,93 @@ func (s store) upload(name, file string, data []byte, hash string, modified time
 		return err
 	}
 	if old != nil && old.str("version") != "" && old.str("version") != version {
-		for i := 0; i < old.int("chunks"); i++ {
-			s.delete(fmt.Sprintf("chunks/%s_%s_%d", id, old.str("version"), i))
+		// The version replaced goes into the game's cloud history (its pieces kept), for every device's SAVE
+		// HISTORY ([syncHistory]); one that can't be kept is deleted as before.
+		entry := map[string]any{"fileId": map[string]any{"stringValue": id}}
+		for k, v := range old.fields {
+			if k != "fileId" {
+				entry[k] = v
+			}
+		}
+		if s.set("history/"+id+"_"+old.str("version"), entry) != nil {
+			for i := 0; i < old.int("chunks"); i++ {
+				s.delete(fmt.Sprintf("chunks/%s_%s_%d", id, old.str("version"), i))
+			}
 		}
 	}
 	return nil
+}
+
+// historyKeep: the versions a game's cloud history keeps (as each device's own SAVE HISTORY: 20).
+const historyKeep = 20
+
+// syncHistory: the cloud's history for the games here (older versions of their saves, from any device) comes down
+// into the local backups SAVE HISTORY lists (DATA/saves/pokedaisy-backups, named by when each was saved), each once;
+// one already here (the same core as a local backup or the save) is skipped. Past [historyKeep] a game's oldest go.
+func syncHistory(s store, dir string, fileOf map[string]string, manifest map[string]string) {
+	entries, err := s.list("history")
+	if err != nil {
+		return
+	}
+	byKey := map[string][]doc{}
+	for _, d := range entries {
+		byKey[d.str("name")] = append(byKey[d.str("name")], d)
+	}
+	backups := filepath.Join(dir, "saves", "pokedaisy-backups")
+	for key, list := range byKey {
+		sort.Slice(list, func(i, j int) bool { return list[i].time("modifiedAt").After(list[j].time("modifiedAt")) })
+		for _, d := range list[min(len(list), historyKeep):] {
+			for i := 0; i < d.int("chunks"); i++ {
+				s.delete(fmt.Sprintf("chunks/%s_%s_%d", d.str("fileId"), d.str("version"), i))
+			}
+			s.delete("history/" + d.id)
+		}
+		file := fileOf[key]
+		if file == "" {
+			continue
+		}
+		stem := strings.TrimSuffix(file, filepath.Ext(file))
+		var have map[string]bool // the cores here: read once a game has something new to look at
+		for _, d := range list[:min(len(list), historyKeep)] {
+			if manifest["history:"+d.id] != "" {
+				continue
+			}
+			if have == nil {
+				have = map[string]bool{}
+				if data, err := os.ReadFile(filepath.Join(dir, "saves", file)); err == nil {
+					have[coreHash(data)] = true
+				}
+				matches, _ := filepath.Glob(filepath.Join(backups, stem+".backup-*"))
+				for _, m := range matches {
+					if data, err := os.ReadFile(m); err == nil {
+						have[coreHash(data)] = true
+					}
+				}
+			}
+			if have[d.str("core")] {
+				manifest["history:"+d.id] = "1"
+				continue
+			}
+			data, err := s.download(doc{id: d.str("fileId"), fields: d.fields})
+			if err != nil {
+				continue
+			}
+			when := d.time("modifiedAt")
+			if when.IsZero() {
+				when = d.time("updatedAt")
+			}
+			os.MkdirAll(backups, 0o755)
+			path := filepath.Join(backups, stem+".backup-"+when.Local().Format("20060102-150405")+".sav")
+			if _, err := os.Stat(path); err != nil {
+				if os.WriteFile(path, data, 0o644) != nil {
+					continue
+				}
+				os.Chtimes(path, when, when)
+			}
+			have[coreHash(data)] = true
+			manifest["history:"+d.id] = "1"
+		}
+	}
 }
 
 // remove deletes a cloud file and its pieces (an old name-keyed copy, once moved to its game's key).
@@ -591,6 +673,9 @@ func syncSavesWith(dir string, account *Account, pushOnly bool) (string, error) 
 				firstErr = fmt.Errorf("%s : %w", file, err)
 			}
 		}
+	}
+	if !pushOnly {
+		syncHistory(s, dir, fileOf, manifest)
 	}
 	if data, err := json.Marshal(manifest); err == nil {
 		os.WriteFile(manifestPath, data, 0o644)

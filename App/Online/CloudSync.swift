@@ -222,6 +222,9 @@ final class CloudSync: ObservableObject {
                     try await remove(db: db, root: root, doc: old)
                 }
             }
+            if pushOnly == nil {
+                await syncHistory(db: db, root: root, fileOf: fileOf, manifest: &manifest)
+            }
             saveManifest(manifest)
             lastSync = Date()
             UserDefaults.standard.set(lastSync, forKey: "cloudLastSync")
@@ -314,11 +317,78 @@ final class CloudSync: ObservableObject {
             "updatedAt": .timestamp(Date()),
             "device": .string(UIDevice.current.name),
         ])
-        // The previous version's pieces go.
+        // The version replaced goes into the game's cloud history (its pieces kept), for every device's history
+        // ([syncHistory]); one that can't be kept is deleted as before.
         if let old = old, let oldVersion = old["version"].stringValue, oldVersion != version,
            case .int(let count) = old["chunks"] {
-            for index in 0..<count {
-                try? await db.delete("\(root)/chunks/\(id)_\(oldVersion)_\(index)")
+            guard name != Self.bankName else {   // the bank keeps no history: its old pieces go
+                for index in 0..<count { try? await db.delete("\(root)/chunks/\(id)_\(oldVersion)_\(index)") }
+                return
+            }
+            var entry = old.fields
+            entry["fileId"] = .string(id)
+            do {
+                try await db.set("\(root)/history/\(id)_\(oldVersion)", fields: entry)
+            } catch {
+                for index in 0..<count {
+                    try? await db.delete("\(root)/chunks/\(id)_\(oldVersion)_\(index)")
+                }
+            }
+        }
+    }
+
+    /// The versions a game's cloud history keeps (as SaveHistory here: 20).
+    private static let historyKeep = 20
+
+    private static let stampFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        return formatter
+    }()
+
+    /// The cloud's history for the games here (older versions of their saves, from any device) comes down into
+    /// SaveHistory's folder (by when each was saved), each once; one already here (the same core as a save point or
+    /// the save) is skipped. Past [historyKeep] a game's oldest go. The PC launcher's and Android's do the same.
+    private func syncHistory(db: Firestore, root: String, fileOf: [String: String], manifest: inout [String: String]) async {
+        guard let entries = try? await db.list("\(root)/history") else { return }
+        let byKey = Dictionary(grouping: entries) { $0["name"].stringValue ?? "" }
+        let date: (FSDocument) -> Date = { $0["modifiedAt"].dateValue ?? $0["updatedAt"].dateValue ?? .distantPast }
+        for (key, all) in byKey {
+            let list = all.sorted { date($0) > date($1) }
+            for doc in list.dropFirst(Self.historyKeep) {
+                if let version = doc["version"].stringValue, let fileId = doc["fileId"].stringValue, case .int(let count) = doc["chunks"] {
+                    for index in 0..<count { try? await db.delete("\(root)/chunks/\(fileId)_\(version)_\(index)") }
+                }
+                try? await db.delete("\(root)/history/\(doc.id)")
+            }
+            guard let file = fileOf[key] else { continue }
+            let stem = (file as NSString).deletingPathExtension
+            let folder = Storage.backups.appendingPathComponent("Historique", isDirectory: true)
+                .appendingPathComponent(stem, isDirectory: true)
+            var have: Set<String>?   // the cores here: read once a game has something new to look at
+            for doc in list.prefix(Self.historyKeep) where manifest["history:" + doc.id] == nil {
+                if have == nil {
+                    var cores = Set<String>()
+                    if let data = try? Data(contentsOf: Storage.saves.appendingPathComponent(file)) { cores.insert(Self.coreHash(data)) }
+                    for url in (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? [] {
+                        if let data = try? Data(contentsOf: url) { cores.insert(Self.coreHash(data)) }
+                    }
+                    have = cores
+                }
+                if let core = doc["core"].stringValue, have?.contains(core) == true {
+                    manifest["history:" + doc.id] = "1"
+                    continue
+                }
+                guard let fileId = doc["fileId"].stringValue,
+                      let data = try? await download(db: db, root: root, doc: doc, id: fileId) else { continue }
+                try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+                let target = folder.appendingPathComponent(Self.stampFormatter.string(from: date(doc)) + ".sav")
+                if !FileManager.default.fileExists(atPath: target.path) {
+                    guard (try? data.write(to: target, options: .atomic)) != nil else { continue }
+                }
+                have?.insert(Self.coreHash(data))
+                manifest["history:" + doc.id] = "1"
             }
         }
     }
@@ -360,12 +430,13 @@ final class CloudSync: ObservableObject {
         return keys
     }
 
-    private func download(db: Firestore, root: String, doc: FSDocument) async throws -> Data {
+    /// [id]: the cloud file the pieces belong to (a history entry's "fileId"; a file's own id by default).
+    private func download(db: Firestore, root: String, doc: FSDocument, id fileId: String? = nil) async throws -> Data {
         guard let version = doc["version"].stringValue, case .int(let count) = doc["chunks"],
               let hash = doc["hash"].stringValue else {
             throw OnlineError.server("fichier incomplet dans le cloud")
         }
-        let id = doc.id
+        let id = fileId ?? doc.id
         var text = ""
         for index in 0..<count {
             guard let piece = try await db.get("\(root)/chunks/\(id)_\(version)_\(index)")?["data"].stringValue else {
