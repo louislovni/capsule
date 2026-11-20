@@ -19,5 +19,7 @@ target_include_directories(pokedaisy BEFORE PRIVATE ${WIN}/include)
 target_compile_definitions(pokedaisy PRIVATE _GNU_SOURCE POCKET_PURE)
 target_compile_options(pokedaisy PRIVATE -include ${WIN}/compat.h -O2)
 target_link_directories(pokedaisy PRIVATE ${SDL2_ROOT}/lib)
-target_link_libraries(pokedaisy PRIVATE mingw32 SDL2main SDL2 m)
+# The game list's patcher: a dropped .ips / .ups / .bps / .xdelta (PokeDaisy's third_party/pkpatch, Capsule's pk_patch.c).
+include(${POKEDAISY_DIR}/third_party/pkpatch/pkpatch.cmake)
+target_link_libraries(pokedaisy PRIVATE pkpatch mingw32 SDL2main SDL2 m)
 target_link_options(pokedaisy PRIVATE -static-libgcc -Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive,-Bdynamic)

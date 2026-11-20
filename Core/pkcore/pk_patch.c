@@ -419,6 +419,12 @@ int pk_patch_apply(const uint8_t* source, size_t sourceSize, const uint8_t* patc
 
 void pk_patch_free(uint8_t* data) { free(data); }
 
+int pk_patch_source_size(const uint8_t* patch, size_t size, uint64_t* sourceSize) {
+	int format = pk_patch_format(patch, size);
+	size_t at = 4;
+	return (format == PK_PATCH_UPS || format == PK_PATCH_BPS) && size >= 16 && read_vlq(patch, size - 12, &at, sourceSize);
+}
+
 int pk_patch_source_crc(const uint8_t* patch, size_t size, uint32_t* crc) {
 	int format = pk_patch_format(patch, size);
 	if ((format == PK_PATCH_UPS || format == PK_PATCH_BPS) && size >= 16) {

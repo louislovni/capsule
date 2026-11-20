@@ -508,6 +508,8 @@ int pk_patch_apply(const uint8_t* source, size_t sourceSize, const uint8_t* patc
 void pk_patch_free(uint8_t* data);
 /* The CRC32 of the ROM a UPS or BPS patch is made for (1), or 0 when the patch doesn't say. */
 int pk_patch_source_crc(const uint8_t* patch, size_t size, uint32_t* crc);
+/* The size of the ROM a UPS or BPS patch is made for (1), or 0. */
+int pk_patch_source_size(const uint8_t* patch, size_t size, uint64_t* sourceSize);
 uint32_t pk_crc32(const uint8_t* data, size_t size);
 
 #endif
