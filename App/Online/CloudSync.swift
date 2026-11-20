@@ -100,48 +100,93 @@ final class CloudSync: ObservableObject {
 
             try await syncBank(bank: bank, db: db, root: root, cloud: cloud[Self.bankName], manifest: &manifest, report: &report)
 
-            let local = localSaves()
-            let names = Set(local.keys).union(cloud.keys.filter { $0 != Self.bankName })
+            // Saves go by their game: "rom:" + the ROM's CRC32, the same on every device that has that ROM whatever
+            // its file is called (the PC launcher's cloud.go and Android's CapsuleCloud.kt do the same). A save
+            // without its ROM here keeps its file name, unless a game's cloud file says it's that game's ("file").
+            let byFile = Self.romKeys()      // a save's file name -> its game's key
+            var games: [String: FSDocument] = [:]
+            var gameOfFile: [String: String] = [:]
+            var legacy: [FSDocument] = []
+            for (name, doc) in cloud where name != Self.bankName {
+                if name.hasPrefix("rom:") {
+                    games[name] = doc
+                    if let file = doc["file"].stringValue, !file.isEmpty { gameOfFile[file] = name }
+                } else {
+                    legacy.append(doc)
+                }
+            }
+            var local: [String: Data] = [:]
+            var fileOf: [String: String] = [:]
+            for (file, data) in localSaves() {
+                let key = byFile[file] ?? gameOfFile[file] ?? file
+                local[key] = data
+                fileOf[key] = file
+            }
+            // A save uploaded by its file name (before game keys, or from a device without the game): its game's
+            // file when it's a game's here (the newer of the two if both exist; the old one goes once synced).
+            var moved: [String: FSDocument] = [:]
+            for doc in legacy {
+                guard let name = doc["name"].stringValue else { continue }
+                guard let key = byFile[name] ?? gameOfFile[name] else {
+                    games[name] = doc
+                    continue
+                }
+                if let current = games[key], Self.updated(current) >= Self.updated(doc) {} else { games[key] = doc }
+                moved[key] = doc
+                if fileOf[key] == nil { fileOf[key] = name }
+                if manifest[key] == nil, let old = manifest[name] {   // the last sync's by its old name
+                    manifest[key] = old
+                    manifest["core:" + key] = manifest["core:" + name]
+                }
+            }
+            for (file, key) in byFile where fileOf[key] == nil { fileOf[key] = file }
+            for (key, doc) in games where fileOf[key] == nil {
+                fileOf[key] = doc["file"].stringValue.flatMap { $0.isEmpty ? nil : $0 } ?? key
+            }
+            let names = Set(local.keys).union(games.keys)
             for name in names.sorted() {
-                if let playing = playing, name == playing + ".sav" { continue }
-                let url = Storage.saves.appendingPathComponent(name)
+                let file = fileOf[name] ?? name
+                if let playing = playing, file == playing + ".sav" { continue }
+                let url = Storage.saves.appendingPathComponent(file)
                 let localData = local[name]
                 let localHash = localData.map(Self.hash)
-                let cloudHash = cloud[name]?["hash"].stringValue
+                let cloudHash = games[name]?["hash"].stringValue
                 let synced = manifest[name]
                 let syncedCore = manifest["core:" + name]
                 let localCore = localData.map(Self.coreHash)
-                let cloudCore = cloud[name]?["core"].stringValue
-                if localHash == cloudHash || (localCore != nil && localCore == cloudCore) {
+                let cloudCore = games[name]?["core"].stringValue
+                let same = localHash == cloudHash || (localCore != nil && localCore == cloudCore)
+                if same, let hash = localHash {
                     // The same save (maybe with another clock footer): nothing to send.
-                    if let hash = localHash { manifest[name] = hash; manifest["core:" + name] = localCore }
-                    continue
+                    manifest[name] = hash
+                    manifest["core:" + name] = localCore
                 }
                 // Changed since the last sync: by the save's core when the last sync noted it, else by the whole file.
                 var localChanged = localHash != nil && localHash != synced
                 if localChanged, let syncedCore = syncedCore { localChanged = localCore != syncedCore }
                 var cloudChanged = cloudHash != nil && cloudHash != synced
                 if cloudChanged, let syncedCore = syncedCore, let cloudCore = cloudCore { cloudChanged = cloudCore != syncedCore }
-                if let data = localData, let hash = localHash, cloudHash == nil || (localChanged && !cloudChanged) {
-                    try await upload(db: db, root: root, name: name, data: data, hash: hash, modified: Self.modified(url))
+                if same {
+                } else if let data = localData, let hash = localHash, cloudHash == nil || (localChanged && !cloudChanged) {
+                    try await upload(db: db, root: root, name: name, file: file, data: data, hash: hash, modified: Self.modified(url))
                     manifest[name] = hash
                     manifest["core:" + name] = localCore
                     report.sent += 1
-                } else if let doc = cloud[name], let hash = cloudHash, localData == nil || (cloudChanged && !localChanged) {
+                } else if let doc = games[name], let hash = cloudHash, localData == nil || (cloudChanged && !localChanged) {
                     let theirs = try await download(db: db, root: root, doc: doc)
                     try write(theirs, to: url, keepingOld: localData != nil)
                     manifest[name] = hash
                     manifest["core:" + name] = Self.coreHash(theirs)
                     report.received += 1
-                } else if let data = localData, let hash = localHash, let doc = cloud[name], let theirHash = cloudHash {
+                } else if let data = localData, let hash = localHash, let doc = games[name], let theirHash = cloudHash {
                     // Changed on both sides: the save made last goes on (when each was written, not uploaded), the
                     // other is kept.
                     let localDate = Self.modified(url)
                     let cloudDate = doc["modifiedAt"].dateValue ?? doc["updatedAt"].dateValue ?? .distantPast
                     let theirs = try await download(db: db, root: root, doc: doc)
                     if localDate >= cloudDate {
-                        try backup(theirs, name: name, tag: "cloud")
-                        try await upload(db: db, root: root, name: name, data: data, hash: hash, modified: localDate)
+                        try backup(theirs, name: file, tag: "cloud")
+                        try await upload(db: db, root: root, name: name, file: file, data: data, hash: hash, modified: localDate)
                         manifest[name] = hash
                         manifest["core:" + name] = localCore
                     } else {
@@ -150,6 +195,18 @@ final class CloudSync: ObservableObject {
                         manifest["core:" + name] = Self.coreHash(theirs)
                     }
                     report.conflicts += 1
+                }
+                // The old name-keyed copy, now under its game's key: the save as it stands goes up under the key
+                // (when the old copy was the cloud's only one), then the old copy goes.
+                if let old = moved[name] {
+                    if games[name]?.id == old.id {
+                        let current = try Data(contentsOf: url)
+                        let hash = Self.hash(current)
+                        try await upload(db: db, root: root, name: name, file: file, data: current, hash: hash, modified: Self.modified(url))
+                        manifest[name] = hash
+                        manifest["core:" + name] = Self.coreHash(current)
+                    }
+                    try await remove(db: db, root: root, doc: old)
                 }
             }
             saveManifest(manifest)
@@ -211,7 +268,9 @@ final class CloudSync: ObservableObject {
 
     // MARK: - Files in pieces
 
-    private func upload(db: Firestore, root: String, name: String, data: Data, hash: String, modified: Date) async throws {
+    /// [file]: the save's file name here (the cloud file's "file": a device without the game names it so).
+    private func upload(db: Firestore, root: String, name: String, file: String = "", data: Data, hash: String,
+                        modified: Date) async throws {
         let id = Self.fileID(name)
         let text = data.base64EncodedString()
         var pieces: [Substring] = []
@@ -232,6 +291,7 @@ final class CloudSync: ObservableObject {
         let old = try await db.get("\(root)/files/\(id)")
         try await db.set("\(root)/files/\(id)", fields: [
             "name": .string(name),
+            "file": .string(file),
             "hash": .string(hash),
             "core": .string(Self.coreHash(data)),
             "modifiedAt": .timestamp(modified),
@@ -248,6 +308,43 @@ final class CloudSync: ObservableObject {
                 try? await db.delete("\(root)/chunks/\(id)_\(oldVersion)_\(index)")
             }
         }
+    }
+
+    /// A cloud file and its pieces (an old name-keyed copy, once moved to its game's key).
+    private func remove(db: Firestore, root: String, doc: FSDocument) async throws {
+        if let version = doc["version"].stringValue, case .int(let count) = doc["chunks"] {
+            for index in 0..<count { try? await db.delete("\(root)/chunks/\(doc.id)_\(version)_\(index)") }
+        }
+        try await db.delete("\(root)/files/\(doc.id)")
+    }
+
+    private static func updated(_ doc: FSDocument) -> Date { doc["updatedAt"].dateValue ?? .distantPast }
+
+    /// A save's file name -> its game's key ("rom:" + CRC32), for the ROMs here; each CRC kept by name, size and date
+    /// (UserDefaults), so a ROM is read once. The same ROM twice: the first file's save is the game's.
+    private static func romKeys() -> [String: String] {
+        let files = ((try? FileManager.default.contentsOfDirectory(at: Storage.roms, includingPropertiesForKeys: [.fileSizeKey, .contentModificationDateKey])) ?? [])
+            .filter { Game.romExtensions.contains($0.pathExtension.lowercased()) }
+            .sorted { $0.lastPathComponent < $1.lastPathComponent }
+        var cache = UserDefaults.standard.dictionary(forKey: "romCRCs") as? [String: String] ?? [:]
+        var keys: [String: String] = [:]
+        var taken = Set<String>()
+        for url in files {
+            let values = try? url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
+            let stamp = "\(url.lastPathComponent)|\(values?.fileSize ?? 0)|\(Int(values?.contentModificationDate?.timeIntervalSince1970 ?? 0))"
+            var crc = cache[stamp]
+            if crc == nil, let data = try? Data(contentsOf: url, options: .alwaysMapped) {
+                let value = data.withUnsafeBytes { pk_crc32($0.bindMemory(to: UInt8.self).baseAddress, $0.count) }
+                crc = String(format: "%08X", value)
+                cache[stamp] = crc
+            }
+            guard let crc else { continue }
+            let key = "rom:" + crc
+            guard taken.insert(key).inserted else { continue }
+            keys[url.deletingPathExtension().lastPathComponent + ".sav"] = key
+        }
+        UserDefaults.standard.set(cache, forKey: "romCRCs")
+        return keys
     }
 
     private func download(db: Firestore, root: String, doc: FSDocument) async throws -> Data {

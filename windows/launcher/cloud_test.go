@@ -184,3 +184,102 @@ func TestSyncBetweenDevices(t *testing.T) {
 		t.Fatalf("old cloud file: %s", r)
 	}
 }
+
+func (d device) rom(name string, data []byte) {
+	os.MkdirAll(filepath.Join(d.dir, "roms"), 0o755)
+	if err := os.WriteFile(filepath.Join(d.dir, "roms", name), data, 0o644); err != nil {
+		d.t.Fatal(err)
+	}
+}
+
+func (fake *fakeFirestore) names() []string {
+	var out []string
+	for k, f := range fake.docs {
+		if strings.Contains(k, "/files/") {
+			out = append(out, f["name"].(map[string]any)["stringValue"].(string))
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// Saves follow the game, not the file name: the same ROM called differently on two devices shares its save, and a
+// save uploaded by its file name (older versions) moves to its game's name.
+func TestSyncByGame(t *testing.T) {
+	fake := &fakeFirestore{docs: map[string]map[string]any{}}
+	server := httptest.NewServer(fake)
+	defer server.Close()
+	firestoreHost = server.URL
+	emerald := bytes.Repeat([]byte("EMERALD!"), 4096)
+	ruby := bytes.Repeat([]byte("RUBY...."), 4096)
+
+	a, b, c, d := newDevice(t), newDevice(t), newDevice(t), newDevice(t)
+	a.rom("Emerald.gba", emerald)
+	a.write("Emerald.sav", save(1), time.Now().Add(-time.Hour))
+	a.sync()
+	if n := fake.names(); len(n) != 1 || !strings.HasPrefix(n[0], "rom:") {
+		t.Fatalf("cloud names: %v", n)
+	}
+
+	// Another name for the same ROM: the save comes down under this device's name.
+	b.rom("Pokemon Emeraude (FR).gba", emerald)
+	if r := b.sync(); !strings.Contains(r, "1 reçue") || !bytes.Equal(b.read("Pokemon Emeraude (FR).sav"), save(1)) {
+		t.Fatalf("b: %s", r)
+	}
+	b.write("Pokemon Emeraude (FR).sav", save(2), time.Now().Add(-time.Minute))
+	b.sync()
+	if r := a.sync(); !strings.Contains(r, "1 reçue") || !bytes.Equal(a.read("Emerald.sav"), save(2)) {
+		t.Fatalf("a: %s", r)
+	}
+
+	// A device without the ROM keeps the save under the name it was last sent with, and stays quiet after.
+	if r := d.sync(); !strings.Contains(r, "1 reçue") || !bytes.Equal(d.read("Pokemon Emeraude (FR).sav"), save(2)) {
+		t.Fatalf("d: %s", r)
+	}
+	if r := d.sync(); r != "Tout est déjà à jour." {
+		t.Fatalf("d again: %s", r)
+	}
+
+	// An old upload by file name ("Ruby.sav"): moved to the game's name by a device with the ROM.
+	old := store{account: a.acc, root: "users/u1"}
+	old.upload("Ruby.sav", "", save(5), hashOf(save(5)), time.Now().Add(-2*time.Hour))
+	c.rom("Ruby.gba", ruby)
+	if r := c.sync(); !strings.Contains(r, "reçue") || !bytes.Equal(c.read("Ruby.sav"), save(5)) {
+		t.Fatalf("c: %s", r)
+	}
+	for _, n := range fake.names() {
+		if n == "Ruby.sav" {
+			t.Fatalf("the old copy stayed: %v", fake.names())
+		}
+	}
+	if n := fake.names(); len(n) != 2 {
+		t.Fatalf("cloud names: %v", n)
+	}
+	if r := c.sync(); r != "Tout est déjà à jour." {
+		t.Fatalf("c again: %s", r)
+	}
+	// A device that synced Ruby by its old name sees nothing change (same save, now under the game's name).
+	a.rom("Ruby.gba", ruby)
+	a.write("Ruby.sav", save(5), time.Now().Add(-2*time.Hour))
+	if r := a.sync(); r != "Tout est déjà à jour." {
+		t.Fatalf("a ruby: %s", r)
+	}
+	if fake.chunks() != 2 {
+		t.Fatalf("%d pieces", fake.chunks())
+	}
+
+	// An old upload equal to the save here: nothing to transfer, but it still moves to the game's name.
+	old.upload("Sapphire.sav", "", save(6), hashOf(save(6)), time.Now().Add(-time.Hour))
+	e := newDevice(t)
+	e.rom("Sapphire.gba", bytes.Repeat([]byte("SAPPHIRE"), 4096))
+	e.write("Sapphire.sav", save(6), time.Now().Add(-time.Hour))
+	e.sync()
+	for _, n := range fake.names() {
+		if n == "Sapphire.sav" {
+			t.Fatalf("the old copy stayed: %v", fake.names())
+		}
+	}
+	if n := fake.names(); len(n) != 3 {
+		t.Fatalf("cloud names: %v", n)
+	}
+}

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hash/crc32"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -155,7 +156,8 @@ func coreHash(data []byte) string {
 }
 
 // upload: [modified] is when the save was written on this device (conflicts go by it, not by the upload's time).
-func (s store) upload(name string, data []byte, hash string, modified time.Time) error {
+// [file] is the save's file name here (the cloud file's "file": a device without the game names it so).
+func (s store) upload(name, file string, data []byte, hash string, modified time.Time) error {
 	id := fileID(name)
 	text := base64.StdEncoding.EncodeToString(data)
 	var pieces []string
@@ -182,6 +184,7 @@ func (s store) upload(name string, data []byte, hash string, modified time.Time)
 	host, _ := os.Hostname()
 	err = s.set("files/"+id, map[string]any{
 		"name":       map[string]any{"stringValue": name},
+		"file":       map[string]any{"stringValue": file},
 		"hash":       map[string]any{"stringValue": hash},
 		"core":       map[string]any{"stringValue": coreHash(data)},
 		"modifiedAt": map[string]any{"timestampValue": modified.UTC().Format(time.RFC3339Nano)},
@@ -200,6 +203,14 @@ func (s store) upload(name string, data []byte, hash string, modified time.Time)
 		}
 	}
 	return nil
+}
+
+// remove deletes a cloud file and its pieces (an old name-keyed copy, once moved to its game's key).
+func (s store) remove(d doc) {
+	for i := 0; i < d.int("chunks"); i++ {
+		s.delete(fmt.Sprintf("chunks/%s_%s_%d", d.id, d.str("version"), i))
+	}
+	s.delete("files/" + d.id)
 }
 
 func (s store) download(d doc) ([]byte, error) {
@@ -226,6 +237,57 @@ func (s store) download(d doc) ([]byte, error) {
 }
 
 // ---- The sync
+
+// A save's cloud name is its game's: "rom:" + the ROM's CRC32, the same on every device that has that ROM whatever
+// its file is called (the iPhone's CloudSync.swift and Android's CapsuleCloud.kt do the same). A save without its ROM
+// here keeps its file name, unless a game's cloud file says it's that game's ("file").
+
+var romExts = map[string]bool{".gba": true, ".gb": true, ".gbc": true, ".nds": true}
+
+// romKeys: the save file name -> its game's key, for the ROMs in DATA/roms (each CRC32 kept in
+// DATA/capsule/crc.json by size and date, so a ROM is read once).
+func romKeys(dir string) map[string]string {
+	cachePath := filepath.Join(dir, "capsule", "crc.json")
+	cache := loadManifest(cachePath)
+	keys := map[string]string{}
+	taken := map[string]bool{}
+	entries, _ := os.ReadDir(filepath.Join(dir, "roms"))
+	sort.Slice(entries, func(i, j int) bool { return entries[i].Name() < entries[j].Name() })
+	changed := false
+	for _, e := range entries {
+		ext := strings.ToLower(filepath.Ext(e.Name()))
+		info, err := e.Info()
+		if e.IsDir() || !romExts[ext] || err != nil {
+			continue
+		}
+		stamp := fmt.Sprintf("%s|%d|%d", e.Name(), info.Size(), info.ModTime().Unix())
+		crc := cache[stamp]
+		if crc == "" {
+			data, err := os.ReadFile(filepath.Join(dir, "roms", e.Name()))
+			if err != nil {
+				continue
+			}
+			crc = fmt.Sprintf("%08X", crc32.ChecksumIEEE(data))
+			cache[stamp] = crc
+			changed = true
+		}
+		key := "rom:" + crc
+		if taken[key] { // the same ROM twice: the first file's save is the game's
+			continue
+		}
+		taken[key] = true
+		keys[strings.TrimSuffix(e.Name(), filepath.Ext(e.Name()))+".sav"] = key
+	}
+	if changed {
+		os.MkdirAll(filepath.Dir(cachePath), 0o755)
+		if data, err := json.Marshal(cache); err == nil {
+			os.WriteFile(cachePath, data, 0o644)
+		}
+	}
+	return keys
+}
+
+func newer(a, b doc) bool { return a.time("updatedAt").After(b.time("updatedAt")) }
 
 func modTime(dir, name string) time.Time {
 	if info, err := os.Stat(filepath.Join(dir, "saves", name)); err == nil {
@@ -290,15 +352,80 @@ func syncSaves(dir string, account *Account) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	cloud := map[string]doc{}
-	for _, d := range docs {
-		if name := d.str("name"); name != "" && name != bankName {
-			cloud[name] = d
-		}
-	}
 	manifestPath := filepath.Join(dir, "saves", ".cloud.json")
 	manifest := loadManifest(manifestPath)
-	local := localSaves(dir)
+	byFile := romKeys(dir) // a local save's file name -> its game's key
+
+	// The cloud's files by key; a game's file also by the save file name it was uploaded with ("file").
+	cloud := map[string]doc{}
+	gameOfFile := map[string]string{}
+	var legacy []doc
+	for _, d := range docs {
+		name := d.str("name")
+		switch {
+		case name == "" || name == bankName:
+		case strings.HasPrefix(name, "rom:"):
+			if prev, ok := cloud[name]; !ok || newer(d, prev) {
+				cloud[name] = d
+			}
+			if f := d.str("file"); f != "" {
+				gameOfFile[f] = name
+			}
+		default:
+			legacy = append(legacy, d)
+		}
+	}
+	// Local saves by key: their game's, else a game's that a cloud file names them by, else their file name.
+	local := map[string][]byte{}
+	fileOf := map[string]string{}
+	for file, data := range localSaves(dir) {
+		key := byFile[file]
+		if key == "" {
+			key = gameOfFile[file]
+		}
+		if key == "" {
+			key = file
+		}
+		local[key], fileOf[key] = data, file
+	}
+	// A save uploaded by its file name (before game keys, or from a device without the game): its game's file
+	// when it's a local game's save (the newer of the two if both exist; the old one goes once synced).
+	moved := map[string]doc{}
+	for _, d := range legacy {
+		name := d.str("name")
+		key := byFile[name]
+		if key == "" {
+			key = gameOfFile[name]
+		}
+		if key == "" {
+			cloud[name] = d
+			continue
+		}
+		if cur, ok := cloud[key]; !ok || newer(d, cur) {
+			cloud[key] = d
+		}
+		moved[key] = d
+		if fileOf[key] == "" {
+			fileOf[key] = name
+		}
+		if manifest[key] == "" && manifest[name] != "" { // the last sync's by its old name
+			manifest[key], manifest["core:"+key] = manifest[name], manifest["core:"+name]
+		}
+	}
+	for file, key := range byFile { // a game here with no save yet: its save's name here
+		if fileOf[key] == "" {
+			fileOf[key] = file
+		}
+	}
+	for key, d := range cloud {
+		if fileOf[key] == "" {
+			if f := d.str("file"); f != "" {
+				fileOf[key] = f
+			} else {
+				fileOf[key] = key
+			}
+		}
+	}
 
 	names := map[string]bool{}
 	for n := range local {
@@ -316,6 +443,7 @@ func syncSaves(dir string, account *Account) (string, error) {
 	sent, received, conflicts := 0, 0, 0
 	var firstErr error
 	for _, name := range sorted {
+		file := fileOf[name]
 		data, haveLocal := local[name]
 		d, haveCloud := cloud[name]
 		localHash, cloudHash := "", ""
@@ -333,65 +461,84 @@ func syncSaves(dir string, account *Account) (string, error) {
 		if haveCloud {
 			cloudCore = d.str("core")
 		}
+		var err error
 		if localHash == cloudHash || (localCore != "" && localCore == cloudCore) {
 			// The same save (maybe with another clock footer): nothing to send.
 			if haveLocal {
 				manifest[name], manifest["core:"+name] = localHash, localCore
 			}
-			continue
-		}
-		// Changed since the last sync: by the save's core when the last sync noted it, else by the whole file.
-		localChanged := localHash != "" && localHash != synced
-		if localChanged && syncedCore != "" {
-			localChanged = localCore != syncedCore
-		}
-		cloudChanged := cloudHash != "" && cloudHash != synced
-		if cloudChanged && syncedCore != "" && cloudCore != "" {
-			cloudChanged = cloudCore != syncedCore
-		}
-		var err error
-		switch {
-		case haveLocal && (cloudHash == "" || (localChanged && !cloudChanged)):
-			if err = s.upload(name, data, localHash, modTime(dir, name)); err == nil {
-				manifest[name], manifest["core:"+name] = localHash, localCore
-				sent++
-				fmt.Println("  ↑", strings.TrimSuffix(name, ".sav"))
+		} else {
+			// Changed since the last sync: by the save's core when the last sync noted it, else by the whole file.
+			localChanged := localHash != "" && localHash != synced
+			if localChanged && syncedCore != "" {
+				localChanged = localCore != syncedCore
 			}
-		case haveCloud && (!haveLocal || (cloudChanged && !localChanged)):
-			var theirs []byte
-			if theirs, err = s.download(d); err == nil {
-				if err = writeSave(dir, name, theirs, haveLocal); err == nil {
-					manifest[name], manifest["core:"+name] = cloudHash, coreHash(theirs)
-					received++
-					fmt.Println("  ↓", strings.TrimSuffix(name, ".sav"))
-				}
+			cloudChanged := cloudHash != "" && cloudHash != synced
+			if cloudChanged && syncedCore != "" && cloudCore != "" {
+				cloudChanged = cloudCore != syncedCore
 			}
-		case haveLocal && haveCloud:
-			// Changed on both sides: the save made last goes on (when each was written, not uploaded), the other is kept.
-			localDate := modTime(dir, name)
-			var theirs []byte
-			if theirs, err = s.download(d); err == nil {
-				cloudDate := d.time("modifiedAt")
-				if cloudDate.IsZero() {
-					cloudDate = d.time("updatedAt") // uploaded before modifiedAt existed
+			switch {
+			case haveLocal && (cloudHash == "" || (localChanged && !cloudChanged)):
+				if err = s.upload(name, file, data, localHash, modTime(dir, file)); err == nil {
+					manifest[name], manifest["core:"+name] = localHash, localCore
+					sent++
+					fmt.Println("  ↑", strings.TrimSuffix(file, ".sav"))
 				}
-				if !localDate.Before(cloudDate) {
-					if err = backup(dir, name, "cloud", theirs); err == nil {
-						if err = s.upload(name, data, localHash, modTime(dir, name)); err == nil {
-							manifest[name], manifest["core:"+name] = localHash, localCore
-						}
+			case haveCloud && (!haveLocal || (cloudChanged && !localChanged)):
+				var theirs []byte
+				if theirs, err = s.download(d); err == nil {
+					if err = writeSave(dir, file, theirs, haveLocal); err == nil {
+						manifest[name], manifest["core:"+name] = cloudHash, coreHash(theirs)
+						received++
+						fmt.Println("  ↓", strings.TrimSuffix(file, ".sav"))
 					}
-				} else if err = writeSave(dir, name, theirs, true); err == nil {
-					manifest[name], manifest["core:"+name] = cloudHash, coreHash(theirs)
 				}
-				if err == nil {
-					conflicts++
-					fmt.Println("  ⇅", strings.TrimSuffix(name, ".sav"), "(modifiée des deux côtés : la plus récente gardée, l'autre dans backups)")
+			case haveLocal && haveCloud:
+				// Changed on both sides: the save made last goes on (when each was written, not uploaded), the other is kept.
+				localDate := modTime(dir, file)
+				var theirs []byte
+				if theirs, err = s.download(d); err == nil {
+					cloudDate := d.time("modifiedAt")
+					if cloudDate.IsZero() {
+						cloudDate = d.time("updatedAt") // uploaded before modifiedAt existed
+					}
+					if !localDate.Before(cloudDate) {
+						if err = backup(dir, file, "cloud", theirs); err == nil {
+							if err = s.upload(name, file, data, localHash, modTime(dir, file)); err == nil {
+								manifest[name], manifest["core:"+name] = localHash, localCore
+							}
+						}
+					} else if err = writeSave(dir, file, theirs, true); err == nil {
+						manifest[name], manifest["core:"+name] = cloudHash, coreHash(theirs)
+					}
+					if err == nil {
+						conflicts++
+						fmt.Println("  ⇅", strings.TrimSuffix(file, ".sav"), "(modifiée des deux côtés : la plus récente gardée, l'autre dans backups)")
+					}
 				}
 			}
 		}
 		if err != nil && firstErr == nil {
-			firstErr = fmt.Errorf("%s : %w", name, err)
+			firstErr = fmt.Errorf("%s : %w", file, err)
+		}
+		// The old name-keyed copy, now under its game's key: the save as it stands goes up under the key (when
+		// the old copy was the cloud's only one), then the old copy goes.
+		if old, ok := moved[name]; ok && err == nil {
+			if cur := cloud[name]; cur.id == old.id {
+				if final, rerr := os.ReadFile(filepath.Join(dir, "saves", file)); rerr == nil && len(final) > 0 {
+					h := hashOf(final)
+					if err = s.upload(name, file, final, h, modTime(dir, file)); err == nil {
+						manifest[name], manifest["core:"+name] = h, coreHash(final)
+					}
+				} else {
+					err = fmt.Errorf("pas de sauvegarde à renommer")
+				}
+			}
+			if err == nil {
+				s.remove(old)
+			} else if firstErr == nil {
+				firstErr = fmt.Errorf("%s : %w", file, err)
+			}
 		}
 	}
 	if data, err := json.Marshal(manifest); err == nil {
