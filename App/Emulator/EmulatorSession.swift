@@ -395,8 +395,12 @@ final class EmulatorSession: ObservableObject {
                         self?.notice = "La sauvegarde n'a pas pu être écrite"
                     }
                 } else if Storage.modificationDate(of: game.saveURL) != before {
-                    // The game saved: keep it among its save points.
+                    // The game saved: keep it among its save points, and send it to the cloud.
                     SaveHistory.record(game)
+                    let file = game.saveURL.lastPathComponent
+                    DispatchQueue.main.async {
+                        NotificationCenter.default.post(name: CloudSync.saveWritten, object: file)
+                    }
                 }
             }
 

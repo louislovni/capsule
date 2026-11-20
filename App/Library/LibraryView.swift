@@ -149,6 +149,12 @@ struct LibraryView: View {
                 library.refresh()
                 await refreshPokedex()
             }
+            .onReceive(NotificationCenter.default.publisher(for: CloudSync.saveWritten)) { note in
+                // A save made in the game goes up a few seconds later (the game keeps running).
+                if let file = note.object as? String {
+                    Task { await cloud.push(file) }
+                }
+            }
             .onChange(of: scenePhase) { phase in
                 // Leaving the app from the games list: what changed goes up. (In a game, its
                 // own screen saves; the sync follows when it closes.)

@@ -283,3 +283,43 @@ func TestSyncByGame(t *testing.T) {
 		t.Fatalf("cloud names: %v", n)
 	}
 }
+
+// While a game runs: a save written goes up by itself (watchSaves), nothing comes down over it.
+func TestPushWhilePlaying(t *testing.T) {
+	fake := &fakeFirestore{docs: map[string]map[string]any{}}
+	server := httptest.NewServer(fake)
+	defer server.Close()
+	firestoreHost = server.URL
+	a, b := newDevice(t), newDevice(t)
+	a.write("Emerald.sav", save(1), time.Now().Add(-time.Hour))
+	a.sync()
+	b.sync()
+
+	// The cloud moves on (b) while a plays: a's push brings nothing down.
+	b.write("Emerald.sav", save(2), time.Now().Add(-time.Minute))
+	b.sync()
+	if err := pushSaves(a.dir, a.acc); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(a.read("Emerald.sav"), save(1)) {
+		t.Fatal("a push wrote over the save in use")
+	}
+
+	// A save made in the game goes up by itself.
+	c := newDevice(t)
+	c.write("Ruby.sav", save(3), time.Now().Add(-time.Hour))
+	c.sync()
+	done := make(chan struct{})
+	finished := make(chan struct{})
+	go func() { watchSaves(c.dir, c.acc, 20*time.Millisecond, 50*time.Millisecond, done); close(finished) }()
+	time.Sleep(60 * time.Millisecond)
+	c.write("Ruby.sav", save(4), time.Now())
+	time.Sleep(300 * time.Millisecond)
+	close(done)
+	<-finished
+	d := newDevice(t)
+	d.sync()
+	if !bytes.Equal(d.read("Ruby.sav"), save(4)) {
+		t.Fatal("the save made in the game didn't go up")
+	}
+}

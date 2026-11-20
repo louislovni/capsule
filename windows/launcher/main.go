@@ -56,10 +56,26 @@ func main() {
 	cmd.Dir = dir
 	cmd.Stdout = nil
 	cmd.Stderr = nil
-	fmt.Println("PokeDaisy est lancé. Ferme-le pour renvoyer tes sauvegardes.")
+	if account != nil {
+		fmt.Println("PokeDaisy est lancé. Chaque sauvegarde faite dans le jeu part dans le cloud quelques secondes après.")
+	} else {
+		fmt.Println("PokeDaisy est lancé.")
+	}
+	done := make(chan struct{})
+	watching := make(chan struct{})
+	if account != nil {
+		go func() {
+			watchSaves(dir, account, 10*time.Second, 5*time.Second, done)
+			close(watching)
+		}()
+	} else {
+		close(watching)
+	}
 	if err := cmd.Run(); err != nil {
 		fmt.Println("PokeDaisy s'est arrêté :", err)
 	}
+	close(done)
+	<-watching // a push under way ends before the last sync
 
 	if account != nil {
 		syncNow(dir, account, "Envoi des sauvegardes…")

@@ -347,6 +347,55 @@ func writeSave(dir, name string, data []byte, keepOld bool) error {
 }
 
 func syncSaves(dir string, account *Account) (string, error) {
+	return syncSavesWith(dir, account, false)
+}
+
+// pushSaves: while a game runs, the saves changed here go up, and nothing else happens (no download over a save
+// in use, no conflict settled: the sync after the game does that).
+func pushSaves(dir string, account *Account) error {
+	_, err := syncSavesWith(dir, account, true)
+	return err
+}
+
+// watchSaves: while [done] is open, every [every] the saves folder is looked at; a save written since and left
+// alone for [settle] (the game finished writing it) goes up with [pushSaves]. A failure (offline) waits for the next.
+func watchSaves(dir string, account *Account, every, settle time.Duration, done <-chan struct{}) {
+	stamp := func() map[string]time.Time {
+		m := map[string]time.Time{}
+		entries, _ := os.ReadDir(filepath.Join(dir, "saves"))
+		for _, e := range entries {
+			if info, err := e.Info(); err == nil && strings.EqualFold(filepath.Ext(e.Name()), ".sav") {
+				m[e.Name()] = info.ModTime()
+			}
+		}
+		return m
+	}
+	sent := stamp()
+	ticker := time.NewTicker(every)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-done:
+			return
+		case <-ticker.C:
+		}
+		now := stamp()
+		pending := false
+		for name, t := range now {
+			if !t.Equal(sent[name]) && time.Since(t) >= settle {
+				pending = true
+			}
+		}
+		if !pending {
+			continue
+		}
+		if err := pushSaves(dir, account); err == nil {
+			sent = now
+		}
+	}
+}
+
+func syncSavesWith(dir string, account *Account, pushOnly bool) (string, error) {
 	s := store{account: account, root: "users/" + account.UID}
 	docs, err := s.list("files")
 	if err != nil {
@@ -478,6 +527,8 @@ func syncSaves(dir string, account *Account) (string, error) {
 				cloudChanged = cloudCore != syncedCore
 			}
 			switch {
+			case pushOnly && !(haveLocal && (cloudHash == "" || (localChanged && !cloudChanged))):
+				// Only a save changed here alone goes up while playing.
 			case haveLocal && (cloudHash == "" || (localChanged && !cloudChanged)):
 				if err = s.upload(name, file, data, localHash, modTime(dir, file)); err == nil {
 					manifest[name], manifest["core:"+name] = localHash, localCore
@@ -523,7 +574,7 @@ func syncSaves(dir string, account *Account) (string, error) {
 		}
 		// The old name-keyed copy, now under its game's key: the save as it stands goes up under the key (when
 		// the old copy was the cloud's only one), then the old copy goes.
-		if old, ok := moved[name]; ok && err == nil {
+		if old, ok := moved[name]; ok && err == nil && !pushOnly {
 			if cur := cloud[name]; cur.id == old.id {
 				if final, rerr := os.ReadFile(filepath.Join(dir, "saves", file)); rerr == nil && len(final) > 0 {
 					h := hashOf(final)

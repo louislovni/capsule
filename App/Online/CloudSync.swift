@@ -78,7 +78,16 @@ final class CloudSync: ObservableObject {
     // MARK: - Sync
 
     /// Syncs now, unless off, signed out or already at it. `playing`: a game open, whose save is left alone.
-    func sync(skipping playing: String? = nil) async {
+    /// While a game runs: its save, just written in the game, goes up if it changed here alone (nothing comes down
+    /// over a save in use, no conflict is settled: the sync when the game closes does that).
+    /// Posted (object: the save's file name) when a game in play has written its save.
+    static let saveWritten = Notification.Name("CapsuleSaveWritten")
+
+    func push(_ file: String) async {
+        await sync(pushing: file)
+    }
+
+    func sync(skipping playing: String? = nil, pushing pushOnly: String? = nil) async {
         guard enabled, !syncing, let account = account, let bank = bank,
               let db = account.database, let uid = account.user?.uid else { return }
         syncing = true
@@ -98,7 +107,9 @@ final class CloudSync: ObservableObject {
             }
             var manifest = loadManifest()
 
-            try await syncBank(bank: bank, db: db, root: root, cloud: cloud[Self.bankName], manifest: &manifest, report: &report)
+            if pushOnly == nil {
+                try await syncBank(bank: bank, db: db, root: root, cloud: cloud[Self.bankName], manifest: &manifest, report: &report)
+            }
 
             // Saves go by their game: "rom:" + the ROM's CRC32, the same on every device that has that ROM whatever
             // its file is called (the PC launcher's cloud.go and Android's CapsuleCloud.kt do the same). A save
@@ -147,6 +158,7 @@ final class CloudSync: ObservableObject {
             for name in names.sorted() {
                 let file = fileOf[name] ?? name
                 if let playing = playing, file == playing + ".sav" { continue }
+                if let pushOnly = pushOnly, file != pushOnly { continue }
                 let url = Storage.saves.appendingPathComponent(file)
                 let localData = local[name]
                 let localHash = localData.map(Self.hash)
@@ -166,7 +178,8 @@ final class CloudSync: ObservableObject {
                 if localChanged, let syncedCore = syncedCore { localChanged = localCore != syncedCore }
                 var cloudChanged = cloudHash != nil && cloudHash != synced
                 if cloudChanged, let syncedCore = syncedCore, let cloudCore = cloudCore { cloudChanged = cloudCore != syncedCore }
-                if same {
+                let goesUp = localData != nil && (cloudHash == nil || (localChanged && !cloudChanged))
+                if same || (pushOnly != nil && !goesUp) {
                 } else if let data = localData, let hash = localHash, cloudHash == nil || (localChanged && !cloudChanged) {
                     try await upload(db: db, root: root, name: name, file: file, data: data, hash: hash, modified: Self.modified(url))
                     manifest[name] = hash
@@ -198,7 +211,7 @@ final class CloudSync: ObservableObject {
                 }
                 // The old name-keyed copy, now under its game's key: the save as it stands goes up under the key
                 // (when the old copy was the cloud's only one), then the old copy goes.
-                if let old = moved[name] {
+                if let old = moved[name], pushOnly == nil {
                     if games[name]?.id == old.id {
                         let current = try Data(contentsOf: url)
                         let hash = Self.hash(current)
