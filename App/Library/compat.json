@@ -160,7 +160,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon Altered Emerald",
@@ -173,7 +178,12 @@
    "companion": true,
    "pokedaisy": false,
    "bank": "likely",
-   "unverified": true
+   "unverified": true,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon Amethyst",
@@ -186,7 +196,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPRE",
+    "rev": 0,
+    "title": "Pokémon FireRed (USA) 1.0"
+   }
   },
   {
    "title": "Pokémon Amethyst",
@@ -199,7 +214,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPRE",
+    "rev": 0,
+    "title": "Pokémon FireRed (USA) 1.0"
+   }
   },
   {
    "title": "Pokémon Ash Gray",
@@ -212,7 +232,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "likely",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPRE",
+    "rev": 0,
+    "title": "Pokémon FireRed (USA) 1.0"
+   }
   },
   {
    "title": "Pokémon Ash Gray Fork Bug Fix",
@@ -225,7 +250,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "likely",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPRE",
+    "rev": 0,
+    "title": "Pokémon FireRed (USA) 1.0"
+   }
   },
   {
    "title": "Pokémon Celia's Stupid Romhack",
@@ -238,7 +268,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "likely",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPRE",
+    "rev": 0,
+    "title": "Pokémon FireRed (USA) 1.0"
+   }
   },
   {
    "title": "Pokémon Delta Emerald",
@@ -251,7 +286,12 @@
    "companion": true,
    "pokedaisy": false,
    "bank": "likely",
-   "unverified": true
+   "unverified": true,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon Dreamstone Mysteries",
@@ -264,7 +304,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon Elite Redux",
@@ -276,7 +321,12 @@
    ],
    "companion": false,
    "pokedaisy": true,
-   "bank": "no"
+   "bank": "no",
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon Elite Redux",
@@ -288,7 +338,12 @@
    ],
    "companion": false,
    "pokedaisy": true,
-   "bank": "no"
+   "bank": "no",
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon Emerald Imperium",
@@ -301,7 +356,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon Emerald Kaizo",
@@ -314,7 +374,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "likely",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon Emerald Legacy",
@@ -327,7 +392,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "likely",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon Emerald Rogue EX",
@@ -340,7 +410,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon Emerald Seaglass",
@@ -353,7 +428,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon Epsilon Emerald",
@@ -365,7 +445,12 @@
    ],
    "companion": false,
    "pokedaisy": true,
-   "bank": "no"
+   "bank": "no",
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon FireRed Rocket Edition",
@@ -378,7 +463,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "likely",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPRE",
+    "rev": 0,
+    "title": "Pokémon FireRed (USA) 1.0"
+   }
   },
   {
    "title": "Pokémon GS Chronicles",
@@ -391,7 +481,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPRE",
+    "rev": 0,
+    "title": "Pokémon FireRed (USA) 1.0"
+   }
   },
   {
    "title": "Pokémon Gaia",
@@ -404,7 +499,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPRE",
+    "rev": 0,
+    "title": "Pokémon FireRed (USA) 1.0"
+   }
   },
   {
    "title": "Pokémon Ghost Grey",
@@ -419,7 +519,12 @@
    "companion": true,
    "pokedaisy": false,
    "bank": "likely",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPRE",
+    "rev": 0,
+    "title": "Pokémon FireRed (USA) 1.0"
+   }
   },
   {
    "title": "Pokémon Glazed",
@@ -432,7 +537,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon Heart and Soul",
@@ -445,7 +555,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon Lazarus",
@@ -458,7 +573,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon Let's Go Eevee",
@@ -471,7 +591,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPRE",
+    "rev": 0,
+    "title": "Pokémon FireRed (USA) 1.0"
+   }
   },
   {
    "title": "Pokémon Let's Go Eevee (Translation Only)",
@@ -483,7 +608,12 @@
    ],
    "companion": false,
    "pokedaisy": true,
-   "bank": "no"
+   "bank": "no",
+   "base": {
+    "code": "BPRE",
+    "rev": 0,
+    "title": "Pokémon FireRed (USA) 1.0"
+   }
   },
   {
    "title": "Pokémon Let's Go Pikachu",
@@ -496,7 +626,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPRE",
+    "rev": 0,
+    "title": "Pokémon FireRed (USA) 1.0"
+   }
   },
   {
    "title": "Pokémon Let's Go Pikachu (Translation Only)",
@@ -508,7 +643,12 @@
    ],
    "companion": false,
    "pokedaisy": true,
-   "bank": "no"
+   "bank": "no",
+   "base": {
+    "code": "BPRE",
+    "rev": 0,
+    "title": "Pokémon FireRed (USA) 1.0"
+   }
   },
   {
    "title": "Pokémon Modern Emerald",
@@ -520,7 +660,12 @@
    ],
    "companion": false,
    "pokedaisy": true,
-   "bank": "no"
+   "bank": "no",
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon Monomyth",
@@ -533,7 +678,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon Monomyth",
@@ -546,7 +696,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon Monomyth",
@@ -559,7 +714,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon Odyssey",
@@ -572,7 +732,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPRE",
+    "rev": 0,
+    "title": "Pokémon FireRed (USA) 1.0"
+   }
   },
   {
    "title": "Pokémon Orange Islands",
@@ -585,7 +750,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "likely",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPRE",
+    "rev": 0,
+    "title": "Pokémon FireRed (USA) 1.0"
+   }
   },
   {
    "title": "Pokémon Orange Islands",
@@ -598,7 +768,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "likely",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPRE",
+    "rev": 0,
+    "title": "Pokémon FireRed (USA) 1.0"
+   }
   },
   {
    "title": "Pokémon Quetzal",
@@ -611,7 +786,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon Quetzal",
@@ -624,7 +804,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon Quetzal",
@@ -637,7 +822,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon R.O.W.E.",
@@ -650,7 +840,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon Radical Red",
@@ -663,7 +858,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPRE",
+    "rev": 0,
+    "title": "Pokémon FireRed (USA) 1.0"
+   }
   },
   {
    "title": "Pokémon Recharged Emerald",
@@ -676,7 +876,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon Recharged Emerald",
@@ -689,7 +894,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon Recharged Emerald Rebalanced",
@@ -702,7 +912,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon Recharged Yellow",
@@ -715,7 +930,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPRE",
+    "rev": 0,
+    "title": "Pokémon FireRed (USA) 1.0"
+   }
   },
   {
    "title": "Pokémon Recharged Yellow",
@@ -728,7 +948,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPRE",
+    "rev": 0,
+    "title": "Pokémon FireRed (USA) 1.0"
+   }
   },
   {
    "title": "Pokémon Recharged Yellow",
@@ -741,7 +966,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPRE",
+    "rev": 0,
+    "title": "Pokémon FireRed (USA) 1.0"
+   }
   },
   {
    "title": "Pokémon Recharged Yellow",
@@ -754,7 +984,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPRE",
+    "rev": 0,
+    "title": "Pokémon FireRed (USA) 1.0"
+   }
   },
   {
    "title": "Pokémon Royal Sapphire",
@@ -767,7 +1002,12 @@
    "companion": true,
    "pokedaisy": false,
    "bank": "likely",
-   "unverified": true
+   "unverified": true,
+   "base": {
+    "code": "AXPE",
+    "rev": null,
+    "title": "Pokémon Sapphire (USA)"
+   }
   },
   {
    "title": "Pokémon SoulGold",
@@ -780,7 +1020,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon SoulGold",
@@ -793,7 +1038,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon SoulGold",
@@ -806,7 +1056,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon SoulGold",
@@ -819,7 +1074,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon SoulGold",
@@ -832,7 +1092,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon SoulGold",
@@ -845,7 +1110,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon Sword and Shield Ultimate Plus",
@@ -858,7 +1128,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPRE",
+    "rev": 0,
+    "title": "Pokémon FireRed (USA) 1.0"
+   }
   },
   {
    "title": "Pokémon Sword and Shield Ultimate Plus",
@@ -871,7 +1146,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPRE",
+    "rev": 0,
+    "title": "Pokémon FireRed (USA) 1.0"
+   }
   },
   {
    "title": "Pokémon Sword and Shield Ultimate Plus",
@@ -884,7 +1164,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPRE",
+    "rev": 0,
+    "title": "Pokémon FireRed (USA) 1.0"
+   }
   },
   {
    "title": "Pokémon Sword and Shield Ultimate Plus",
@@ -897,7 +1182,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPRE",
+    "rev": 0,
+    "title": "Pokémon FireRed (USA) 1.0"
+   }
   },
   {
    "title": "Pokémon Team Rocket Edition",
@@ -910,7 +1200,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "likely",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon Too Many Types 2",
@@ -923,7 +1218,12 @@
    "companion": true,
    "pokedaisy": false,
    "bank": "no",
-   "unverified": true
+   "unverified": true,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon Too Many Types 2",
@@ -936,7 +1236,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon Ultra Violet",
@@ -949,7 +1254,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "likely",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPRE",
+    "rev": 0,
+    "title": "Pokémon FireRed (USA) 1.0"
+   }
   },
   {
    "title": "Pokémon Unbound",
@@ -962,7 +1272,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPRE",
+    "rev": 0,
+    "title": "Pokémon FireRed (USA) 1.0"
+   }
   },
   {
    "title": "Pokémon Unbound",
@@ -975,7 +1290,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPRE",
+    "rev": 0,
+    "title": "Pokémon FireRed (USA) 1.0"
+   }
   },
   {
    "title": "Pokémon Wishes of Tomorrow",
@@ -988,7 +1308,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Super Mariomon",
@@ -1001,7 +1326,12 @@
    "companion": true,
    "pokedaisy": false,
    "bank": "no",
-   "unverified": true
+   "unverified": true,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Super Mariomon",
@@ -1014,7 +1344,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Super Mariomon",
@@ -1027,7 +1362,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Super Mariomon",
@@ -1040,7 +1380,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Super Mariomon",
@@ -1053,7 +1398,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Super Mariomon",
@@ -1066,7 +1416,12 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "code": "BPEE",
+    "rev": 0,
+    "title": "Pokémon Emerald (USA)"
+   }
   },
   {
    "title": "Pokémon Blue",
@@ -1184,7 +1539,11 @@
    ],
    "companion": false,
    "pokedaisy": true,
-   "bank": "no"
+   "bank": "no",
+   "base": {
+    "official": "Pokémon Red",
+    "title": "Pokémon Red (USA, Europe)"
+   }
   },
   {
    "title": "Pokémon Brown",
@@ -1196,7 +1555,11 @@
    ],
    "companion": false,
    "pokedaisy": true,
-   "bank": "no"
+   "bank": "no",
+   "base": {
+    "official": "Pokémon Red",
+    "title": "Pokémon Red (USA, Europe)"
+   }
   },
   {
    "title": "Pokémon Crystal Clear",
@@ -1212,7 +1575,11 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "official": "Pokémon Crystal",
+    "title": "Pokémon Crystal (USA)"
+   }
   },
   {
    "title": "Pokémon Crystal Legacy",
@@ -1225,7 +1592,11 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": true
+   "unverified": true,
+   "base": {
+    "official": "Pokémon Crystal",
+    "title": "Pokémon Crystal (USA)"
+   }
   },
   {
    "title": "Pokémon Polished Crystal",
@@ -1278,7 +1649,11 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "official": "Pokémon Crystal",
+    "title": "Pokémon Crystal (USA)"
+   }
   },
   {
    "title": "Pokémon PureBlue",
@@ -1291,7 +1666,11 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "official": "Pokémon Blue",
+    "title": "Pokémon Blue (USA, Europe)"
+   }
   },
   {
    "title": "Pokémon PureBlue 2.7.7",
@@ -1304,7 +1683,11 @@
    "companion": true,
    "pokedaisy": false,
    "bank": "no",
-   "unverified": true
+   "unverified": true,
+   "base": {
+    "official": "Pokémon Blue",
+    "title": "Pokémon Blue (USA, Europe)"
+   }
   },
   {
    "title": "Pokémon PureGreen 2.7.7",
@@ -1330,7 +1713,11 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "official": "Pokémon Red",
+    "title": "Pokémon Red (USA, Europe)"
+   }
   },
   {
    "title": "Pokémon PureRed 2.7.7",
@@ -1343,7 +1730,11 @@
    "companion": true,
    "pokedaisy": false,
    "bank": "no",
-   "unverified": true
+   "unverified": true,
+   "base": {
+    "official": "Pokémon Red",
+    "title": "Pokémon Red (USA, Europe)"
+   }
   },
   {
    "title": "Pokémon Yellow Legacy",
@@ -1356,7 +1747,11 @@
    "companion": true,
    "pokedaisy": true,
    "bank": "no",
-   "unverified": false
+   "unverified": false,
+   "base": {
+    "official": "Pokémon Yellow",
+    "title": "Pokémon Yellow (USA, Europe)"
+   }
   },
   {
    "title": "Pokémon Yume Blue",
@@ -1575,7 +1970,12 @@
    "sha1": [],
    "companion": false,
    "pokedaisy": true,
-   "bank": "likely"
+   "bank": "likely",
+   "base": {
+    "code": "IREO",
+    "rev": null,
+    "title": "Pokémon Black 2 (USA)"
+   }
   },
   {
    "title": "Pokémon Chaos Purple",
@@ -1588,7 +1988,12 @@
    "companion": false,
    "pokedaisy": false,
    "bank": "yes",
-   "note": "Banque et Pokédex vérifiés sur une sauvegarde ; Pokémon après Arceus réservés aux jeux du même moteur"
+   "note": "Banque et Pokédex vérifiés sur une sauvegarde ; Pokémon après Arceus réservés aux jeux du même moteur",
+   "base": {
+    "code": "IPKE",
+    "rev": null,
+    "title": "Pokémon HeartGold (USA)"
+   }
   },
   {
    "title": "Pokémon Heartfelt Gold",
@@ -1598,7 +2003,12 @@
    "sha1": [],
    "companion": false,
    "pokedaisy": true,
-   "bank": "likely"
+   "bank": "likely",
+   "base": {
+    "code": "IPKE",
+    "rev": null,
+    "title": "Pokémon HeartGold (USA)"
+   }
   },
   {
    "title": "Pokémon Origin HeartGold",
@@ -1608,7 +2018,12 @@
    "sha1": [],
    "companion": false,
    "pokedaisy": true,
-   "bank": "no"
+   "bank": "no",
+   "base": {
+    "code": "IPKJ",
+    "rev": 0,
+    "title": "Pokémon HeartGold (Japon)"
+   }
   },
   {
    "title": "Pokémon Renegade Platinum",
@@ -1618,7 +2033,12 @@
    "sha1": [],
    "companion": false,
    "pokedaisy": true,
-   "bank": "likely"
+   "bank": "likely",
+   "base": {
+    "code": "CPUE",
+    "rev": 1,
+    "title": "Pokémon Platinum (USA) rev 1"
+   }
   },
   {
    "title": "Pokémon Volt White 2 Redux",
@@ -1628,7 +2048,12 @@
    "sha1": [],
    "companion": false,
    "pokedaisy": true,
-   "bank": "likely"
+   "bank": "likely",
+   "base": {
+    "code": "IRDO",
+    "rev": null,
+    "title": "Pokémon White 2 (USA)"
+   }
   }
  ]
 }

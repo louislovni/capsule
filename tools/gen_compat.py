@@ -28,6 +28,51 @@ IN_PLACE = {"PD_CONFIG_EMERALD", "PD_CONFIG_SAPPHIRE", "PD_CONFIG_EMERALD_LEGACY
             "PD_CONFIG_CELIA", "PD_CONFIG_ORANGE_ISLANDS", "PD_CONFIG_ULTRA_VIOLET", "PD_CONFIG_ROCKET_EDITION",
             "PD_CONFIG_ASH_GRAY", "PD_CONFIG_GHOST_GREY", "PD_CONFIG_TEAM_ROCKET"}
 
+# The ROM a hack's patch goes on (what the player needs; a hack whose author says otherwise is the exception):
+# FireRed-engine hacks on FireRed (USA) 1.0 (CFRU and the older binary hacks), Emerald-engine ones on Emerald (USA),
+# the DS hacks on their US cart (Origin HeartGold on the Japanese one).
+BASES = {
+    "BPRE": dict(code="BPRE", rev=0, title="Pokémon FireRed (USA) 1.0"),
+    "BPEE": dict(code="BPEE", rev=0, title="Pokémon Emerald (USA)"),
+    "AXPE": dict(code="AXPE", rev=None, title="Pokémon Sapphire (USA)"),
+    "AXVE": dict(code="AXVE", rev=None, title="Pokémon Ruby (USA)"),
+    "CPUE": dict(code="CPUE", rev=1, title="Pokémon Platinum (USA) rev 1"),
+    "IPKE": dict(code="IPKE", rev=None, title="Pokémon HeartGold (USA)"),
+    "IPKJ": dict(code="IPKJ", rev=0, title="Pokémon HeartGold (Japon)"),
+    "IREO": dict(code="IREO", rev=None, title="Pokémon Black 2 (USA)"),
+    "IRDO": dict(code="IRDO", rev=None, title="Pokémon White 2 (USA)"),
+    # Game Boy: no cart code; [official] is the list's official entry the player's ROM is recognised as.
+    "RED": dict(official="Pokémon Red", title="Pokémon Red (USA, Europe)"),
+    "BLUE": dict(official="Pokémon Blue", title="Pokémon Blue (USA, Europe)"),
+    "YELLOW": dict(official="Pokémon Yellow", title="Pokémon Yellow (USA, Europe)"),
+    "CRYSTAL": dict(official="Pokémon Crystal", title="Pokémon Crystal (USA)"),
+}
+GB_BASES = {"Pokémon Brown": "RED", "Pokémon PureRed": "RED", "Pokémon PureRed 2.7.7": "RED", "Pokémon PureBlue": "BLUE",
+            "Pokémon PureBlue 2.7.7": "BLUE", "Pokémon Yellow Legacy": "YELLOW", "Pokémon Crystal Clear": "CRYSTAL",
+            "Pokémon Crystal Legacy": "CRYSTAL", "Pokémon Prism": "CRYSTAL"}
+DS_BASES = {"Pokémon Origin HeartGold": "IPKJ", "Pokémon Renegade Platinum": "CPUE", "Pokémon Heartfelt Gold": "IPKE",
+            "Pokémon Blaze Black 2 Redux": "IREO", "Pokémon Volt White 2 Redux": "IRDO", "Pokémon Chaos Purple": "IPKE"}
+
+def base_for(cfg, kind, title):
+    if "SAPPHIRE" in cfg:
+        return BASES["AXPE"]
+    if "RUBY" in cfg:
+        return BASES["AXVE"]
+    if kind == "PD_GAME_FIRERED":
+        return BASES["BPRE"]
+    if kind == "PD_GAME_EMERALD":
+        return BASES["BPEE"]
+    return title_base(title)
+
+def title_base(title):
+    if title in GB_BASES:
+        return BASES[GB_BASES[title]]
+    if "Emerald" in title or "Émeraude" in title or "Elite Redux" in title:
+        return BASES["BPEE"]
+    if "FireRed" in title or "Rouge Feu" in title or "Let's Go" in title:
+        return BASES["BPRE"]
+    return None
+
 def clean(title):
     unverified = "(unverified)" in title
     return title.replace(" (unverified)", "").strip(), unverified
@@ -48,12 +93,13 @@ for code, title in site["baseCodes"].items():
 
 # Game Boy Advance hacks (by SHA-1).
 hacks = {}
-for sha, cfg, _kind, title in re.findall(r'\{"([0-9a-f]{40})", &(PD_CONFIG_\w+), (PD_GAME_\w+), "([^"]+)"', src):
+for sha, cfg, kind, title in re.findall(r'\{"([0-9a-f]{40})", &(PD_CONFIG_\w+), (PD_GAME_\w+), "([^"]+)"', src):
     name, unverified = clean(title)
     key = (name, versions.get(sha, ""))
     entry = hacks.setdefault(key, dict(title=name, console="GBA", kind="hack", version=versions.get(sha, ""),
                                        sha1=[], companion=True, pokedaisy=False,
-                                       bank="likely" if cfg in IN_PLACE else "no", unverified=unverified))
+                                       bank="likely" if cfg in IN_PLACE else "no", unverified=unverified,
+                                       base=base_for(cfg, kind, name)))
     entry["sha1"].append(sha)
     entry["pokedaisy"] = entry["pokedaisy"] or sha in pd_hacks
 games += hacks.values()
@@ -65,7 +111,8 @@ for h in site["hacks"]:
         continue
     key = (h["title"], h.get("version", ""))
     entry = android_only.setdefault(key, dict(title=h["title"], console="GBA", kind="hack", version=h.get("version", ""),
-                                              sha1=[], companion=False, pokedaisy=True, bank="no"))
+                                              sha1=[], companion=False, pokedaisy=True, bank="no",
+                                              base=title_base(h["title"])))
     entry["sha1"].append(h["sha1"])
 games += android_only.values()
 
@@ -78,7 +125,7 @@ for sha, _cfg, title in re.findall(r'\{"([0-9a-f]{40})", &(PD_GB_CONFIG_\w+), "(
     official = name in OFFICIAL_GB or any(word in name for word in ("Gelbe", "Jaune", "Gialla", "Amarilla"))
     entry = gb.setdefault(name, dict(title=name, console="GB", kind="official" if official else "hack", version="",
                                       sha1=[], companion=True, pokedaisy=False, bank="yes" if official else "no",
-                                      unverified=unverified))
+                                      unverified=unverified, base=None if official else title_base(name)))
     entry["sha1"].append(sha)
     entry["pokedaisy"] = entry["pokedaisy"] or sha in pd_gb
 games += gb.values()
@@ -92,7 +139,8 @@ for g in site["gameBoy"]:
                                              "Versione Rossa", "Versione Blu", "Versione Oro", "Versione Argento",
                                              "Edición Roja", "Edición Azul", "Edición Oro", "Edición Plata"))
     add(title=g["title"], console="GB", kind="official" if official else "hack", version="", sha1=[g["sha1"]],
-        companion=False, pokedaisy=True, bank="likely" if official else "no")
+        companion=False, pokedaisy=True, bank="likely" if official else "no",
+        base=None if official else title_base(g["title"]))
 
 # DS: the companion on iPhone knows the US carts (by SHA-1) and the French ones (by header); the others play without
 # it. The bank reads every language's save.
@@ -110,10 +158,11 @@ for h in site["dsHacks"]:
     bank = {"Pokémon Renegade Platinum": "likely", "Pokémon Blaze Black 2 Redux": "likely",
             "Pokémon Volt White 2 Redux": "likely", "Pokémon Heartfelt Gold": "likely"}.get(h["title"], "no")
     add(title=h["title"], console="DS", kind="hack", version=h.get("version", ""), sha1=[], companion=False,
-        pokedaisy=True, bank=bank)
+        pokedaisy=True, bank=bank, base=BASES.get(DS_BASES.get(h["title"], "")))
 add(title="Pokémon Chaos Purple", console="DS", kind="hack", version="démo (Silph Co. fix)",
     sha1=["330d9eb56e069df13c09bbcb3c748c269c94a88e"], companion=False, pokedaisy=False, bank="yes",
-    note="Banque et Pokédex vérifiés sur une sauvegarde ; Pokémon après Arceus réservés aux jeux du même moteur")
+    note="Banque et Pokédex vérifiés sur une sauvegarde ; Pokémon après Arceus réservés aux jeux du même moteur",
+    base=BASES["IPKE"])
 
 # French and English versions only (the player's call): a cart by its code's region letter (E USA, P Europe, O
 # international, F France), a hack or a Game Boy cart by its title / version's language.
@@ -129,6 +178,9 @@ def french_or_english(g):
         return False
     return True
 games = [g for g in games if french_or_english(g)]
+for g in games:
+    if g.get("base") is None:
+        g.pop("base", None)
 
 order = {"GBA": 0, "GB": 1, "DS": 2}
 games.sort(key=lambda g: (order[g["console"]], g["kind"] != "official", g["title"], g.get("version", "")))

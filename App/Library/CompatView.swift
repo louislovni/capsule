@@ -18,6 +18,17 @@ struct CompatGame: Decodable, Identifiable {
     let bank: String
     let unverified: Bool?
     let note: String?
+    /// A hack: the ROM its patch goes on.
+    let base: Base?
+
+    struct Base: Decodable {
+        /// GBA / DS: the cart's code and, when it matters, its revision.
+        let code: String?
+        let rev: Int?
+        /// Game Boy: the list's official entry the ROM must be recognised as.
+        let official: String?
+        let title: String
+    }
 
     var id: String { "\(console)|\(title)|\(version ?? "")|\(code ?? "")|\(sha1.first ?? "")" }
     var isHack: Bool { kind == "hack" }
@@ -86,6 +97,23 @@ struct CompatView: View {
     @State private var filter = Filter.all
     @State private var console = "Toutes"
     @State private var mine: [Game.ID: (CompatGame?, String?)] = [:]
+    /// The official carts in the library (code and revision, or the entry's title for Game Boy): the hacks' bases.
+    @State private var owned: [Owned] = []
+
+    struct Owned { let code: String?; let revision: Int?; let title: String }
+
+    /// Where a hack's base stands: in the library, there in another revision, or not there.
+    enum BaseState { case have, otherRevision(Int), missing }
+
+    static func state(of base: CompatGame.Base, in owned: [Owned]) -> BaseState {
+        if let code = base.code {
+            let same = owned.filter { $0.code == code }
+            if same.contains(where: { base.rev == nil || $0.revision == base.rev }) { return .have }
+            if let other = same.first?.revision { return .otherRevision(other) }
+            return .missing
+        }
+        return owned.contains { $0.title == base.official } ? .have : .missing
+    }
 
     enum Filter: String, CaseIterable, Identifiable {
         case all = "Tous", official = "Officiels", hacks = "Hacks", pokedaisy = "PokeDaisy"
@@ -118,7 +146,7 @@ struct CompatView: View {
                 if !rows.isEmpty {
                     Section(Self.consoleName(group) + " · \(rows.count)") {
                         ForEach(rows) { game in
-                            CompatRow(game: game)
+                            CompatRow(game: game, owned: owned)
                         }
                     }
                 }
@@ -182,7 +210,7 @@ struct CompatView: View {
                 if let match = result.0 {
                     Text("Reconnu : \(match.title)\(match.version.map { $0.isEmpty ? "" : " (\($0))" } ?? "")")
                         .font(.subheadline).foregroundStyle(.secondary)
-                    CompatRow(game: match, compact: true)
+                    CompatRow(game: match, compact: true, owned: owned)
                 } else {
                     Text("Version inconnue : il se joue, sans compagnon ; la banque ne l'ouvre que si sa sauvegarde a un format connu.")
                         .font(.subheadline).foregroundStyle(.secondary)
@@ -203,7 +231,12 @@ struct CompatView: View {
     private func identifyMine() async {
         for game in games where mine[game.id] == nil {
             let sha = await RomIdentity.sha1(of: game.romURL)
-            mine[game.id] = (RomIdentity.match(game, sha1: sha), sha)
+            let match = RomIdentity.match(game, sha1: sha)
+            mine[game.id] = (match, sha)
+            if let match, match.kind == "official" {
+                let header = RomIdentity.header(of: game)
+                owned.append(Owned(code: match.code, revision: header?.revision, title: match.title))
+            }
         }
     }
 }
@@ -225,6 +258,7 @@ struct CompatBadge: View {
 private struct CompatRow: View {
     let game: CompatGame
     var compact = false
+    var owned: [CompatView.Owned] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -245,6 +279,9 @@ private struct CompatRow: View {
                 CompatBadge(state: game.pokedaisy ? .yes : .no, text: "PokeDaisy")
                 CompatBadge(state: game.bank == "yes" ? .yes : game.bank == "likely" ? .likely : .no, text: "Banque")
             }
+            if let base = game.base {
+                baseLine(base)
+            }
             if let note = game.note {
                 Text(note).font(.caption).foregroundStyle(.secondary)
             } else if game.unverified == true {
@@ -252,5 +289,26 @@ private struct CompatRow: View {
             }
         }
         .padding(.vertical, compact ? 0 : 2)
+    }
+
+    /// "ROM d'origine : …" and whether the library has it (the patcher's "Patcher un hack" needs it).
+    @ViewBuilder private func baseLine(_ base: CompatGame.Base) -> some View {
+        let state = CompatView.state(of: base, in: owned)
+        VStack(alignment: .leading, spacing: 2) {
+            Label("ROM d'origine : \(base.title)", systemImage: "shippingbox")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            switch state {
+            case .have:
+                Label("Dans ta bibliothèque : prête pour « Patcher un hack »", systemImage: "checkmark.circle.fill")
+                    .font(.caption.weight(.semibold)).foregroundStyle(.green)
+            case .otherRevision(let revision):
+                Label("Tu as une autre révision (\(revision)) : ce hack demande celle indiquée", systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption.weight(.semibold)).foregroundStyle(.orange)
+            case .missing:
+                Label("Pas dans ta bibliothèque", systemImage: "circle.dashed")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
     }
 }
