@@ -147,6 +147,9 @@ jobs:
         run: |
           APP="build/xcode/Build/Products/Release-iphoneos/CapsuleGBA.app"
           test -d "$APP"
+          # The picture's shaders (App/Emulator/ScreenShaders.metal) must be in the app: without them it falls back to plain frames.
+          grep -E "CompileMetalFile|MetalLink" build/xcodebuild.log | head -5 || true
+          test -f "$APP/default.metallib" || { echo "default.metallib missing from the app"; exit 1; }
           # PokeDaisy's cores: frameworks the app opens by path.
           mkdir -p "$APP/Frameworks"
           cp -R build/frameworks/*.framework "$APP/Frameworks/"
