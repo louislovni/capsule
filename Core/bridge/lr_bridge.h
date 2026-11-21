@@ -113,6 +113,11 @@ void lr_set_language(LRCore* core, const char* code);
 #define LR_SCENE_VALUES 8
 int lr_scene(const LRCore* core, int32_t* out, int count);
 
+/* The night's lights on the last frame (PokeDaisy's GBA core on the field): each door and window glass as x, y, w, h in
+ * the frame's own 0..1 and a kind (0 door, 1 window), 5 floats a light. Returns how many (at most max). */
+#define LR_LIGHTS_MAX 32
+int lr_lights(const LRCore* core, float* out, int max);
+
 bool lr_dock_available(const LRCore* core);
 void lr_dock(LRCore* core, int width, int height);
 void lr_dock_open(LRCore* core, bool open);

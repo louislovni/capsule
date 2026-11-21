@@ -84,6 +84,7 @@ typedef struct {
 	void (*pd_dock_touch)(int, int, int);
 	void (*pd_language)(const char*); /* PokeDaisy's companion language, NULL elsewhere */
 	int (*pd_scene)(int*, int);       /* the weather / light the frontend's effects follow, NULL elsewhere */
+	int (*pd_lights)(float*, int);    /* the night's lights (doors, windows) on the field, NULL elsewhere */
 } RetroAPI;
 
 static RetroAPI api;
@@ -175,6 +176,7 @@ static bool load_api(const char* corePath) {
 #undef LOOKUP
 	*(void**) &loaded.pd_language = dlsym(h, "retro_pd_language");
 	*(void**) &loaded.pd_scene = dlsym(h, "retro_pd_scene");
+	*(void**) &loaded.pd_lights = dlsym(h, "retro_pd_lights");
 	*(void**) &loaded.pd_dock = dlsym(h, "retro_pd_dock");
 	*(void**) &loaded.pd_dock_open = dlsym(h, "retro_pd_dock_open");
 	*(void**) &loaded.pd_dock_is_open = dlsym(h, "retro_pd_dock_is_open");
@@ -796,4 +798,11 @@ int lr_scene(const LRCore* core, int32_t* out, int count) {
 		out[i] = values[i];
 	}
 	return n;
+}
+
+int lr_lights(const LRCore* core, float* out, int max) {
+	if (!core || !api.pd_lights || max <= 0) {
+		return 0;
+	}
+	return api.pd_lights(out, max < LR_LIGHTS_MAX ? max : LR_LIGHTS_MAX);
 }

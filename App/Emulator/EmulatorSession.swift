@@ -633,7 +633,12 @@ final class EmulatorSession: ObservableObject {
         }
         var values = [Int32](repeating: 0, count: Int(LR_SCENE_VALUES))
         let count = lr_scene(core, &values, Int32(values.count))
-        let scene = count >= Int32(LR_SCENE_VALUES) ? SceneInfo(values: values) : SceneInfo()
+        var scene = count >= Int32(LR_SCENE_VALUES) ? SceneInfo(values: values) : SceneInfo()
+        if scene.field {
+            var lights = [Float](repeating: 0, count: 5 * Int(LR_LIGHTS_MAX))
+            let found = Int(lr_lights(core, &lights, Int32(LR_LIGHTS_MAX)))
+            scene.lights = Array(lights.prefix(5 * max(found, 0)))
+        }
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             self.updateAspect(width: UInt32(width), height: UInt32(height))

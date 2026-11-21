@@ -5,7 +5,8 @@ using namespace metal;
 
 // a: texture w, h, view w, h (pixels). b: look, time (s), weather, effects strength (0..1).
 // c: night (0..1), lightning flash (0..1), cave darkness (0..1), outdoors (0 / 1). d: the time of day's grade (r, g, b;
-// 1 = none: by day, or when the game tints itself).
+// 1 = none: by day, or when the game tints itself), how many lights. Buffer 1: the lights, two float4 each: the rect
+// (x, y, w, h in 0..1 of the frame) and its kind (0 a door, 1 a window's glass).
 struct ScreenUniforms {
     float4 a;
     float4 b;
@@ -216,7 +217,7 @@ static float3 weather_fx(float3 color, float2 uv, float2 q, float time, int weat
 // ---- the picture ----
 
 fragment float4 screen_fragment(ScreenOut in [[stage_in]], texture2d<float> frame [[texture(0)]],
-                                constant ScreenUniforms& u [[buffer(0)]]) {
+                                constant ScreenUniforms& u [[buffer(0)]], constant float4* lights [[buffer(1)]]) {
     constexpr sampler nearest(filter::nearest, address::clamp_to_edge);
     constexpr sampler linear(filter::linear, address::clamp_to_edge);
     float2 tex = max(u.a.xy, float2(1));
@@ -278,6 +279,34 @@ fragment float4 screen_fragment(ScreenOut in [[stage_in]], texture2d<float> fram
             // Only the brightest warm spots glow, softly (lower, roofs and people lit up like lamps).
             float3 g = glow(frame, linear, uv, texel_size, 0.72, true);
             color += g * float3(1.0, 0.82, 0.5) * k * 0.45;
+            // The real lights: the houses' windows lit from inside, a warm pool before each open door.
+            int count = int(u.d.w + 0.5);
+            float2 p = uv * tex;
+            float unit = tex.y / 160.0;   // a GBA pixel, on the frame
+            float3 warm = float3(1.0, 0.8, 0.45);
+            for (int i = 0; i < count; i++) {
+                float4 r = lights[2 * i];
+                float2 lo = r.xy * tex, size = r.zw * tex;
+                float2 mid = lo + size * 0.5;
+                float flicker = 0.94 + 0.06 * sin(time * 2.7 + float(i) * 1.7) * sin(time * 1.3 + float(i));
+                if (lights[2 * i + 1].x > 0.5) {
+                    float2 off = max(abs(p - mid) - size * 0.5, float2(0));
+                    float outside = length(off) / unit;
+                    if (outside <= 0.0) {
+                        float l = luma(frame.sample(nearest, uv).rgb);
+                        color = mix(color, float3(1.0, 0.86, 0.55) * (0.8 + 0.25 * l) * flicker, k * 0.9);
+                    }
+                    color += warm * exp(-outside / 5.0) * k * 0.32 * flicker;
+                } else {
+                    // Light falls out of the doorway onto the ground below.
+                    float2 pc = float2(mid.x, lo.y + size.y * 1.05);
+                    float2 e = (p - pc) / (float2(1.3, 0.75) * size.x);
+                    float pool = smoothstep(1.0, 0.0, length(e));
+                    color = color * (1.0 + pool * k * 0.4 * flicker) + warm * pool * k * 0.34 * flicker;
+                    float2 off = max(abs(p - mid) - size * 0.5, float2(0));
+                    color += warm * exp(-length(off) / (unit * 4.0)) * k * (length(off) <= 0.0 ? 0.22 : 0.12);
+                }
+            }
             if (outdoors > 0.5 && weather <= 2) {
                 float2 fq = q * 5.0 + float2(sin(time * 0.3) * 0.4, time * -0.05);
                 float2 id = floor(fq), fr = fract(fq);

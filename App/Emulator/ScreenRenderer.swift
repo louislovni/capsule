@@ -39,10 +39,12 @@ struct SceneInfo: Equatable {
     var field = false
     var caveDarkness = 0
     var tint = (r: 256, g: 256, b: 256)
+    /// The night's lights on screen (lr_lights): x, y, w, h in the frame's 0..1 and a kind (0 door, 1 window), 5 a light.
+    var lights: [Float] = []
 
     static func == (a: SceneInfo, b: SceneInfo) -> Bool {
         a.weather == b.weather && a.mapType == b.mapType && a.battle == b.battle && a.field == b.field &&
-            a.caveDarkness == b.caveDarkness && a.tint.r == b.tint.r && a.tint.g == b.tint.g && a.tint.b == b.tint.b
+            a.caveDarkness == b.caveDarkness && a.tint.r == b.tint.r && a.tint.g == b.tint.g && a.tint.b == b.tint.b && a.lights == b.lights
     }
 
     init() {}
@@ -210,6 +212,20 @@ final class ScreenRenderer {
             SIMD4<Float>(night * lightStrength, flash * strength, cave * lightStrength, scene.outdoors ? 1 : 0),
             SIMD4<Float>(grade.x, grade.y, grade.z, 0),
         ]
+        // The doors and windows that light up at night: a rect and its kind each (the shader's buffer 1).
+        var lights = [SIMD4<Float>](repeating: .zero, count: 2 * Int(LR_LIGHTS_MAX))
+        var lightCount = 0
+        if night > 0.01 && lightsOn {
+            let raw = scene.lights
+            var i = 0
+            while i + 4 < raw.count && lightCount < Int(LR_LIGHTS_MAX) {
+                lights[2 * lightCount] = SIMD4<Float>(raw[i], raw[i + 1], raw[i + 2], raw[i + 3])
+                lights[2 * lightCount + 1] = SIMD4<Float>(raw[i + 4], 0, 0, 0)
+                lightCount += 1
+                i += 5
+            }
+        }
+        uniforms[3].w = Float(lightCount)
 
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = drawable.texture
@@ -223,6 +239,9 @@ final class ScreenRenderer {
         uniforms.withUnsafeMutableBytes { raw in
             encoder.setVertexBytes(raw.baseAddress!, length: raw.count, index: 0)
             encoder.setFragmentBytes(raw.baseAddress!, length: raw.count, index: 0)
+        }
+        lights.withUnsafeMutableBytes { raw in
+            encoder.setFragmentBytes(raw.baseAddress!, length: raw.count, index: 1)
         }
         encoder.setFragmentTexture(texture, index: 0)
         encoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
