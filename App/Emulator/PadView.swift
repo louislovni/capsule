@@ -548,6 +548,39 @@ struct PadRepresentable: UIViewRepresentable {
 /// The game picture: a layer the emulation thread hands frames to. Touches on it
 /// reach the core (PokeDaisy's companion and HUD answer them).
 final class ScreenUIView: UIView {
+    override class var layerClass: AnyClass { CAMetalLayer.self }
+
+    /// Metal's drawing (ScreenRenderer: the look, the weather, the lights); nil where Metal isn't there: plain frames.
+    private let renderer = ScreenRenderer()
+    private let colorSpace = CGColorSpaceCreateDeviceRGB()
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        if let metal = layer as? CAMetalLayer {
+            let scale = window?.screen.scale ?? UIScreen.main.scale
+            metal.contentsScale = scale
+            metal.drawableSize = CGSize(width: bounds.width * scale, height: bounds.height * scale)
+        }
+    }
+
+    /// A frame from the core (RGBX bytes) and what it shows (main thread).
+    func show(_ pixels: Data, width: Int, height: Int, scene: SceneInfo) {
+        if let renderer = renderer, let metal = layer as? CAMetalLayer {
+            renderer.draw(pixels, width: width, height: height, scene: scene, into: metal)
+            return
+        }
+        guard let provider = CGDataProvider(data: pixels as CFData),
+              let image = CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: width * 4,
+                                  space: colorSpace, bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipLast.rawValue),
+                                  provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent) else {
+            return
+        }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        layer.contents = image
+        CATransaction.commit()
+    }
+
     /// Where the finger is, as a fraction of the picture (0...1), or nil when lifted.
     var onTouch: ((CGPoint?) -> Void)?
     /// Called when the view comes on screen: the frames go to the one shown. When the layout
@@ -609,6 +642,9 @@ final class ScreenUIView: UIView {
 
     private func setUp() {
         backgroundColor = .black
+        if let metal = layer as? CAMetalLayer {
+            renderer?.configure(metal)
+        }
         layer.magnificationFilter = .nearest // keep pixels sharp when scaled up
         layer.minificationFilter = .linear
         layer.contentsGravity = .resizeAspect
@@ -624,9 +660,9 @@ struct ScreenRepresentable: UIViewRepresentable {
 
     func makeUIView(context: Context) -> ScreenUIView {
         let view = ScreenUIView()
-        session.displayLayer = view.layer
+        session.screenView = view
         view.onShown = { [weak session] shown in
-            session?.displayLayer = shown.layer
+            session?.screenView = shown
         }
         view.onTouch = { [weak session] point in
             session?.setTouch(point)
@@ -636,7 +672,7 @@ struct ScreenRepresentable: UIViewRepresentable {
 
     func updateUIView(_ uiView: ScreenUIView, context: Context) {
         if uiView.window != nil {
-            session.displayLayer = uiView.layer
+            session.screenView = uiView
         }
     }
 

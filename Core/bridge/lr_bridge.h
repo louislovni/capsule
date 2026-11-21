@@ -106,6 +106,13 @@ void lr_coop_stop(LRCore* core);
 /* PokeDaisy's companion in this language ("fr"; "en" or NULL = English): its menus, words and guide. */
 void lr_set_language(LRCore* core, const char* code);
 
+/* The scene the frontend's weather and light effects follow, after a frame (PokeDaisy's GBA core): [0] the map's weather
+ * (the games' WEATHER_*: 3 rain, 4 snow, 5 storm, 6 / 9 fog, 7 ash, 8 sandstorm, 2 / 12 sun, 10 / 14 underwater, 13
+ * downpour; -1 unknown), [1] the map type (-1), [2] a battle, [3] the free field on screen, [4] a cave's darkness (0 lit),
+ * [5..7] the day and night tint (r, g, b; 256 = day). Returns how many were written (0: no such core). */
+#define LR_SCENE_VALUES 8
+int lr_scene(const LRCore* core, int32_t* out, int count);
+
 bool lr_dock_available(const LRCore* core);
 void lr_dock(LRCore* core, int width, int height);
 void lr_dock_open(LRCore* core, bool open);

@@ -83,6 +83,7 @@ typedef struct {
 	const uint32_t* (*pd_dock_pixels)(int*, int*, unsigned*);
 	void (*pd_dock_touch)(int, int, int);
 	void (*pd_language)(const char*); /* PokeDaisy's companion language, NULL elsewhere */
+	int (*pd_scene)(int*, int);       /* the weather / light the frontend's effects follow, NULL elsewhere */
 } RetroAPI;
 
 static RetroAPI api;
@@ -173,6 +174,7 @@ static bool load_api(const char* corePath) {
 	LOOKUP(unserialize)
 #undef LOOKUP
 	*(void**) &loaded.pd_language = dlsym(h, "retro_pd_language");
+	*(void**) &loaded.pd_scene = dlsym(h, "retro_pd_scene");
 	*(void**) &loaded.pd_dock = dlsym(h, "retro_pd_dock");
 	*(void**) &loaded.pd_dock_open = dlsym(h, "retro_pd_dock_open");
 	*(void**) &loaded.pd_dock_is_open = dlsym(h, "retro_pd_dock_is_open");
@@ -782,4 +784,16 @@ void lr_set_language(LRCore* core, const char* code) {
 	if (core && api.pd_language) {
 		api.pd_language(code);
 	}
+}
+
+int lr_scene(const LRCore* core, int32_t* out, int count) {
+	if (!core || !api.pd_scene || count <= 0) {
+		return 0;
+	}
+	int values[LR_SCENE_VALUES];
+	int n = api.pd_scene(values, count < LR_SCENE_VALUES ? count : LR_SCENE_VALUES);
+	for (int i = 0; i < n; i++) {
+		out[i] = values[i];
+	}
+	return n;
 }

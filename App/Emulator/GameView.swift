@@ -11,6 +11,8 @@ struct GameView: View {
     /// Sideways forced by the plein écran button (works with the rotation lock on).
     @State private var forcedLandscape = false
     @AppStorage(PadSkin.storageKey) private var skinName = PadSkin.capsule.rawValue
+    @AppStorage(ScreenLook.storageKey) private var screenLook = ScreenLook.original.rawValue
+    @AppStorage(ScreenLook.effectsKey) private var weatherEffects = true
     /// The console turning on: black, a white glow, then the game.
     @State private var power = 0
 
@@ -444,6 +446,20 @@ struct GameView: View {
             }
         } footer: {
             Text("Ce qui n'est pas sauvegardé dans le jeu sera perdu.")
+        }
+        Section {
+            // The picture's look (Metal shaders), and the weather and lights over the field.
+            Picker(selection: $screenLook) {
+                ForEach(ScreenLook.allCases) { look in
+                    Text(look.title).tag(look.rawValue)
+                }
+            } label: {
+                Label("Rendu de l'image", systemImage: "sparkles.tv")
+            }
+            .pickerStyle(.menu)
+            Toggle(isOn: $weatherEffects) {
+                Label("Météo et lumières", systemImage: "cloud.sun.rain")
+            }
         }
         Section {
             // One line that opens the choice, so the menu stays short.

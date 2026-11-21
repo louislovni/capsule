@@ -71,8 +71,8 @@ final class EmulatorSession: ObservableObject {
     private(set) var landscape = false
 
     let game: Game
-    /// The layer frames are drawn into. Set by the screen view.
-    weak var displayLayer: CALayer?
+    /// The view frames are drawn into. Set by the screen view.
+    weak var screenView: ScreenUIView?
 
     private var core: OpaquePointer?
     private var thread: Thread?
@@ -631,30 +631,13 @@ final class EmulatorSession: ObservableObject {
                 self.pictureTint.value = tint
             }
         }
-        guard let provider = CGDataProvider(data: data as CFData),
-              let image = CGImage(
-                  width: width,
-                  height: height,
-                  bitsPerComponent: 8,
-                  bitsPerPixel: 32,
-                  bytesPerRow: width * 4,
-                  space: colorSpace,
-                  bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipLast.rawValue),
-                  provider: provider,
-                  decode: nil,
-                  shouldInterpolate: false,
-                  intent: .defaultIntent
-              ) else {
-            return
-        }
+        var values = [Int32](repeating: 0, count: Int(LR_SCENE_VALUES))
+        let count = lr_scene(core, &values, Int32(values.count))
+        let scene = count >= Int32(LR_SCENE_VALUES) ? SceneInfo(values: values) : SceneInfo()
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             self.updateAspect(width: UInt32(width), height: UInt32(height))
-            guard let layer = self.displayLayer else { return }
-            CATransaction.begin()
-            CATransaction.setDisableActions(true)
-            layer.contents = image
-            CATransaction.commit()
+            self.screenView?.show(data, width: width, height: height, scene: scene)
         }
     }
 }
