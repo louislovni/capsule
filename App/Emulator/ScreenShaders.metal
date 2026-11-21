@@ -244,7 +244,7 @@ fragment float4 screen_fragment(ScreenOut in [[stage_in]], texture2d<float> fram
         color *= sub;
     } else if (look == 3) { // CRT: scanlines, a soft bloom, darker corners
         float scan = 0.72 + 0.28 * sin(f.y * 3.14159);
-        color = color * scan + glow(frame, linear, uv, texel_size, 0.55, false) * 0.35;
+        color = color * scan + glow(frame, linear, uv, texel_size, 0.7, false) * 0.22;
         float2 v = uv * (1 - uv);
         color *= pow(saturate(v.x * v.y * 18.0), 0.18);
     } else if (look == 4) { // REMASTER: richer colours, contrast, bloom, a light vignette
@@ -275,8 +275,9 @@ fragment float4 screen_fragment(ScreenOut in [[stage_in]], texture2d<float> fram
             color *= mix(1.0, 0.5, smoothstep(0.2, 0.85, d) * k);
             float pool = smoothstep(0.42, 0.0, d);
             color = color * (1.0 + pool * k * 0.55) + float3(0.24, 0.15, 0.05) * pool * k * 0.5;
-            float3 g = glow(frame, linear, uv, texel_size, 0.3, true);
-            color += g * float3(1.0, 0.82, 0.5) * k * 1.6;
+            // Only the brightest warm spots glow, softly (lower, roofs and people lit up like lamps).
+            float3 g = glow(frame, linear, uv, texel_size, 0.72, true);
+            color += g * float3(1.0, 0.82, 0.5) * k * 0.45;
             if (outdoors > 0.5 && weather <= 2) {
                 float2 fq = q * 5.0 + float2(sin(time * 0.3) * 0.4, time * -0.05);
                 float2 id = floor(fq), fr = fract(fq);
@@ -284,8 +285,8 @@ fragment float4 screen_fragment(ScreenOut in [[stage_in]], texture2d<float> fram
                 c += float2(sin(time * 1.3 + hash21(id) * 6.28), cos(time * 1.1 + hash21(id + 1.0) * 6.28)) * 0.12;
                 float blink = 0.5 + 0.5 * sin(time * 2.4 + hash21(id + 2.0) * 6.28);
                 float dist = length(fr - c);
-                float fly = (smoothstep(0.05, 0.0, dist) + smoothstep(0.16, 0.0, dist) * 0.35) * blink * step(0.7, hash21(id + 5.5));
-                color += float3(0.8, 1.0, 0.45) * fly * k * 1.2;
+                float fly = (smoothstep(0.035, 0.0, dist) + smoothstep(0.09, 0.0, dist) * 0.25) * blink * step(0.86, hash21(id + 5.5));
+                color += float3(0.75, 1.0, 0.4) * fly * k * 0.8;
             }
         }
         if (cave > 0.01) {
