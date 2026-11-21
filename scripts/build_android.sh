@@ -26,6 +26,10 @@ for m in third_party/mgba third_party/rcheevos third_party/melonds third_party/d
 	git -C "$SRC" submodule update -q --init --recursive --depth 1 "$m"
 done
 
+# COMPATIBLE GAMES (the library's TOOLS, SETTINGS > ONLINE): the iPhone app's list, in the capsule build's assets.
+mkdir -p "$SRC/app/src/capsule/assets"
+cp "$ROOT/App/Library/compat.json" "$SRC/app/src/capsule/assets/compat.json"
+
 rm -f "$SRC/keystore.properties"
 if [ -n "${ANDROID_KEYSTORE_PASSWORD:-}" ]; then
 	{

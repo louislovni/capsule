@@ -51,6 +51,11 @@ func main() {
 		syncNow(dir, account, "Récupération des sauvegardes du cloud…")
 	}
 
+	// COMPATIBLE GAMES in PokeDaisy's game list (X / Y): the list beside this program, the player's games recognised.
+	if err := writeCompat(dir); err != nil && !os.IsNotExist(err) {
+		fmt.Println("Liste des jeux compatibles indisponible :", err)
+	}
+
 	game := filepath.Join(dir, "pokedaisy.exe")
 	cmd := exec.Command(game, "--data", dir)
 	cmd.Dir = dir

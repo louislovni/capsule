@@ -9,7 +9,7 @@
 #                                   Needs mingw-w64 and Go; GOOGLE_DESKTOP_CLIENT_ID / _SECRET for the sign-in.
 set -eu
 
-POKEDAISY_COMMIT=ad8f487690cad45c6115c1b4257a422f37557b9b   # louislovni/pokedaisy, branch capsule
+POKEDAISY_COMMIT=cc4fe8ea3dc0a3d7c6252ca507978197756e2b6f   # louislovni/pokedaisy, branch capsule
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TARGET="${1:-host}"
 SRC="$ROOT/Vendor/pokedaisy"
@@ -123,6 +123,8 @@ windows)
 	cp "$ROOT/build/win-launcher/Capsule.exe" "$ROOT/build/win-frontend/pokedaisy.exe" "$SDL_ROOT/bin/SDL2.dll" "$PKG/"
 	for core in $CORES; do cp "$(find "$OUT" -name "$core.dll" | head -n 1)" "$PKG/"; done
 	cp "$ROOT/windows/LISEZMOI.txt" "$PKG/LISEZMOI.txt"
+	# COMPATIBLE GAMES: the games Capsule knows, read by Capsule.exe (compat.go) for the game list's X / Y.
+	cp "$ROOT/App/Library/compat.json" "$PKG/compat.json"
 	cp "$ROOT/windows/roms-LISEZMOI.txt" "$PKG/roms/LISEZMOI.txt"
 	cp "$ROOT/LICENSE" "$PKG/licenses/Capsule-GPL-3.0.txt"
 	cp "$ROOT/NOTICE" "$PKG/licenses/Capsule-NOTICE.txt"

@@ -31,6 +31,9 @@ Bon à savoir
     de côté dans "backups\cloud".
   - Changer de compte : lance "Capsule.exe --deconnexion" depuis un terminal.
   - Jouer sans internet : "Capsule.exe --hors-ligne".
+  - Les jeux compatibles : dans la liste des jeux, Tab (ou X / Y à la
+    manette). Tes jeux y sont reconnus, avec ce qui marche pour chacun
+    et la ROM d'origine d'un hack. A : les détails d'un jeu.
   - La banque, le Pokédex et les échanges sont sur la page web :
     https://louislovni.github.io/capsule
 
