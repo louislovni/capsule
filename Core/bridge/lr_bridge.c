@@ -71,6 +71,11 @@ typedef struct {
 	size_t (*serialize_size)(void);
 	bool (*serialize)(void*, size_t);
 	bool (*unserialize)(const void*, size_t);
+	/* Co-op presence (PokeDaisy's GBA core only; NULL elsewhere): see lr_coop_frame. */
+	int (*pd_coop_available)(void);
+	int (*pd_coop_frame)(uint32_t, uint8_t*);
+	void (*pd_coop_receive)(const uint8_t*, size_t, uint32_t);
+	void (*pd_coop_stop)(void);
 } RetroAPI;
 
 static RetroAPI api;
@@ -160,6 +165,16 @@ static bool load_api(const char* corePath) {
 	LOOKUP(serialize)
 	LOOKUP(unserialize)
 #undef LOOKUP
+	*(void**) &loaded.pd_coop_available = dlsym(h, "retro_pd_coop_available");
+	*(void**) &loaded.pd_coop_frame = dlsym(h, "retro_pd_coop_frame");
+	*(void**) &loaded.pd_coop_receive = dlsym(h, "retro_pd_coop_receive");
+	*(void**) &loaded.pd_coop_stop = dlsym(h, "retro_pd_coop_stop");
+	if (!loaded.pd_coop_available || !loaded.pd_coop_frame || !loaded.pd_coop_receive || !loaded.pd_coop_stop) {
+		loaded.pd_coop_available = NULL;
+		loaded.pd_coop_frame = NULL;
+		loaded.pd_coop_receive = NULL;
+		loaded.pd_coop_stop = NULL;
+	}
 	api = loaded;
 	return true;
 }
@@ -688,4 +703,24 @@ bool lr_load_state(LRCore* core, const char* path) {
 	}
 	atomic_store(&core->ringFlush, true);
 	return ok;
+}
+
+bool lr_coop_available(const LRCore* core) {
+	return core && api.pd_coop_available && api.pd_coop_available() != 0;
+}
+
+bool lr_coop_frame(LRCore* core, uint32_t nowMs, uint8_t out[LR_COOP_PRESENCE_SIZE]) {
+	return core && api.pd_coop_frame && api.pd_coop_frame(nowMs, out) != 0;
+}
+
+void lr_coop_receive(LRCore* core, const uint8_t* message, size_t length, uint32_t nowMs) {
+	if (core && api.pd_coop_receive) {
+		api.pd_coop_receive(message, length, nowMs);
+	}
+}
+
+void lr_coop_stop(LRCore* core) {
+	if (core && api.pd_coop_stop) {
+		api.pd_coop_stop();
+	}
 }

@@ -87,6 +87,16 @@ bool lr_flush_save(LRCore* core);
 bool lr_save_state(LRCore* core, const char* path);
 bool lr_load_state(LRCore* core, const char* path);
 
+/* Co-op presence (PokeDaisy's GBA core, Emerald in a Western language): the partner's hero on the map. The frontend
+ * owns the connection; these run on the emulation thread. nowMs: a monotonic clock in ms (32 bits, wrapping).
+ * lr_coop_available: the loaded game can. lr_coop_frame: after each lr_run_frame; true = out holds an update to send.
+ * lr_coop_receive: an update the partner sent. lr_coop_stop: the link is gone (nothing drawn, nothing kept). */
+#define LR_COOP_PRESENCE_SIZE 20
+bool lr_coop_available(const LRCore* core);
+bool lr_coop_frame(LRCore* core, uint32_t nowMs, uint8_t out[LR_COOP_PRESENCE_SIZE]);
+void lr_coop_receive(LRCore* core, const uint8_t* message, size_t length, uint32_t nowMs);
+void lr_coop_stop(LRCore* core);
+
 #ifdef __cplusplus
 }
 #endif
