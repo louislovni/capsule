@@ -76,6 +76,12 @@ typedef struct {
 	int (*pd_coop_frame)(uint32_t, uint8_t*);
 	void (*pd_coop_receive)(const uint8_t*, size_t, uint32_t);
 	void (*pd_coop_stop)(void);
+	/* The companion docked in the frontend's panel (PokeDaisy's GBA core only; NULL elsewhere): see lr_dock. */
+	void (*pd_dock)(int, int);
+	void (*pd_dock_open)(int);
+	int (*pd_dock_is_open)(void);
+	const uint32_t* (*pd_dock_pixels)(int*, int*, unsigned*);
+	void (*pd_dock_touch)(int, int, int);
 } RetroAPI;
 
 static RetroAPI api;
@@ -165,6 +171,18 @@ static bool load_api(const char* corePath) {
 	LOOKUP(serialize)
 	LOOKUP(unserialize)
 #undef LOOKUP
+	*(void**) &loaded.pd_dock = dlsym(h, "retro_pd_dock");
+	*(void**) &loaded.pd_dock_open = dlsym(h, "retro_pd_dock_open");
+	*(void**) &loaded.pd_dock_is_open = dlsym(h, "retro_pd_dock_is_open");
+	*(void**) &loaded.pd_dock_pixels = dlsym(h, "retro_pd_dock_pixels");
+	*(void**) &loaded.pd_dock_touch = dlsym(h, "retro_pd_dock_touch");
+	if (!loaded.pd_dock || !loaded.pd_dock_open || !loaded.pd_dock_is_open || !loaded.pd_dock_pixels || !loaded.pd_dock_touch) {
+		loaded.pd_dock = NULL;
+		loaded.pd_dock_open = NULL;
+		loaded.pd_dock_is_open = NULL;
+		loaded.pd_dock_pixels = NULL;
+		loaded.pd_dock_touch = NULL;
+	}
 	*(void**) &loaded.pd_coop_available = dlsym(h, "retro_pd_coop_available");
 	*(void**) &loaded.pd_coop_frame = dlsym(h, "retro_pd_coop_frame");
 	*(void**) &loaded.pd_coop_receive = dlsym(h, "retro_pd_coop_receive");
@@ -722,5 +740,38 @@ void lr_coop_receive(LRCore* core, const uint8_t* message, size_t length, uint32
 void lr_coop_stop(LRCore* core) {
 	if (core && api.pd_coop_stop) {
 		api.pd_coop_stop();
+	}
+}
+
+bool lr_dock_available(const LRCore* core) {
+	return core && api.pd_dock != NULL;
+}
+
+void lr_dock(LRCore* core, int width, int height) {
+	if (core && api.pd_dock) {
+		api.pd_dock(width, height);
+	}
+}
+
+void lr_dock_open(LRCore* core, bool open) {
+	if (core && api.pd_dock_open) {
+		api.pd_dock_open(open ? 1 : 0);
+	}
+}
+
+bool lr_dock_is_open(const LRCore* core) {
+	return core && api.pd_dock_is_open && api.pd_dock_is_open() != 0;
+}
+
+const uint32_t* lr_dock_pixels(const LRCore* core, int* width, int* height, unsigned* serial) {
+	if (!core || !api.pd_dock_pixels) {
+		return NULL;
+	}
+	return api.pd_dock_pixels(width, height, serial);
+}
+
+void lr_dock_touch(LRCore* core, int x, int y, bool down) {
+	if (core && api.pd_dock_touch) {
+		api.pd_dock_touch(x, y, down ? 1 : 0);
 	}
 }

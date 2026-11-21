@@ -2,6 +2,7 @@ import Combine
 import CoreGraphics
 import Foundation
 import QuartzCore
+import SwiftUI
 import UIKit
 
 /// Buttons, as the libretro core expects them (bits of RETRO_DEVICE_ID_JOYPAD_*).
@@ -59,6 +60,12 @@ final class EmulatorSession: ObservableObject {
     /// What PokeDaisy made of the game when it loaded (shown once, then kept in the menu).
     @Published private(set) var companionInfo: String?
     @Published private(set) var companionSupported = true
+    /// PokeDaisy's menus (ÉQUIPE, DEX, CARTE, SAC, GUIDE, réglages) can open in the panel over the controls (its GBA core).
+    @Published private(set) var dockAvailable = false
+    /// The panel is open (asked by the handle, or opened / closed by the core itself: a HUD tap, B on its first page).
+    @Published private(set) var dockOpen = false
+    /// The layer the panel's pixels go to. Set by the panel's view.
+    weak var dockLayer: CALayer?
 
     /// Sideways or upright: the GBA core lays its picture out for the matching panel.
     private(set) var landscape = false
@@ -217,6 +224,12 @@ final class EmulatorSession: ObservableObject {
         updateAspect(width: lr_video_width(created), height: lr_video_height(created))
 
         audio.start(core: created)
+        dockAvailable = lr_dock_available(created)
+        dockAvailableOnThread = dockAvailable
+        if dockAvailable {
+            // Docked from the start: the HUD's taps and the companion button open the panel, not the menus over the game.
+            lr_dock(created, dockSize.width, dockSize.height)
+        }
         if !game.isDS {
             coopReady = lr_coop_available(created)
             if coopReady {
@@ -344,6 +357,49 @@ final class EmulatorSession: ObservableObject {
         }
     }
 
+    // MARK: - The panel (main thread)
+
+    /// Its canvas: 320 companion pixels across, as tall as the panel's shape asks (240 to 480).
+    static func dockCanvas(for points: CGSize) -> (width: Int32, height: Int32) {
+        guard points.width > 1, points.height > 1 else { return (320, 360) }
+        let height = Int32((320 * points.height / points.width).rounded())
+        return (320, min(max(height, 240), 480))
+    }
+
+    private var dockSize: (width: Int32, height: Int32) = (320, 360)
+
+    /// The panel's size in points: its canvas follows.
+    func setDockSize(_ points: CGSize) {
+        let size = Self.dockCanvas(for: points)
+        guard size != dockSize else { return }
+        dockSize = size
+        perform { core in
+            lr_dock(core, size.width, size.height)
+        }
+    }
+
+    /// Opens or closes the panel.
+    func setDock(open: Bool) {
+        guard dockAvailable, open != dockOpen else { return }
+        dockOpen = open
+        let size = dockSize
+        perform { [weak self] core in
+            lr_dock(core, size.width, size.height)
+            lr_dock_open(core, open)
+            self?.dockAsked = open
+        }
+    }
+
+    /// The finger on the panel, 0...1 on both axes, down while held.
+    func dockTouch(_ point: CGPoint, down: Bool) {
+        let size = dockSize
+        let x = Int32((point.x * CGFloat(size.width)).rounded(.down))
+        let y = Int32((point.y * CGFloat(size.height)).rounded(.down))
+        perform { core in
+            lr_dock_touch(core, x, y, down)
+        }
+    }
+
     private func perform(_ body: @escaping (OpaquePointer) -> Void) {
         lock.lock()
         pending.append(body)
@@ -400,6 +456,9 @@ final class EmulatorSession: ObservableObject {
             }
             coopWasLinked = coop
             present(core)
+            if dockAvailableOnThread {
+                presentDock(core)
+            }
             if frameCount % 30 == 0 {
                 coopNotice()
             }
@@ -439,6 +498,58 @@ final class EmulatorSession: ObservableObject {
         }
         lr_destroy(core) // writes the battery save
         finished.signal()
+    }
+
+    // MARK: - The panel (the emulation thread)
+
+    private var dockAvailableOnThread = false
+    /// What the thread last asked or saw: the core opening or closing it by itself is told to the main thread.
+    private var dockAsked = false
+    private var dockSerial: UInt32 = 0
+    private let dockColorSpace = CGColorSpaceCreateDeviceRGB()
+
+    private func presentDock(_ core: OpaquePointer) {
+        let open = lr_dock_is_open(core)
+        if open != dockAsked {
+            dockAsked = open
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self, self.dockOpen != open else { return }
+                withAnimation(.spring(response: 0.36, dampingFraction: 0.84)) {
+                    self.dockOpen = open
+                }
+            }
+        }
+        guard open else { return }
+        var width: Int32 = 0, height: Int32 = 0, serial: UInt32 = 0
+        guard let pixels = lr_dock_pixels(core, &width, &height, &serial), width > 0, height > 0, serial != dockSerial else {
+            return
+        }
+        dockSerial = serial
+        let data = Data(bytes: pixels, count: Int(width) * Int(height) * 4)
+        guard let provider = CGDataProvider(data: data as CFData),
+              let image = CGImage(
+                  width: Int(width),
+                  height: Int(height),
+                  bitsPerComponent: 8,
+                  bitsPerPixel: 32,
+                  bytesPerRow: Int(width) * 4,
+                  space: dockColorSpace,
+                  // 0x00RRGGBB words, little-endian: B, G, R, unused.
+                  bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue),
+                  provider: provider,
+                  decode: nil,
+                  shouldInterpolate: false,
+                  intent: .defaultIntent
+              ) else {
+            return
+        }
+        DispatchQueue.main.async { [weak self] in
+            guard let layer = self?.dockLayer else { return }
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            layer.contents = image
+            CATransaction.commit()
+        }
     }
 
     // MARK: - Co-op (the emulation thread)

@@ -97,6 +97,19 @@ bool lr_coop_frame(LRCore* core, uint32_t nowMs, uint8_t out[LR_COOP_PRESENCE_SI
 void lr_coop_receive(LRCore* core, const uint8_t* message, size_t length, uint32_t nowMs);
 void lr_coop_stop(LRCore* core);
 
+/* The companion DOCKED (PokeDaisy's GBA core): its menus (PARTY, DEX, MAP, BAG, GUIDE, SETTINGS) drawn into a canvas of
+ * their own for a panel of the frontend's, while the game runs on and shows. All on the emulation thread.
+ * lr_dock: the canvas's size in companion pixels (320 x 240 to 640 x 480), 0 x 0 = none. lr_dock_open: opens or closes
+ * it (the game's keys are the companion's while open). lr_dock_is_open: it can close itself (B on its first page) and open
+ * from the HUD. lr_dock_pixels: 0xRRGGBB, valid until the next frame; serial moves when they're drawn again.
+ * lr_dock_touch: the finger, in the canvas's pixels, down while held. */
+bool lr_dock_available(const LRCore* core);
+void lr_dock(LRCore* core, int width, int height);
+void lr_dock_open(LRCore* core, bool open);
+bool lr_dock_is_open(const LRCore* core);
+const uint32_t* lr_dock_pixels(const LRCore* core, int* width, int* height, unsigned* serial);
+void lr_dock_touch(LRCore* core, int x, int y, bool down);
+
 #ifdef __cplusplus
 }
 #endif

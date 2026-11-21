@@ -139,6 +139,7 @@ struct GameView: View {
                         onQuit: { dismiss() },
                         menu: { moreMenu })
                 .frame(height: Self.cardHeight(screenHeight))
+                .overlay { dockOverlay(handleOffset: -(Self.cardGap + 8)) }
                 .padding(.horizontal, Self.cardGap)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -198,6 +199,7 @@ struct GameView: View {
                     .padding(.top, 10)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .overlay { dockOverlay(handleOffset: -14).padding(.horizontal, Self.cardGap) }
             .background(alignment: .top) {
                 // A shade that comes in gradually from above the controls, darkest at the bottom.
                 LinearGradient(stops: [.init(color: .black.opacity(0), location: 0),
@@ -311,6 +313,40 @@ struct GameView: View {
                 Spacer()
             }
             .ignoresSafeArea(edges: .top)
+        }
+        .overlay {
+            // Sideways: the panel in the middle, over the picture's lower part; its button at the bottom edge.
+            GeometryReader { g in
+                let height = g.size.height * 0.92
+                let width = min(g.size.width * 0.62, height * 1.1)
+                ZStack(alignment: .bottom) {
+                    if session.dockOpen {
+                        DockPanel(session: session, size: CGSize(width: width, height: height))
+                            .frame(width: width, height: height)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                    } else if session.dockAvailable && !session.loadFailed {
+                        DockHandleButton(session: session)
+                            .padding(.bottom, 4)
+                    }
+                }
+                .frame(width: g.size.width, height: g.size.height, alignment: .bottom)
+            }
+        }
+    }
+
+    /// Upright: PokeDaisy's menus in a panel over the controls (their room), or the button that opens it above them.
+    private func dockOverlay(handleOffset: CGFloat) -> some View {
+        GeometryReader { g in
+            ZStack(alignment: .top) {
+                if session.dockOpen {
+                    DockPanel(session: session, size: g.size)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                } else if session.dockAvailable && !session.loadFailed {
+                    DockHandleButton(session: session)
+                        .offset(y: handleOffset)
+                }
+            }
+            .frame(width: g.size.width, height: g.size.height, alignment: .top)
         }
     }
 
