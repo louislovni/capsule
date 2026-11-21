@@ -35,6 +35,7 @@ targets:
         HEADER_SEARCH_PATHS:
           - $(SRCROOT)/Core/bridge
           - $(SRCROOT)/Core/pkcore
+          - $(SRCROOT)/Core/coop
         LIBRARY_SEARCH_PATHS:
           - $(SRCROOT)/build/core-ios
         OTHER_LDFLAGS:

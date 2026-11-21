@@ -217,6 +217,12 @@ final class EmulatorSession: ObservableObject {
         updateAspect(width: lr_video_width(created), height: lr_video_height(created))
 
         audio.start(core: created)
+        if !game.isDS {
+            coopReady = lr_coop_available(created)
+            if coopReady {
+                CoopService.shared.gameStarted(game)
+            }
+        }
         let worker = Thread { [self] in
             self.runLoop(created)
         }
@@ -382,10 +388,21 @@ final class EmulatorSession: ObservableObject {
                 continue
             }
 
+            let coop = coopReady && CoopService.shared.isLinked
             for _ in 0..<speed {
                 lr_run_frame(core, speed > 1)
+                if coop {
+                    coopFrame(core)
+                }
             }
+            if coopWasLinked && !coop {
+                lr_coop_stop(core) // the partner goes from the map with the link
+            }
+            coopWasLinked = coop
             present(core)
+            if frameCount % 30 == 0 {
+                coopNotice()
+            }
 
             frameCount += 1
             if frameCount % saveInterval == 0 {
@@ -417,8 +434,46 @@ final class EmulatorSession: ObservableObject {
             }
         }
 
+        if !game.isDS {
+            CoopService.shared.gameStopped()
+        }
         lr_destroy(core) // writes the battery save
         finished.signal()
+    }
+
+    // MARK: - Co-op (the emulation thread)
+
+    /// The game can show a co-op partner (PokeDaisy's core: Emerald), worked out once it runs.
+    private var coopReady = false
+    private var coopWasLinked = false
+    private var coopLastState = Int32(COOP_LINK_OFF)
+
+    /// One frame of co-op presence: the partner's updates into the core, the player's out of it.
+    private func coopFrame(_ core: OpaquePointer) {
+        let now = UInt32(truncatingIfNeeded: CoopService.now)
+        for message in CoopService.shared.takePresence() {
+            message.withUnsafeBufferPointer { lr_coop_receive(core, $0.baseAddress, $0.count, now) }
+        }
+        var out = [UInt8](repeating: 0, count: Int(LR_COOP_PRESENCE_SIZE))
+        if lr_coop_frame(core, now, &out) {
+            CoopService.shared.sendPresence(out)
+        }
+    }
+
+    /// "<partner> joined you" / "lost": said once each time the link changes.
+    private func coopNotice() {
+        let service = CoopService.shared
+        DispatchQueue.main.async {
+            let state = service.linkState
+            guard state != self.coopLastState else { return }
+            let name = service.linkPartner
+            if state == Int32(COOP_LINK_CONNECTED) {
+                self.notice = "\(name) joue avec toi"
+            } else if self.coopLastState == Int32(COOP_LINK_CONNECTED) {
+                self.notice = "Connexion perdue avec \(name)"
+            }
+            self.coopLastState = state
+        }
     }
 
     private var tintFrames = 0

@@ -34,7 +34,7 @@ struct LibraryView: View {
     }
 
     enum Route: Hashable {
-        case pokedex, bank, account, settings, gamepad, compat
+        case pokedex, bank, account, settings, gamepad, compat, coop
     }
 
     var body: some View {
@@ -54,6 +54,8 @@ struct LibraryView: View {
                     GamepadSettingsView().capsuleScreen()
                 case .compat:
                     CompatView(games: library.games)
+                case .coop:
+                    CoopView(games: library.games)
                 }
             }
             .fileImporter(isPresented: $importing, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
@@ -209,6 +211,10 @@ struct LibraryView: View {
                     } label: {
                         pill("bandage", "Patcher un hack")
                     }
+                }
+                .buttonStyle(SquishStyle())
+                NavigationLink(value: Route.coop) {
+                    pill("person.2.wave.2", "Jouer à deux")
                 }
                 .buttonStyle(SquishStyle())
                 HStack(spacing: 10) {
