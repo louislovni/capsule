@@ -137,6 +137,7 @@ struct CartridgeView: View {
 /// The cartridge itself, still.
 struct CartridgeFace: View {
     let game: Game
+    @ObservedObject private var titles = GameTitles.shared
 
     private var kind: CartridgeKind { CartridgeKind(game) }
 
@@ -226,7 +227,7 @@ struct CartridgeFace: View {
                     .textCase(.uppercase)
                     .foregroundStyle(Color.capsuleInk.opacity(0.7))
                     .lineLimit(1)
-                Text(CapsuleCard<EmptyView>.displayTitle(game.name))
+                Text(titles.title(for: game))
                     .font(.system(size: frame.height * 0.24, weight: .heavy))
                     .tracking(-0.6)
                     .foregroundStyle(Color(red: 0.063, green: 0.06, blue: 0.05))

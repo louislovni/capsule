@@ -494,7 +494,7 @@ private struct GameCard: View {
                 .contentShape(Rectangle())
                 .onTapGesture(perform: play)
                 .accessibilityElement()
-                .accessibilityLabel(CapsuleCard<EmptyView>.displayTitle(game.name))
+                .accessibilityLabel(GameTitles.shared.title(for: game))
                 .accessibilityAddTraits(.isButton)
                 .accessibilityAction(named: "Jouer", play)
             HStack(spacing: 8) {

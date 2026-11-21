@@ -75,7 +75,7 @@ struct CapsuleCard<MenuContent: View>: View {
                     .lineSpacing(3)
                     .foregroundStyle(ink.opacity(0.78))
             }
-            Text(Self.displayTitle(session.game.name))
+            Text(GameTitles.shared.title(for: session.game))
                 .font(.system(size: 44, weight: .heavy))
                 .tracking(-1.2)
                 .lineLimit(2)
@@ -112,13 +112,19 @@ struct CapsuleCard<MenuContent: View>: View {
     /// "Pokemon - Version Emeraude (France)" → "Version Emeraude".
     static func displayTitle(_ name: String) -> String {
         var title = name.replacingOccurrences(of: #"\s*[\(\[][^\)\]]*[\)\]]"#, with: "", options: .regularExpression)
-        title = title.replacingOccurrences(of: #"^(Pok[eé]mon)\s*[-:–]?\s*"#, with: "", options: [.regularExpression, .caseInsensitive])
         title = title.replacingOccurrences(of: "_", with: " ")
+        // A file name with dashes for spaces: "chaospurple-silph-co" → "chaospurple silph co".
+        if !title.contains(" ") { title = title.replacingOccurrences(of: "-", with: " ") }
+        // Versions written with dashes or dots: "V-2-0-0", "v1.2.3".
+        title = title.replacingOccurrences(of: #"(?i)\bv[-. ]?\d+([-.]\d+)*\b"#, with: "", options: .regularExpression)
+        title = title.replacingOccurrences(of: #"^(Pok[eé]mon|PK|PKMN)\s*[-:–]?\s+"#, with: "", options: [.regularExpression, .caseInsensitive])
         // Patch words and "Version" say nothing: "Version Argent SoulSilver apfix" → "Argent SoulSilver".
         title = title.replacingOccurrences(of: #"(?i)\b(version|ver\.?|apfix|ap fix|patched|patch|fixed|fix|rev ?\d+|v\d+(\.\d+)*)\b"#,
                                            with: "", options: .regularExpression)
         title = title.replacingOccurrences(of: #"\s{2,}"#, with: " ", options: .regularExpression)
             .trimmingCharacters(in: CharacterSet(charactersIn: " -–:"))
+        // All lower case (a file name): words capitalised.
+        if title == title.lowercased() { title = title.capitalized }
         return title.isEmpty ? name : title
     }
 
