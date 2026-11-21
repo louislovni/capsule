@@ -4,7 +4,8 @@
 using namespace metal;
 
 // a: texture w, h, view w, h (pixels). b: look, time (s), weather, effects strength (0..1).
-// c: night (0..1), lightning flash (0..1), cave darkness (0..1), outdoors (0 / 1). d: spare.
+// c: night (0..1), lightning flash (0..1), cave darkness (0..1), outdoors (0 / 1). d: the time of day's grade (r, g, b;
+// 1 = none: by day, or when the game tints itself).
 struct ScreenUniforms {
     float4 a;
     float4 b;
@@ -201,8 +202,8 @@ static float3 weather_fx(float3 color, float2 uv, float2 q, float time, int weat
         out *= 0.86;
         break;
     case 0: case 1: case 2: { // a fine day: cloud shadows drifting over the map, a touch of warm light
-        float n = fbm(q * 1.5 + float2(time * 0.035, time * 0.012));
-        float shadow = smoothstep(0.48, 0.78, n) * (weather == 1 ? 0.2 : 0.14);
+        float n = fbm(q * 1.1 + float2(time * 0.035, time * 0.012));
+        float shadow = smoothstep(0.46, 0.74, n) * (weather == 1 ? 0.28 : 0.22);
         out *= (1.0 - shadow) * float3(1.03, 1.01, 0.97);
         break;
     }
@@ -255,6 +256,13 @@ fragment float4 screen_fragment(ScreenOut in [[stage_in]], texture2d<float> fram
         color *= mix(0.86, 1.0, saturate(pow(v.x * v.y * 16.0, 0.3)));
     }
 
+    // The time of day (the phone's clock): night blue, dawn pink, dusk orange, a little less colour at night.
+    float3 grade = u.d.xyz;
+    if (any(grade < float3(0.999))) {
+        float dark = 1.0 - (grade.x + grade.y) * 0.5;
+        float l = luma(color);
+        color = mix(color, float3(l), dark * 0.5) * grade;
+    }
     if (strength > 0.001) {
         float2 q = float2(uv.x * tex.x / tex.y, uv.y);
         color = weather_fx(color, uv, q, time, weather, strength * outdoors, flash);
@@ -263,18 +271,21 @@ fragment float4 screen_fragment(ScreenOut in [[stage_in]], texture2d<float> fram
         if (night > 0.01) {
             float d = length((uv - 0.5) * float2(tex.x / tex.y, 1));
             float k = night * strength;
-            color *= mix(1.0, 0.62, smoothstep(0.25, 0.95, d) * k);
-            color += float3(0.28, 0.19, 0.08) * smoothstep(0.38, 0.0, d) * k * 0.55;
+            // Darker away from the player, a warm pool of light round them (lit as by a lantern).
+            color *= mix(1.0, 0.5, smoothstep(0.2, 0.85, d) * k);
+            float pool = smoothstep(0.42, 0.0, d);
+            color = color * (1.0 + pool * k * 0.55) + float3(0.24, 0.15, 0.05) * pool * k * 0.5;
             float3 g = glow(frame, linear, uv, texel_size, 0.3, true);
-            color += g * float3(1.0, 0.82, 0.5) * k * 1.4;
+            color += g * float3(1.0, 0.82, 0.5) * k * 1.6;
             if (outdoors > 0.5 && weather <= 2) {
                 float2 fq = q * 5.0 + float2(sin(time * 0.3) * 0.4, time * -0.05);
                 float2 id = floor(fq), fr = fract(fq);
                 float2 c = float2(0.2 + 0.6 * hash21(id + 4.1), 0.2 + 0.6 * hash21(id + 8.3));
                 c += float2(sin(time * 1.3 + hash21(id) * 6.28), cos(time * 1.1 + hash21(id + 1.0) * 6.28)) * 0.12;
                 float blink = 0.5 + 0.5 * sin(time * 2.4 + hash21(id + 2.0) * 6.28);
-                float fly = smoothstep(0.06, 0.0, length(fr - c)) * blink * step(0.72, hash21(id + 5.5));
-                color += float3(0.8, 1.0, 0.45) * fly * k * 0.9;
+                float dist = length(fr - c);
+                float fly = (smoothstep(0.05, 0.0, dist) + smoothstep(0.16, 0.0, dist) * 0.35) * blink * step(0.7, hash21(id + 5.5));
+                color += float3(0.8, 1.0, 0.45) * fly * k * 1.2;
             }
         }
         if (cave > 0.01) {

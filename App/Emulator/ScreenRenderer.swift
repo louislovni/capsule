@@ -122,6 +122,8 @@ final class ScreenRenderer {
     private var strength: Float = 0
     private var flash: Float = 0
     private var nextFlash: CFTimeInterval = 0
+    /// Météo et lumières' own time of day (when PokeDaisy's DAY AND NIGHT is off): the grade now, eased.
+    private var grade = SIMD3<Float>(1, 1, 1)
 
     init?() {
         guard let device = MTLCreateSystemDefaultDevice(), let queue = device.makeCommandQueue(),
@@ -191,7 +193,14 @@ final class ScreenRenderer {
         }
         flash = max(flash - 0.07, 0)
         let lightStrength: Float = lightsOn ? 1 : 0
-        let night = scene.outdoors ? scene.night : 0
+        // The time of day: PokeDaisy's DAY AND NIGHT tints the game itself; without it the shader grades the picture by the
+        // phone's clock (outdoors on the field, eased so a menu or a door doesn't flash it).
+        let coreTinted = scene.tint.r != 256 || scene.tint.g != 256 || scene.tint.b != 256
+        let target = effects && !coreTinted && scene.outdoors && scene.field && !scene.battle
+            ? Self.dayGrade(Date()) : SIMD3<Float>(1, 1, 1)
+        grade += (target - grade) * 0.03
+        let ownNight = max(0, min(1, (1 - (grade.x + grade.y) / 2) / 0.45))
+        let night = scene.outdoors ? max(scene.night, ownNight) : 0
         let cave = Float(min(scene.caveDarkness, 4)) / 4
 
         var uniforms = [
@@ -199,7 +208,7 @@ final class ScreenRenderer {
             SIMD4<Float>(Float(look.rawValue), Float(now - start), Float(max(shownWeather, 0)),
                          shownWeather >= 0 ? strength : (lightsOn && (night > 0.01 || cave > 0) ? 1 : 0)),
             SIMD4<Float>(night * lightStrength, flash * strength, cave * lightStrength, scene.outdoors ? 1 : 0),
-            SIMD4<Float>(0, 0, 0, 0),
+            SIMD4<Float>(grade.x, grade.y, grade.z, 0),
         ]
 
         let pass = MTLRenderPassDescriptor()
@@ -223,6 +232,21 @@ final class ScreenRenderer {
         buffer.addCompletedHandler { _ in slots.signal() }
         buffer.commit()
         return true
+    }
+
+    /// The day's colours by the clock (PokeDaisy's DayNight.kt): deep blue at night, pink at dawn, orange at dusk.
+    static func dayGrade(_ date: Date) -> SIMD3<Float> {
+        let parts = Calendar.current.dateComponents([.hour, .minute], from: date)
+        let hour = Float(parts.hour ?? 12) + Float(parts.minute ?? 0) / 60
+        let nightC = SIMD3<Float>(0.5, 0.56, 0.86), dawn = SIMD3<Float>(0.96, 0.86, 0.86), day = SIMD3<Float>(1, 1, 1)
+        let dusk = SIMD3<Float>(1.0, 0.8, 0.66)
+        let keys: [(Float, SIMD3<Float>)] = [(0, nightC), (4.5, nightC), (6, dawn), (7.5, day), (16.5, day), (18, dusk),
+                                             (19.5, nightC), (24, nightC)]
+        var i = 0
+        while i < keys.count - 2 && keys[i + 1].0 <= hour { i += 1 }
+        let (h0, a) = keys[i], (h1, b) = keys[i + 1]
+        let t = h1 > h0 ? (hour - h0) / (h1 - h0) : 0
+        return a + (b - a) * t
     }
 
     /// The weathers the shader draws (the games' WEATHER_*).
