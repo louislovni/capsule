@@ -302,9 +302,10 @@ fragment float4 screen_fragment(ScreenOut in [[stage_in]], texture2d<float> fram
                     float2 pc = float2(mid.x, lo.y + size.y * 1.05);
                     float2 e = (p - pc) / (float2(1.3, 0.75) * size.x);
                     float pool = smoothstep(1.0, 0.0, length(e));
-                    color = color * (1.0 + pool * k * 0.4 * flicker) + warm * pool * k * 0.34 * flicker;
+                    // Soft and warm, not a white spot: a little brighter, mostly tinted.
+                    color = color * (1.0 + pool * k * 0.12 * flicker) + float3(0.9, 0.6, 0.25) * pool * k * 0.2 * flicker;
                     float2 off = max(abs(p - mid) - size * 0.5, float2(0));
-                    color += warm * exp(-length(off) / (unit * 4.0)) * k * (length(off) <= 0.0 ? 0.22 : 0.12);
+                    color += float3(0.9, 0.6, 0.25) * exp(-length(off) / (unit * 3.0)) * k * (length(off) <= 0.0 ? 0.16 : 0.06);
                 }
             }
             if (outdoors > 0.5 && weather <= 2) {
