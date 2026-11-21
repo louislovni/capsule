@@ -1986,7 +1986,7 @@
     "330d9eb56e069df13c09bbcb3c748c269c94a88e"
    ],
    "companion": false,
-   "pokedaisy": false,
+   "pokedaisy": true,
    "bank": "yes",
    "note": "Banque et Pokédex vérifiés sur une sauvegarde ; Pokémon après Arceus réservés aux jeux du même moteur",
    "base": {

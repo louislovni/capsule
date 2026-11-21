@@ -155,12 +155,14 @@ for r in site["ds"]:
     add(title=r["title"], console="DS", kind="official", version="", code=r["code"], revisions=[r["rev"]], sha1=[],
         companion=r["code"] in US or r["code"] in FR, pokedaisy=r["code"] in pd_ds_codes, bank="yes")
 for h in site["dsHacks"]:
+    if h["title"] == "Pokémon Chaos Purple":
+        continue   # added below, with its SHA-1 and save notes
     bank = {"Pokémon Renegade Platinum": "likely", "Pokémon Blaze Black 2 Redux": "likely",
             "Pokémon Volt White 2 Redux": "likely", "Pokémon Heartfelt Gold": "likely"}.get(h["title"], "no")
     add(title=h["title"], console="DS", kind="hack", version=h.get("version", ""), sha1=[], companion=False,
         pokedaisy=True, bank=bank, base=BASES.get(DS_BASES.get(h["title"], "")))
 add(title="Pokémon Chaos Purple", console="DS", kind="hack", version="démo (Silph Co. fix)",
-    sha1=["330d9eb56e069df13c09bbcb3c748c269c94a88e"], companion=False, pokedaisy=False, bank="yes",
+    sha1=["330d9eb56e069df13c09bbcb3c748c269c94a88e"], companion=False, pokedaisy=True, bank="yes",
     note="Banque et Pokédex vérifiés sur une sauvegarde ; Pokémon après Arceus réservés aux jeux du même moteur",
     base=BASES["IPKE"])
 
