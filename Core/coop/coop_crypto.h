@@ -18,6 +18,9 @@ typedef struct {
 	size_t used;
 } coop_sha256_ctx;
 
+/* SHA-1 of a whole buffer: the ROM's fingerprint (what the HELLO names), not for security. */
+void coop_sha1(const void* data, size_t n, uint8_t out[20]);
+
 void coop_sha256_init(coop_sha256_ctx* c);
 void coop_sha256_update(coop_sha256_ctx* c, const void* data, size_t n);
 void coop_sha256_final(coop_sha256_ctx* c, uint8_t out[32]);

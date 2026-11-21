@@ -9,7 +9,7 @@
 #                                   Needs mingw-w64 and Go; GOOGLE_DESKTOP_CLIENT_ID / _SECRET for the sign-in.
 set -eu
 
-POKEDAISY_COMMIT=fd4bb1e8303953b75add8cdd230d8f3f1def8c76   # louislovni/pokedaisy, branch capsule
+POKEDAISY_COMMIT=d42659ddeb08d2aef883f630163da44992622d3f
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TARGET="${1:-host}"
 SRC="$ROOT/Vendor/pokedaisy"
@@ -132,6 +132,8 @@ windows)
 	cp "$SRC/NOTICE" "$PKG/licenses/PokeDaisy-NOTICE.txt"
 	cp "$SRC/third_party/mgba/LICENSE" "$PKG/licenses/mGBA-MPL-2.0.txt"
 	cp "$SDL_DIR/SDL2-$SDL_VERSION/LICENSE.txt" "$PKG/licenses/SDL2-zlib.txt"
+	cp "$ROOT/Core/third_party/monocypher/LICENCE.md" "$PKG/licenses/Monocypher-LICENCE.md"
+	cp "$ROOT/Core/third_party/mdns/LICENSE" "$PKG/licenses/mdns-Unlicense.txt"
 	(cd "$SRC/third_party/dsperate-lr" && find . -type f \( -iname 'license*' -o -iname 'copying*' -o -iname 'notice*' \) \
 		-not -path './.git/*' | while read -r f; do mkdir -p "$PKG/licenses/dsperate-lr/$(dirname "$f")"; cp "$f" "$PKG/licenses/dsperate-lr/$f"; done)
 	printf 'Capsule %s pour Windows\nSource : https://github.com/louislovni/capsule\nPokeDaisy : https://github.com/louislovni/pokedaisy (%s)\n' \

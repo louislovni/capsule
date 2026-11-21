@@ -1084,9 +1084,15 @@ static void link_frame(coop_host* h, const uint8_t from[32], const uint8_t* b, s
 			link_drop(h, now);
 			return;
 		}
+		// The partner's first HELLO is answered with ours once more: it may have missed the one sent on connecting
+		// (it arrives while that side is still finishing the pairing). Only the first: two answers never ping-pong.
+		bool first = !h->helloOk;
 		h->helloOk = true;
 		h->linkState = COOP_LINK_CONNECTED;
 		h->backoff = 0;
+		if (first) {
+			send_hello(h, from);
+		}
 		if (hello.ticket[0] && strcmp(hello.ticket, p->ticket)) {
 			set_ticket(p->ticket, hello.ticket);
 			pairs_save(h);

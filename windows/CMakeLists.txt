@@ -21,5 +21,15 @@ target_compile_options(pokedaisy PRIVATE -include ${WIN}/compat.h -O2)
 target_link_directories(pokedaisy PRIVATE ${SDL2_ROOT}/lib)
 # The game list's patcher: a dropped .ips / .ups / .bps / .xdelta (PokeDaisy's third_party/pkpatch, Capsule's pk_patch.c).
 include(${POKEDAISY_DIR}/third_party/pkpatch/pkpatch.cmake)
-target_link_libraries(pokedaisy PRIVATE pkpatch mingw32 SDL2main SDL2 m)
+# JOUER A DEUX: Capsule's co-op (coop_pc.c over Core/coop, PokeDaisy's protocol; mDNS for the Wi-Fi).
+set(CORE "${CMAKE_CURRENT_SOURCE_DIR}/../Core")
+add_library(capsule_coop STATIC coop_pc.c ${CORE}/coop/coop_crypto.c ${CORE}/coop/coop_noise.c ${CORE}/coop/coop_wire.c
+  ${CORE}/coop/coop_host.c ${CORE}/third_party/monocypher/monocypher.c
+  ${CORE}/pkcore/pk_text.c ${CORE}/pkcore/pk_mon.c ${CORE}/pkcore/pk_save.c)
+target_include_directories(capsule_coop PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} PRIVATE ${CORE}/coop ${CORE}/pkcore
+  ${CORE}/third_party/monocypher ${CORE}/third_party/mdns ${CMAKE_CURRENT_SOURCE_DIR}/include-mdns)
+target_compile_options(capsule_coop PRIVATE -O2)
+target_link_libraries(capsule_coop PUBLIC ws2_32 bcrypt)
+target_compile_definitions(pokedaisy PRIVATE CAPSULE_COOP)
+target_link_libraries(pokedaisy PRIVATE capsule_coop pkpatch mingw32 SDL2main SDL2 m)
 target_link_options(pokedaisy PRIVATE -static-libgcc -Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive,-Bdynamic)

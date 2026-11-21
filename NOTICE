@@ -70,6 +70,11 @@ Monocypher 4.0.2  -  https://monocypher.org  -  https://github.com/LoupVaillant/
   Fabio Scotoni. Dual-licensed BSD 2-Clause or CC0 1.0 (LICENCE.md beside it).
   Unchanged.
 
+mdns  -  https://github.com/mjansson/mdns (commit a569c47)
+  Core/third_party/mdns/mdns.h: the Windows build's LAN discovery for the
+  co-op link (windows/coop_pc.c). By Mattias Jansson. Public domain
+  (Unlicense, LICENSE beside it). Unchanged.
+
 The co-op link (Core/coop) speaks PokeDaisy's co-op protocol (its Android
 app's CoopNoise, CoopChannel, CoopWire, CoopTicket, CoopPairing and
 CoopLinkImpl), so Capsule and PokeDaisy devices pair and play together.

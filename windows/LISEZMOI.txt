@@ -34,6 +34,10 @@ Bon à savoir
   - Les jeux compatibles : dans la liste des jeux, Tab (ou X / Y à la
     manette). Tes jeux y sont reconnus, avec ce qui marche pour chacun
     et la ROM d'origine d'un hack. A : les détails d'un jeu.
+  - Jouer à deux (Pokémon Émeraude) : en jeu, ouvre le menu puis
+    "JOUER A DEUX" et "ASSOCIER UN JOUEUR PROCHE", sur le même Wi-Fi qu'un
+    PC, un iPhone ou un Android. Vous vous voyez sur la carte. Windows peut
+    demander d'autoriser le réseau : accepte pour les réseaux privés.
   - La banque, le Pokédex et les échanges sont sur la page web :
     https://louislovni.github.io/capsule
 
