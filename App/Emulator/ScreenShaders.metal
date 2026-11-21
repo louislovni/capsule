@@ -200,6 +200,12 @@ static float3 weather_fx(float3 color, float2 uv, float2 q, float time, int weat
     case 11: // shade
         out *= 0.86;
         break;
+    case 0: case 1: case 2: { // a fine day: cloud shadows drifting over the map, a touch of warm light
+        float n = fbm(q * 1.5 + float2(time * 0.035, time * 0.012));
+        float shadow = smoothstep(0.48, 0.78, n) * (weather == 1 ? 0.2 : 0.14);
+        out *= (1.0 - shadow) * float3(1.03, 1.01, 0.97);
+        break;
+    }
     default:
         return color;
     }
@@ -252,10 +258,24 @@ fragment float4 screen_fragment(ScreenOut in [[stage_in]], texture2d<float> fram
     if (strength > 0.001) {
         float2 q = float2(uv.x * tex.x / tex.y, uv.y);
         color = weather_fx(color, uv, q, time, weather, strength * outdoors, flash);
-        // The night's lights: warm bright spots (windows, lamps) glow; a dark cave gets a warm light round the player.
+        // The night: darker edges, a warm light round the player (the picture's middle), warm bright spots glowing and,
+        // on a clear night outdoors, fireflies.
         if (night > 0.01) {
-            float3 g = glow(frame, linear, uv, texel_size, 0.38, true);
-            color += g * float3(1.0, 0.82, 0.5) * night * 1.6 * strength;
+            float d = length((uv - 0.5) * float2(tex.x / tex.y, 1));
+            float k = night * strength;
+            color *= mix(1.0, 0.62, smoothstep(0.25, 0.95, d) * k);
+            color += float3(0.28, 0.19, 0.08) * smoothstep(0.38, 0.0, d) * k * 0.55;
+            float3 g = glow(frame, linear, uv, texel_size, 0.3, true);
+            color += g * float3(1.0, 0.82, 0.5) * k * 1.4;
+            if (outdoors > 0.5 && weather <= 2) {
+                float2 fq = q * 5.0 + float2(sin(time * 0.3) * 0.4, time * -0.05);
+                float2 id = floor(fq), fr = fract(fq);
+                float2 c = float2(0.2 + 0.6 * hash21(id + 4.1), 0.2 + 0.6 * hash21(id + 8.3));
+                c += float2(sin(time * 1.3 + hash21(id) * 6.28), cos(time * 1.1 + hash21(id + 1.0) * 6.28)) * 0.12;
+                float blink = 0.5 + 0.5 * sin(time * 2.4 + hash21(id + 2.0) * 6.28);
+                float fly = smoothstep(0.06, 0.0, length(fr - c)) * blink * step(0.72, hash21(id + 5.5));
+                color += float3(0.8, 1.0, 0.45) * fly * k * 0.9;
+            }
         }
         if (cave > 0.01) {
             float d = length((uv - 0.5) * float2(tex.x / tex.y, 1));

@@ -227,6 +227,6 @@ final class ScreenRenderer {
 
     /// The weathers the shader draws (the games' WEATHER_*).
     private static func drawn(_ weather: Int) -> Bool {
-        [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].contains(weather)
+        (0...14).contains(weather)
     }
 }
