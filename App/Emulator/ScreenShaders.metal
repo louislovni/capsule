@@ -149,8 +149,8 @@ static float3 weather_fx(float3 color, float2 uv, float2 q, float time, int weat
     case 3: case 5: case 13: { // rain, thunderstorm, downpour
         bool heavy = weather != 3;
         out *= mix(float3(1), float3(0.80, 0.84, 0.93), heavy ? 1.0 : 0.6);
-        float r = rain_layer(q, time, heavy ? 0.55 : 0.32, 0.20);
-        out += float3(0.75, 0.82, 0.95) * r * 0.55;
+        float r = rain_layer(q, time, heavy ? 0.34 : 0.2, 0.28);
+        out += float3(0.75, 0.82, 0.95) * r * 0.38;
         // Splashes: brief rings low on the screen.
         float2 g = q * float2(14, 9);
         float2 id = floor(g);
