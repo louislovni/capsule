@@ -186,6 +186,7 @@ struct GameView: View {
                     if !session.loadFailed {
                         CapsuleWheel(tint: session.pictureTint, tools: wheelTools)
                             .offset(y: 20)
+                            .touchShield("wheel-upright")
                     }
                 }
             ZStack(alignment: .top) {
@@ -193,6 +194,7 @@ struct GameView: View {
                     portraitPad
                 }
                 toolbar(compact: true)
+                    .touchShield("toolbar-upright")
                     .padding(.top, 10)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -278,17 +280,29 @@ struct GameView: View {
                     .ignoresSafeArea(edges: bandsBeside ? .all : .vertical)
                 }
             }
-            // The wheel comes down from the top edge, the tools in glass beside it.
+            // The wheel comes down from the top edge, the tools in glass to its left: clear of R and of PokeDaisy's
+            // minimap (top right), each in its own frame (an overlay pushed out of the wheel's frame only took a
+            // tap now and then, and "…" none).
             VStack {
                 if !session.loadFailed {
-                    CapsuleWheel(tint: session.pictureTint, tools: wheelTools, horizontal: true)
-                        .overlay(alignment: .topLeading) {
-                            toolbar(compact: true)
-                                .padding(.horizontal, 14)
-                                .glassCapsule()
-                                .fixedSize()
-                                .offset(x: 164 + 10, y: 8)
+                    ZStack(alignment: .top) {
+                        CapsuleWheel(tint: session.pictureTint, tools: wheelTools, horizontal: true)
+                            .touchShield("wheel-sideways")
+                        HStack(alignment: .top, spacing: 0) {
+                            HStack(spacing: 0) {
+                                Spacer(minLength: 0)
+                                toolbar(compact: true)
+                                    .padding(.horizontal, 14)
+                                    .glassCapsule()
+                                    .fixedSize()
+                                    .touchShield("toolbar-sideways")
+                                    .padding(.top, 8)
+                                    .padding(.trailing, 164 / 2 + 10)
+                            }
+                            .frame(maxWidth: .infinity)
+                            Color.clear.frame(maxWidth: .infinity, maxHeight: 0)
                         }
+                    }
                 } else {
                     toolbar(compact: false)
                         .glassCapsule()

@@ -226,6 +226,9 @@ final class CapsulePadView: UIView {
     // MARK: - Touches
 
     override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        if TouchShield.covers(point, in: self) {
+            return false
+        }
         if pad.frame.insetBy(dx: -16, dy: -16).contains(point) {
             return true
         }

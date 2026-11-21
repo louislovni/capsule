@@ -427,6 +427,9 @@ final class PadView: UIView {
     /// Only the controls take touches: everywhere else they reach the game underneath
     /// (its touch screen, PokeDaisy's companion and HUD), which matters when the pad lies over it.
     override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        if TouchShield.covers(point, in: self) {
+            return false
+        }
         if dpad.frame.insetBy(dx: -18, dy: -18).contains(point) {
             return true
         }
@@ -559,6 +562,11 @@ final class ScreenUIView: UIView {
         }
     }
     private var tracked: UITouch?
+
+    /// Not under the SwiftUI controls laid over the picture ([TouchShield]).
+    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        super.point(inside: point, with: event) && !TouchShield.covers(point, in: self)
+    }
 
     private func report(_ touch: UITouch) {
         guard bounds.width > 0, bounds.height > 0 else { return }
