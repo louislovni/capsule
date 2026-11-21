@@ -118,7 +118,10 @@ final class EmulatorSession: ObservableObject {
         let middle = max(area.height - half - 4 * scale, topInset + half)
         let height = 2 * (full - middle)
         let hidden = height - full
-        return (height, topInset + hidden, area.height + hidden)
+        // The HUD (the minimap on the top right) a little into the status bar's band: it's hidden in game, and the
+        // Dynamic Island keeps to the middle.
+        let hudTop = max(topInset - 20 * UIScreen.main.scale, 10 * UIScreen.main.scale)
+        return (height, hudTop + hidden, area.height + hidden)
     }
 
     /// Upright, the status bar's height (pixels): the HUD starts below it.
