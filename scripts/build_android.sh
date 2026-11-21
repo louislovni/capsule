@@ -43,8 +43,10 @@ else
 	echo "signing: debug key (no ANDROID_KEYSTORE_PASSWORD)"
 fi
 
+# CO-OP (PokeDaisy's, still behind its flag there): on in Capsule. The relay comes from COOP_RELAY_URL when the build has
+# one; without it, same Wi-Fi and BY IP only.
 (cd "$SRC" && ./gradlew --no-daemon -q :app:assembleCapsule \
-	-Ppokedaisy.versionName="$VERSION" -Ppokedaisy.versionCode="$CODE")
+	-Ppokedaisy.versionName="$VERSION" -Ppokedaisy.versionCode="$CODE" -Ppokedaisy.coop=true)
 rm -f "$SRC/keystore.properties"
 APK="$(find "$SRC/app/build/outputs/apk/capsule" -name '*.apk' | head -n 1)"
 mkdir -p "$ROOT/build"
