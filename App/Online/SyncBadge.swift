@@ -5,15 +5,22 @@ import SwiftUI
 /// A tap opens the account page (its "Synchroniser maintenant" and the last sync's details).
 struct SyncBadge: View {
     @ObservedObject var cloud: CloudSync
-    @State private var turning = false
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 30)) { context in
             HStack(spacing: 6) {
-                Image(systemName: icon)
-                    .font(.system(size: 12, weight: .bold))
-                    .rotationEffect(.degrees(cloud.syncing && turning ? 360 : 0))
-                    .animation(cloud.syncing ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, value: turning)
+                if cloud.syncing {
+                    // Turning only while it syncs: its angle from the clock, so it stops dead with the sync (a
+                    // repeating animation kept the tick turning once the sync was over).
+                    TimelineView(.animation) { frame in
+                        Image(systemName: icon)
+                            .font(.system(size: 12, weight: .bold))
+                            .rotationEffect(.degrees(frame.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 1) * 360))
+                    }
+                } else {
+                    Image(systemName: icon)
+                        .font(.system(size: 12, weight: .bold))
+                }
                 Text(text(now: context.date))
                     .font(.system(size: 12, weight: .semibold))
                     .lineLimit(1)
@@ -23,8 +30,6 @@ struct SyncBadge: View {
             .frame(height: 26)
             .background(Color.capsulePanel, in: Capsule())
         }
-        .onChange(of: cloud.syncing) { syncing in turning = syncing }
-        .onAppear { turning = cloud.syncing }
         .accessibilityElement(children: .combine)
         .accessibilityHint("Ouvre le compte et la synchronisation")
     }
