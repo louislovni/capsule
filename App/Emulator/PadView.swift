@@ -566,7 +566,7 @@ final class ScreenUIView: UIView {
     /// A frame from the core (RGBX bytes) and what it shows (main thread).
     func show(_ pixels: Data, width: Int, height: Int, scene: SceneInfo) {
         if let renderer = renderer, let metal = layer as? CAMetalLayer {
-            renderer.draw(pixels, width: width, height: height, scene: scene, into: metal)
+            renderer.submit(pixels, width: width, height: height, scene: scene, into: metal, size: metal.drawableSize)
             return
         }
         guard let provider = CGDataProvider(data: pixels as CFData),

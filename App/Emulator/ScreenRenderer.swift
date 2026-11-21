@@ -68,12 +68,53 @@ struct SceneInfo: Equatable {
 }
 
 /// Draws the frames with ScreenShaders.metal into a CAMetalLayer: the look, then the weather (eased in and out) and the
-/// night's lights. Main thread.
+/// night's lights. On a queue of its own, never the main thread (a GPU running late would freeze the whole interface),
+/// at most one frame waiting: a frame that comes while one is still being drawn replaces the waiting one.
 final class ScreenRenderer {
+    private let renderQueue = DispatchQueue(label: "capsule.render", qos: .userInteractive)
+    private let pendingLock = NSLock()
+    private var pending: (Data, Int, Int, SceneInfo, CAMetalLayer, CGSize)?
+    private var scheduled = false
+    /// GPU frames in flight, at most two.
+    private let inFlight = DispatchSemaphore(value: 2)
+
+    /// Hands a frame over (any thread): drawn soon on the render queue.
+    func submit(_ pixels: Data, width: Int, height: Int, scene: SceneInfo, into layer: CAMetalLayer, size: CGSize) {
+        pendingLock.lock()
+        pending = (pixels, width, height, scene, layer, size)
+        let start = !scheduled
+        scheduled = true
+        pendingLock.unlock()
+        guard start else { return }
+        renderQueue.async { [weak self] in
+            self?.drain()
+        }
+    }
+
+    private func drain() {
+        while true {
+            pendingLock.lock()
+            guard let job = pending else {
+                scheduled = false
+                pendingLock.unlock()
+                return
+            }
+            pending = nil
+            pendingLock.unlock()
+            // A GPU two frames behind: this one waits a little, else it's dropped for the next.
+            guard inFlight.wait(timeout: .now() + 0.05) == .success else { continue }
+            if !draw(job.0, width: job.1, height: job.2, scene: job.3, into: job.4, size: job.5) {
+                inFlight.signal()
+            }
+        }
+    }
+
     private let device: MTLDevice
     private let queue: MTLCommandQueue
     private let pipeline: MTLRenderPipelineState
-    private var texture: MTLTexture?
+    /// One texture per frame in flight (plus one): a frame is never written while the GPU still reads it.
+    private var textures: [MTLTexture] = []
+    private var nextTexture = 0
     private let start = CACurrentMediaTime()
 
     // The weather shown, eased: a new one fades in after the old fades out.
@@ -107,22 +148,27 @@ final class ScreenRenderer {
     }
 
     /// One frame: RGBX bytes, [width] x [height].
-    func draw(_ pixels: Data, width: Int, height: Int, scene: SceneInfo, into layer: CAMetalLayer) {
-        guard width > 0, height > 0, pixels.count >= width * height * 4 else { return }
-        if texture == nil || texture!.width != width || texture!.height != height {
+    /// Draws one frame; false if nothing went to the GPU (its in-flight slot is given back by the caller).
+    private func draw(_ pixels: Data, width: Int, height: Int, scene: SceneInfo, into layer: CAMetalLayer, size: CGSize) -> Bool {
+        guard width > 0, height > 0, pixels.count >= width * height * 4 else { return false }
+        if textures.count != 3 || textures[0].width != width || textures[0].height != height {
             let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba8Unorm, width: width, height: height,
                                                                       mipmapped: false)
             descriptor.usage = .shaderRead
-            texture = device.makeTexture(descriptor: descriptor)
+            textures = (0..<3).compactMap { _ in device.makeTexture(descriptor: descriptor) }
+            guard textures.count == 3 else {
+                textures = []
+                return false
+            }
         }
-        guard let texture = texture else { return }
+        let texture = textures[nextTexture]
+        nextTexture = (nextTexture + 1) % textures.count
         pixels.withUnsafeBytes { raw in
             guard let base = raw.baseAddress else { return }
             texture.replace(region: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0, withBytes: base,
                             bytesPerRow: width * 4)
         }
-        let size = layer.drawableSize
-        guard size.width >= 1, size.height >= 1, let drawable = layer.nextDrawable() else { return }
+        guard size.width >= 1, size.height >= 1, let drawable = layer.nextDrawable() else { return false }
 
         let now = CACurrentMediaTime()
         let look = ScreenLook.current
@@ -162,7 +208,7 @@ final class ScreenRenderer {
         pass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
         pass.colorAttachments[0].storeAction = .store
         guard let buffer = queue.makeCommandBuffer(), let encoder = buffer.makeRenderCommandEncoder(descriptor: pass) else {
-            return
+            return false
         }
         encoder.setRenderPipelineState(pipeline)
         uniforms.withUnsafeMutableBytes { raw in
@@ -173,11 +219,14 @@ final class ScreenRenderer {
         encoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
         encoder.endEncoding()
         buffer.present(drawable)
+        let slots = inFlight
+        buffer.addCompletedHandler { _ in slots.signal() }
         buffer.commit()
+        return true
     }
 
     /// The weathers the shader draws (the games' WEATHER_*).
     private static func drawn(_ weather: Int) -> Bool {
-        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].contains(weather)
+        [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].contains(weather)
     }
 }

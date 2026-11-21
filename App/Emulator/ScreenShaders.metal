@@ -181,12 +181,12 @@ static float3 weather_fx(float3 color, float2 uv, float2 q, float time, int weat
         out = mix(out, float3(0.93, 0.78, 0.52), smoothstep(0.45, 0.8, n) * 0.35);
         break;
     }
-    case 1: case 2: case 12: { // sun, drought: warm light and rays from the top left
+    case 12: { // drought (the game's harsh sun): warm light and rays from the top left; a plain sunny map stays as it is
         float2 d = uv - float2(-0.15, -0.25);
         float a = atan2(d.y, d.x);
         float rays = pow(0.5 + 0.5 * sin(a * 14.0 + time * 0.25 + noise2(float2(a * 6.0, time * 0.2)) * 2.0), 6.0);
         float fall = smoothstep(1.4, 0.1, length(d));
-        float k = weather == 12 ? 1.0 : weather == 2 ? 0.7 : 0.35;
+        float k = 1.0;
         out *= mix(float3(1), float3(1.06, 1.02, 0.94), k);
         out += float3(1.0, 0.92, 0.7) * rays * fall * 0.16 * k;
         break;
