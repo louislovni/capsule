@@ -63,3 +63,13 @@ XZ Embedded  -  https://github.com/tukaani-project/xz-embedded
   Core/third_party/xz-embedded: the LZMA2 decoder behind xdelta3's LZMA
   compression, through Core/third_party/xz-shim. Copyright the XZ Embedded
   authors. Zero-clause BSD: use, copy, modify and distribute freely.
+
+Monocypher 4.0.2  -  https://monocypher.org  -  https://github.com/LoupVaillant/Monocypher
+  Core/third_party/monocypher: its X25519, for the co-op link's Noise
+  handshake (Core/coop). Copyright (c) 2017-2023 Loup Vaillant, Michael Savage,
+  Fabio Scotoni. Dual-licensed BSD 2-Clause or CC0 1.0 (LICENCE.md beside it).
+  Unchanged.
+
+The co-op link (Core/coop) speaks PokeDaisy's co-op protocol (its Android
+app's CoopNoise, CoopChannel, CoopWire, CoopTicket, CoopPairing and
+CoopLinkImpl), so Capsule and PokeDaisy devices pair and play together.

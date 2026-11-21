@@ -141,6 +141,8 @@ void pk_save_free(PKSave* save);
 
 int pk_save_game(const PKSave* save);
 void pk_save_trainer_name(const PKSave* save, char* out, size_t outSize);
+/* SaveBlock2's 8 raw name bytes (the game's charset, 0xFF-ended) and the player's gender: what co-op tells saves apart by. */
+void pk_save_trainer_raw(const PKSave* save, uint8_t name[8], bool* female);
 uint32_t pk_save_trainer_id(const PKSave* save);
 /* Hours in the high 16 bits, minutes in the low 16. */
 uint32_t pk_save_play_time(const PKSave* save);

@@ -180,6 +180,17 @@ void pk_save_trainer_name(const PKSave* save, char* out, size_t outSize) {
 	pk_text_decode(section_ptr(save, 0), 7, out, outSize);
 }
 
+void pk_save_trainer_raw(const PKSave* save, uint8_t name[8], bool* female) {
+	const uint8_t* s = save ? section_ptr(save, 0) : NULL;
+	if (!s) {
+		memset(name, 0xFF, 8);
+		*female = false;
+		return;
+	}
+	memcpy(name, s, 8);
+	*female = s[8] == 1;
+}
+
 uint32_t pk_save_trainer_id(const PKSave* save) {
 	return save ? rd32(section_ptr(save, 0) + 0x0A) : 0;
 }

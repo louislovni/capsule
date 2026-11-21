@@ -65,7 +65,12 @@ target_include_directories(bridge PUBLIC bridge)
 target_include_directories(bridge PRIVATE "${POKEDAISY_DIR}/third_party/mgba/src/platform/libretro")
 target_compile_options(bridge PRIVATE -Wall -Wextra)
 
-add_library(capsulecore STATIC $<TARGET_OBJECTS:bridge> $<TARGET_OBJECTS:pkcore> $<TARGET_OBJECTS:xdelta>)
+# Co-op (PokeDaisy's link, its bytes on the wire): crypto, Noise IK, the transport, pairing and the link; Monocypher's X25519.
+add_library(coop OBJECT coop/coop_crypto.c coop/coop_noise.c coop/coop_wire.c coop/coop_host.c third_party/monocypher/monocypher.c)
+target_include_directories(coop PUBLIC coop third_party/monocypher pkcore)
+target_compile_options(coop PRIVATE -Wall)
+
+add_library(capsulecore STATIC $<TARGET_OBJECTS:bridge> $<TARGET_OBJECTS:pkcore> $<TARGET_OBJECTS:xdelta> $<TARGET_OBJECTS:coop>)
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
 	enable_testing()
@@ -90,6 +95,16 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
 	target_include_directories(test_pkpatch PRIVATE pkcore)
 	target_compile_definitions(test_pkpatch PRIVATE TEST_DATA="${CMAKE_CURRENT_SOURCE_DIR}/tests/data")
 	add_test(NAME pkpatch COMMAND test_pkpatch)
+
+	add_executable(test_coop tests/test_coop.c)
+	target_link_libraries(test_coop PRIVATE capsulecore m)
+	target_include_directories(test_coop PRIVATE coop third_party/monocypher pkcore tests)
+	add_test(NAME coop COMMAND test_coop)
+
+	add_executable(test_coophost tests/test_coophost.c)
+	target_link_libraries(test_coophost PRIVATE capsulecore m)
+	target_include_directories(test_coophost PRIVATE coop third_party/monocypher pkcore tests)
+	add_test(NAME coophost COMMAND test_coophost)
 
 	add_executable(test_bridge tests/test_bridge.c)
 	target_link_libraries(test_bridge PRIVATE capsulecore m pthread ${CMAKE_DL_LIBS})
