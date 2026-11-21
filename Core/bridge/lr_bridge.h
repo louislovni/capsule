@@ -103,6 +103,9 @@ void lr_coop_stop(LRCore* core);
  * it (the game's keys are the companion's while open). lr_dock_is_open: it can close itself (B on its first page) and open
  * from the HUD. lr_dock_pixels: 0xRRGGBB, valid until the next frame; serial moves when they're drawn again.
  * lr_dock_touch: the finger, in the canvas's pixels, down while held. */
+/* PokeDaisy's companion in this language ("fr"; "en" or NULL = English): its menus, words and guide. */
+void lr_set_language(LRCore* core, const char* code);
+
 bool lr_dock_available(const LRCore* core);
 void lr_dock(LRCore* core, int width, int height);
 void lr_dock_open(LRCore* core, bool open);

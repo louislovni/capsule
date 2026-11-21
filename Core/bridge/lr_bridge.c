@@ -82,6 +82,7 @@ typedef struct {
 	int (*pd_dock_is_open)(void);
 	const uint32_t* (*pd_dock_pixels)(int*, int*, unsigned*);
 	void (*pd_dock_touch)(int, int, int);
+	void (*pd_language)(const char*); /* PokeDaisy's companion language, NULL elsewhere */
 } RetroAPI;
 
 static RetroAPI api;
@@ -171,6 +172,7 @@ static bool load_api(const char* corePath) {
 	LOOKUP(serialize)
 	LOOKUP(unserialize)
 #undef LOOKUP
+	*(void**) &loaded.pd_language = dlsym(h, "retro_pd_language");
 	*(void**) &loaded.pd_dock = dlsym(h, "retro_pd_dock");
 	*(void**) &loaded.pd_dock_open = dlsym(h, "retro_pd_dock_open");
 	*(void**) &loaded.pd_dock_is_open = dlsym(h, "retro_pd_dock_is_open");
@@ -773,5 +775,11 @@ const uint32_t* lr_dock_pixels(const LRCore* core, int* width, int* height, unsi
 void lr_dock_touch(LRCore* core, int x, int y, bool down) {
 	if (core && api.pd_dock_touch) {
 		api.pd_dock_touch(x, y, down ? 1 : 0);
+	}
+}
+
+void lr_set_language(LRCore* core, const char* code) {
+	if (core && api.pd_language) {
+		api.pd_language(code);
 	}
 }

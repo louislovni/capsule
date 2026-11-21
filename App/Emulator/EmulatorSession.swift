@@ -227,6 +227,9 @@ final class EmulatorSession: ObservableObject {
         updateAspect(width: lr_video_width(created), height: lr_video_height(created))
 
         audio.start(core: created)
+        // PokeDaisy's menus in French on a French phone (English otherwise).
+        let french = Locale.preferredLanguages.first?.hasPrefix("fr") ?? false
+        lr_set_language(created, french ? "fr" : "en")
         dockAvailable = lr_dock_available(created)
         dockAvailableOnThread = dockAvailable
         if dockAvailable {
