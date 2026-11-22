@@ -44,6 +44,10 @@ Bon à savoir
     avec ses trois premiers Pokémon en forme. Champions et autres
     dresseurs de l'histoire : placez-vous tous les deux devant lui, l'un
     invite l'autre, puis chacun lui parle et choisit son équipe.
+    Échanges : menu rapide > ÉCHANGE, choisis ton Pokémon ; ton
+    partenaire choisit le sien (ou refuse), tu confirmes, et chaque
+    jeu est sauvegardé. Il faut Capsule des deux côtés (pas l'app
+    Android pour l'instant).
   - Rendu et météo : dans le menu (Échap), "LOOK" change le rendu de
     l'image (ORIGINAL, SMOOTH HD lissé, CRT, REMASTER) et "WEATHER AND
     LIGHTS" ajoute la météo du jeu (pluie, neige, brouillard...), les
