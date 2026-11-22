@@ -31,6 +31,8 @@ typedef struct {
 	int (*dial)(void* ctx, const coop_address* address);
 	/* A presence update from the partner (the game's core takes it). */
 	void (*presence)(void* ctx, const uint8_t* bytes, size_t n);
+	/* A joined-battle message from the partner (types 0x0200-0x02FF: the game's core takes it); NULL = dropped. */
+	void (*message)(void* ctx, int type, const uint8_t* bytes, size_t n);
 } coop_io;
 
 coop_host* coop_host_new(const uint8_t secret[32], const char* pairsPath, const char* appVersion, coop_io io);
@@ -116,6 +118,10 @@ int coop_link_state(const coop_host* h);
 void coop_link_partner(const coop_host* h, char* name, size_t nameSize);
 /* A presence update to the partner; false unless connected. */
 bool coop_link_send_presence(coop_host* h, const uint8_t* bytes, size_t n);
+/* A joined-battle message (types 0x0200-0x02FF, the Android app's CoopBattleWire); false unless connected. */
+#define COOP_BATTLE_FIRST_TYPE 0x0200
+#define COOP_BATTLE_LAST_TYPE 0x02FF
+bool coop_link_send(coop_host* h, int type, const uint8_t* bytes, size_t n);
 
 #ifdef __cplusplus
 }

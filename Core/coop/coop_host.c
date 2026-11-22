@@ -1047,6 +1047,14 @@ bool coop_link_send_presence(coop_host* h, const uint8_t* bytes, size_t n) {
 	return send_to(h, h->pairs[h->linkPair].partner, COOP_PRESENCE_TYPE, bytes, n);
 }
 
+bool coop_link_send(coop_host* h, int type, const uint8_t* bytes, size_t n) {
+	if (type < COOP_BATTLE_FIRST_TYPE || type > COOP_BATTLE_LAST_TYPE || !h->helloOk || h->linkState != COOP_LINK_CONNECTED ||
+	    h->linkPair < 0) {
+		return false;
+	}
+	return send_to(h, h->pairs[h->linkPair].partner, type, bytes, n);
+}
+
 static void link_drop(coop_host* h, int64_t now) {
 	h->live = h->helloOk = false;
 	h->linkState = COOP_LINK_DISCONNECTED;
@@ -1103,6 +1111,8 @@ static void link_frame(coop_host* h, const uint8_t from[32], const uint8_t* b, s
 	} else if (type >= COOP_FIRST_APP_TYPE && h->helloOk) {
 		if (type == COOP_PRESENCE_TYPE && h->io.presence) {
 			h->io.presence(h->io.ctx, payload, len);
+		} else if (type >= COOP_BATTLE_FIRST_TYPE && type <= COOP_BATTLE_LAST_TYPE && h->io.message) {
+			h->io.message(h->io.ctx, type, payload, len);
 		}
 	}
 }

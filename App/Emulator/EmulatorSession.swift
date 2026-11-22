@@ -472,6 +472,9 @@ final class EmulatorSession: ObservableObject {
             if coopWasLinked && !coop {
                 lr_coop_stop(core) // the partner goes from the map with the link
             }
+            if coop != coopWasLinked {
+                lr_coop_battle_link(core, coop) // a joined battle waits for the link, or is undone
+            }
             coopWasLinked = coop
             present(core)
             if dockAvailableOnThread {
@@ -575,6 +578,7 @@ final class EmulatorSession: ObservableObject {
     /// The game can show a co-op partner (PokeDaisy's core: Emerald), worked out once it runs.
     private var coopReady = false
     private var coopWasLinked = false
+    private var battleBuffer = [UInt8](repeating: 0, count: Int(LR_COOP_BATTLE_MAX))
     private var coopLastState = Int32(COOP_LINK_OFF)
 
     /// One frame of co-op presence: the partner's updates into the core, the player's out of it.
@@ -586,6 +590,16 @@ final class EmulatorSession: ObservableObject {
         var out = [UInt8](repeating: 0, count: Int(LR_COOP_PRESENCE_SIZE))
         if lr_coop_frame(core, now, &out) {
             CoopService.shared.sendPresence(out)
+        }
+        // Joined battles: the partner's messages in, the game's out, in order.
+        for (type, bytes) in CoopService.shared.takeBattle() {
+            bytes.withUnsafeBufferPointer { lr_coop_battle_in(core, type, $0.baseAddress, $0.count) }
+        }
+        var type: Int32 = 0
+        while true {
+            let n = lr_coop_battle_out(core, &type, &battleBuffer, Int32(battleBuffer.count))
+            if n <= 0 { break }
+            CoopService.shared.sendBattle(type, Array(battleBuffer[0..<Int(n)]))
         }
     }
 

@@ -76,6 +76,10 @@ typedef struct {
 	int (*pd_coop_frame)(uint32_t, uint8_t*);
 	void (*pd_coop_receive)(const uint8_t*, size_t, uint32_t);
 	void (*pd_coop_stop)(void);
+	/* Co-op joined battles (optional: an older core has none). */
+	void (*pd_coop_battle_in)(int, const uint8_t*, size_t);
+	int (*pd_coop_battle_out)(int*, uint8_t*, int);
+	void (*pd_coop_battle_link)(int);
 	/* The companion docked in the frontend's panel (PokeDaisy's GBA core only; NULL elsewhere): see lr_dock. */
 	void (*pd_dock)(int, int);
 	void (*pd_dock_open)(int);
@@ -195,6 +199,14 @@ static bool load_api(const char* corePath) {
 	*(void**) &loaded.pd_coop_frame = dlsym(h, "retro_pd_coop_frame");
 	*(void**) &loaded.pd_coop_receive = dlsym(h, "retro_pd_coop_receive");
 	*(void**) &loaded.pd_coop_stop = dlsym(h, "retro_pd_coop_stop");
+	*(void**) &loaded.pd_coop_battle_in = dlsym(h, "retro_pd_coop_battle_in");
+	*(void**) &loaded.pd_coop_battle_out = dlsym(h, "retro_pd_coop_battle_out");
+	*(void**) &loaded.pd_coop_battle_link = dlsym(h, "retro_pd_coop_battle_link");
+	if (!loaded.pd_coop_battle_in || !loaded.pd_coop_battle_out || !loaded.pd_coop_battle_link) {
+		loaded.pd_coop_battle_in = NULL;
+		loaded.pd_coop_battle_out = NULL;
+		loaded.pd_coop_battle_link = NULL;
+	}
 	if (!loaded.pd_coop_available || !loaded.pd_coop_frame || !loaded.pd_coop_receive || !loaded.pd_coop_stop) {
 		loaded.pd_coop_available = NULL;
 		loaded.pd_coop_frame = NULL;
@@ -742,6 +754,22 @@ bool lr_coop_frame(LRCore* core, uint32_t nowMs, uint8_t out[LR_COOP_PRESENCE_SI
 void lr_coop_receive(LRCore* core, const uint8_t* message, size_t length, uint32_t nowMs) {
 	if (core && api.pd_coop_receive) {
 		api.pd_coop_receive(message, length, nowMs);
+	}
+}
+
+void lr_coop_battle_in(LRCore* core, int type, const uint8_t* bytes, size_t length) {
+	if (core && api.pd_coop_battle_in) {
+		api.pd_coop_battle_in(type, bytes, length);
+	}
+}
+
+int lr_coop_battle_out(LRCore* core, int* type, uint8_t* out, int capacity) {
+	return core && api.pd_coop_battle_out ? api.pd_coop_battle_out(type, out, capacity) : 0;
+}
+
+void lr_coop_battle_link(LRCore* core, bool connected) {
+	if (core && api.pd_coop_battle_link) {
+		api.pd_coop_battle_link(connected ? 1 : 0);
 	}
 }
 

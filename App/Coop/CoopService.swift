@@ -113,6 +113,11 @@ final class CoopService: ObservableObject {
             presence: { ctx, bytes, n in
                 guard let ctx = ctx, let bytes = bytes else { return }
                 Unmanaged<CoopService>.fromOpaque(ctx).takeUnretainedValue().received(Array(UnsafeBufferPointer(start: bytes, count: n)))
+            },
+            message: { ctx, type, bytes, n in
+                guard let ctx = ctx else { return }
+                let payload = bytes.map { Array(UnsafeBufferPointer(start: $0, count: n)) } ?? []
+                Unmanaged<CoopService>.fromOpaque(ctx).takeUnretainedValue().receivedBattle(Int32(type), payload)
             })
         host = secret.withUnsafeBufferPointer { coop_host_new($0.baseAddress, pairsPath, version, io) }
         startListener()
@@ -469,6 +474,7 @@ final class CoopService: ObservableObject {
             coop_link_stop(host)
             self.inboxLock.lock()
             self.inbox.removeAll()
+            self.battleInbox.removeAll()
             self.linkingFlag = false
             self.inboxLock.unlock()
             self.publish()
@@ -498,6 +504,34 @@ final class CoopService: ObservableObject {
         let taken = inbox
         inbox.removeAll()
         return taken
+    }
+
+    // MARK: - Joined battles (the emulation thread)
+
+    private var battleInbox: [(Int32, [UInt8])] = []
+
+    private func receivedBattle(_ type: Int32, _ bytes: [UInt8]) {
+        inboxLock.lock()
+        if battleInbox.count < 1024 {
+            battleInbox.append((type, bytes))
+        }
+        inboxLock.unlock()
+    }
+
+    func takeBattle() -> [(Int32, [UInt8])] {
+        inboxLock.lock()
+        defer { inboxLock.unlock() }
+        let taken = battleInbox
+        battleInbox.removeAll()
+        return taken
+    }
+
+    /// Sent in order (one serial queue).
+    func sendBattle(_ type: Int32, _ bytes: [UInt8]) {
+        queue.async {
+            guard let host = self.host else { return }
+            _ = bytes.withUnsafeBufferPointer { coop_link_send(host, type, $0.baseAddress, $0.count) }
+        }
     }
 
     func sendPresence(_ bytes: [UInt8]) {

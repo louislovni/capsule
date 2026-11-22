@@ -96,6 +96,13 @@ bool lr_coop_available(const LRCore* core);
 bool lr_coop_frame(LRCore* core, uint32_t nowMs, uint8_t out[LR_COOP_PRESENCE_SIZE]);
 void lr_coop_receive(LRCore* core, const uint8_t* message, size_t length, uint32_t nowMs);
 void lr_coop_stop(LRCore* core);
+/* Co-op joined battles (English / French Emerald): the partner's messages in (types 0x0200-0x02FF), the game's out
+ * (lr_coop_battle_out until it returns 0; its size, -1 if capacity is too small), and the link's state. On the
+ * emulation thread, around lr_run_frame. */
+#define LR_COOP_BATTLE_MAX 0x4100
+void lr_coop_battle_in(LRCore* core, int type, const uint8_t* bytes, size_t length);
+int lr_coop_battle_out(LRCore* core, int* type, uint8_t* out, int capacity);
+void lr_coop_battle_link(LRCore* core, bool connected);
 
 /* The companion DOCKED (PokeDaisy's GBA core): its menus (PARTY, DEX, MAP, BAG, GUIDE, SETTINGS) drawn into a canvas of
  * their own for a panel of the frontend's, while the game runs on and shows. All on the emulation thread.

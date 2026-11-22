@@ -294,6 +294,12 @@ static void io_presence(void* ctx, const uint8_t* bytes, size_t n) {
 		C.core.receive(bytes, n, (uint32_t)now_ms());
 }
 
+static void io_message(void* ctx, int type, const uint8_t* bytes, size_t n) {
+	(void)ctx;
+	if (C.game && C.core.battle_in)
+		C.core.battle_in(type, bytes, n);
+}
+
 /* ---- this PC on the LAN ---- */
 
 /* The address the LAN sees (the interface multicast goes out of): no packet is sent. */
@@ -609,7 +615,7 @@ static void start(void) {
 		}
 	}
 	snprintf(path, sizeof path, "%s/pairs.txt", C.dir);
-	coop_io io = {NULL, io_write, io_close, io_dial, io_presence};
+	coop_io io = {NULL, io_write, io_close, io_dial, io_presence, io_message};
 	C.host = coop_host_new(secret, path, "capsule-pc", io);
 	coop_wipe(secret, sizeof secret);
 	if (!C.host)
@@ -817,6 +823,8 @@ void capsule_coop_poll(void) {
 	bool linked = C.game && link == COOP_LINK_CONNECTED;
 	if (C.wasLinked && !linked && C.core.stop)
 		C.core.stop(); /* the partner goes from the map */
+	if (C.wasLinked != linked && C.core.battle_link)
+		C.core.battle_link(linked); /* a joined battle waits for the link, or is undone */
 	C.wasLinked = linked;
 }
 
@@ -826,6 +834,12 @@ void capsule_coop_after_run(void) {
 	uint8_t out[64];
 	if (C.core.frame((uint32_t)now_ms(), out))
 		coop_link_send_presence(C.host, out, 20);
+	if (C.core.battle_out) {
+		static uint8_t msg[0x4100];
+		int type, n;
+		while ((n = C.core.battle_out(&type, msg, sizeof msg)) > 0)
+			coop_link_send(C.host, type, msg, (size_t)n);
+	}
 }
 
 const char* capsule_coop_notice(void) {

@@ -15,6 +15,10 @@ struct capsule_coop_core {
 	int (*frame)(uint32_t now, uint8_t* out);
 	void (*receive)(const uint8_t* msg, size_t n, uint32_t now);
 	void (*stop)(void);
+	/* Joined battles (retro_pd_coop_battle_*): the partner's messages in, the game's out, the link's state. */
+	void (*battle_in)(int type, const uint8_t* bytes, size_t n);
+	int (*battle_out)(int* type, uint8_t* out, int cap);
+	void (*battle_link)(int connected);
 };
 
 /* Where its key and pairs are kept (a folder made if missing). Once, before a game. */

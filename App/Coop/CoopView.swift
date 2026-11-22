@@ -16,6 +16,7 @@ struct CoopView: View {
             Section {
                 VStack(alignment: .leading, spacing: 6) {
                     Label("Vous vous voyez sur la carte, chacun dans sa propre partie", systemImage: "person.2")
+                    Label("Un combat qui commence près de l'autre (8 pas au plus) peut se faire à deux : il est invité à le rejoindre", systemImage: "bolt.horizontal")
                     Label("Pokémon Émeraude, la même version des deux côtés (française ou anglaise)", systemImage: "gamecontroller")
                     Label("Sur le même Wi-Fi pour l'instant", systemImage: "wifi")
                 }

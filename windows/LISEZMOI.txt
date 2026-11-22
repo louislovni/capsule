@@ -38,6 +38,10 @@ Bon à savoir
     "JOUER A DEUX" et "ASSOCIER UN JOUEUR PROCHE", sur le même Wi-Fi qu'un
     PC, un iPhone ou un Android. Vous vous voyez sur la carte. Windows peut
     demander d'autoriser le réseau : accepte pour les réseaux privés.
+    Combat à deux : quand un combat sauvage ou contre un dresseur commence
+    près de ton partenaire (8 pas au plus, même carte), il est invité à
+    le rejoindre. A : rejoindre, B : non. Vous combattez ensemble, chacun
+    avec ses trois premiers Pokémon en forme.
   - Rendu et météo : dans le menu (Échap), "LOOK" change le rendu de
     l'image (ORIGINAL, SMOOTH HD lissé, CRT, REMASTER) et "WEATHER AND
     LIGHTS" ajoute la météo du jeu (pluie, neige, brouillard...), les
