@@ -13,6 +13,8 @@ Tes jeux Pokémon sur PC, avec les mêmes sauvegardes que sur ton iPhone.
 3. Quand tu fermes le jeu, Capsule renvoie tes sauvegardes dans le cloud.
    Sur l'iPhone, elles arrivent à la prochaine ouverture de l'app.
 
+Dans la liste des jeux : flèches pour choisir, Z ou Entrée pour lancer.
+
 Commandes au clavier (par défaut)
   Flèches : croix directionnelle    Z : A    X : B
   Q / E : L / R    Tab / F : X / Y (DS)    1 / 2 : L2 / R2
