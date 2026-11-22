@@ -38,6 +38,11 @@ Bon à savoir
     "JOUER A DEUX" et "ASSOCIER UN JOUEUR PROCHE", sur le même Wi-Fi qu'un
     PC, un iPhone ou un Android. Vous vous voyez sur la carte. Windows peut
     demander d'autoriser le réseau : accepte pour les réseaux privés.
+  - Rendu et météo : dans le menu (Échap), "LOOK" change le rendu de
+    l'image (ORIGINAL, SMOOTH HD lissé, CRT, REMASTER) et "WEATHER AND
+    LIGHTS" ajoute la météo du jeu (pluie, neige, brouillard...), les
+    couleurs du jour selon l'heure du PC et, la nuit, les fenêtres et
+    les portes éclairées (jeux GBA).
   - La banque, le Pokédex et les échanges sont sur la page web :
     https://louislovni.github.io/capsule
 
