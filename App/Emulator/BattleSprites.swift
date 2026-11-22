@@ -1,7 +1,7 @@
 import Foundation
 
 /// BATTLE SPRITES: a GBA battle's Pokémon drawn with Pokémon Black / White (2)'s animated pictures, read by the core from
-/// the player's own DS cart in the library (Emerald for now). Nothing is bundled: without such a cart, nothing changes.
+/// the player's own DS cart in the library (Emerald, FireRed, LeafGreen). Nothing is bundled: without such a cart, nothing changes.
 enum BattleSprites {
     static let key = "battleSprites"
 
