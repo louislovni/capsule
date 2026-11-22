@@ -13,6 +13,7 @@ struct GameView: View {
     @AppStorage(PadSkin.storageKey) private var skinName = PadSkin.capsule.rawValue
     @AppStorage(ScreenLook.storageKey) private var screenLook = ScreenLook.original.rawValue
     @AppStorage(ScreenLook.effectsKey) private var weatherEffects = true
+    @AppStorage(BattleSprites.key) private var battleSprites = true
     /// The console turning on: black, a white glow, then the game.
     @State private var power = 0
 
@@ -459,6 +460,17 @@ struct GameView: View {
             .pickerStyle(.menu)
             Toggle(isOn: $weatherEffects) {
                 Label("Météo et lumières", systemImage: "cloud.sun.rain")
+            }
+            if !session.game.isDS {
+                // Black / White's animated battle pictures, from the player's own cart in the library.
+                Toggle(isOn: Binding(get: { battleSprites }, set: { on in
+                    battleSprites = on
+                    session.setBattleSprites(on)
+                })) {
+                    Label(BattleSprites.cartURL() == nil ? "Sprites animés (ajoute Noir/Blanc)" : "Sprites animés en combat",
+                          systemImage: "figure.run")
+                }
+                .disabled(BattleSprites.cartURL() == nil)
             }
         }
         Section {

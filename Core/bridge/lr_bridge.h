@@ -116,6 +116,10 @@ int lr_scene(const LRCore* core, int32_t* out, int count);
 /* The night's lights on the last frame (PokeDaisy's GBA core on the field): each door and window glass as x, y, w, h in
  * the frame's own 0..1 and a kind (0 door, 1 window), 5 floats a light. Returns how many (at most max). */
 #define LR_LIGHTS_MAX 32
+
+/* BATTLE SPRITES: the player's Pokémon Black / White (2) cart whose animated pictures replace a GBA battle's (Emerald),
+ * or NULL to stop. Emulation thread. */
+void lr_battle_sprites(LRCore* core, const char* ndsPath);
 int lr_lights(const LRCore* core, float* out, int max);
 
 bool lr_dock_available(const LRCore* core);
