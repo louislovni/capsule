@@ -13,6 +13,11 @@ Tes jeux Pokémon sur PC, avec les mêmes sauvegardes que sur ton iPhone.
 3. Quand tu fermes le jeu, Capsule renvoie tes sauvegardes dans le cloud.
    Sur l'iPhone, elles arrivent à la prochaine ouverture de l'app.
 
+Changer de compte : ferme Capsule et lance « Changer de compte.bat » (dans
+le même dossier). Il te déconnecte puis ouvre la page Google pour choisir un
+autre compte. Chaque compte garde ses propres sauvegardes sur ce PC : celles
+de l'ancien compte sont mises de côté et reviennent quand il se reconnecte.
+
 Dans la liste des jeux : flèches pour choisir, Z ou Entrée pour lancer.
 
 Commandes au clavier (par défaut)

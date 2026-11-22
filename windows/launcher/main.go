@@ -31,10 +31,16 @@ func main() {
 
 	args := os.Args[1:]
 	if len(args) > 0 && (args[0] == "--deconnexion" || args[0] == "--logout") {
-		os.Remove(sessionPath(dir))
+		signOut(dir)
 		fmt.Println("Déconnecté. Au prochain lancement, Capsule redemandera ton compte Google.")
 		pause()
 		return
+	}
+	// "Changer de compte.bat": signed out, then straight to Google's account picker.
+	if len(args) > 0 && args[0] == "--changer-de-compte" {
+		signOut(dir)
+		fmt.Println("Déconnecté. Choisis le compte Google à utiliser sur ce PC.")
+		fmt.Println()
 	}
 	offline := len(args) > 0 && args[0] == "--hors-ligne"
 
@@ -46,6 +52,13 @@ func main() {
 			fmt.Println("Le jeu se lance quand même, sans synchronisation.")
 			fmt.Println()
 		}
+	}
+	if account != nil {
+		if err := useAccountFolders(dir, account.UID); err != nil {
+			fail(err)
+		}
+		fmt.Println("Pour changer de compte : ferme Capsule et lance « Changer de compte.bat ».")
+		fmt.Println()
 	}
 	if account != nil {
 		syncNow(dir, account, "Récupération des sauvegardes du cloud…")

@@ -123,6 +123,7 @@ windows)
 	cp "$ROOT/build/win-launcher/Capsule.exe" "$ROOT/build/win-frontend/pokedaisy.exe" "$SDL_ROOT/bin/SDL2.dll" "$PKG/"
 	for core in $CORES; do cp "$(find "$OUT" -name "$core.dll" | head -n 1)" "$PKG/"; done
 	cp "$ROOT/windows/LISEZMOI.txt" "$PKG/LISEZMOI.txt"
+	cp "$ROOT/windows/Changer de compte.bat" "$PKG/"
 	# COMPATIBLE GAMES: the games Capsule knows, read by Capsule.exe (compat.go) for the game list's X / Y.
 	cp "$ROOT/App/Library/compat.json" "$PKG/compat.json"
 	cp "$ROOT/windows/roms-LISEZMOI.txt" "$PKG/roms/LISEZMOI.txt"
