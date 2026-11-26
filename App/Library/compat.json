@@ -1985,7 +1985,7 @@
    "sha1": [
     "330d9eb56e069df13c09bbcb3c748c269c94a88e"
    ],
-   "companion": false,
+   "companion": true,
    "pokedaisy": true,
    "bank": "yes",
    "note": "Banque et Pokédex vérifiés sur une sauvegarde ; Pokémon après Arceus réservés aux jeux du même moteur",
@@ -2001,7 +2001,7 @@
    "kind": "hack",
    "version": "v1.0.15",
    "sha1": [],
-   "companion": false,
+   "companion": true,
    "pokedaisy": true,
    "bank": "likely",
    "base": {

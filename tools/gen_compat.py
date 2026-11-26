@@ -161,11 +161,13 @@ for h in site["dsHacks"]:
             "Pokémon Volt White 2 Redux": "likely", "Pokémon Heartfelt Gold": "likely"}.get(h["title"], "no")
     # Origin HeartGold rc8: the iPhone / PC companion knows it by its code (linux/dsperate/companion.cpp, ds_origin_cart).
     origin = h["title"] == "Pokémon Origin HeartGold"
+    # Heartfelt Gold: by its header (ds_hg_engine_cart, hg-engine's ARM9 and overlay table), as Chaos Purple.
+    heartfelt = h["title"] == "Pokémon Heartfelt Gold"
     add(title=h["title"], console="DS", kind="hack", version=h.get("version", ""),
-        sha1=["a54a647599d59ed0060dfc4375c289d6e041318a"] if origin else [], companion=origin,
+        sha1=["a54a647599d59ed0060dfc4375c289d6e041318a"] if origin else [], companion=origin or heartfelt,
         pokedaisy=True, bank=bank, base=BASES.get(DS_BASES.get(h["title"], "")))
 add(title="Pokémon Chaos Purple", console="DS", kind="hack", version="démo (Silph Co. fix)",
-    sha1=["330d9eb56e069df13c09bbcb3c748c269c94a88e"], companion=False, pokedaisy=True, bank="yes",
+    sha1=["330d9eb56e069df13c09bbcb3c748c269c94a88e"], companion=True, pokedaisy=True, bank="yes",
     note="Banque et Pokédex vérifiés sur une sauvegarde ; Pokémon après Arceus réservés aux jeux du même moteur",
     base=BASES["IPKE"])
 
