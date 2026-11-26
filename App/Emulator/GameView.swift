@@ -215,6 +215,9 @@ struct GameView: View {
                                startPoint: .top, endPoint: .bottom)
                     .padding(.top, -60)
                     .ignoresSafeArea(edges: .bottom)
+                    // Only a shade: its top 60 points lie over the picture's bottom, where PokeDaisy's HUD has its
+                    // buttons (WILD, PC, the bag...), and a hit-testable gradient took their taps.
+                    .allowsHitTesting(false)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
