@@ -70,8 +70,8 @@ Bon à savoir
     "MÉTÉO DS" dessine la pluie, l'orage, la neige et le sable de ces
     jeux à la place de ceux du jeu GBA. "SAISONS" colore la végétation
     selon la saison (les combats dehors aussi) et, par beau temps,
-    fait voler des pétales au
-    printemps, des feuilles en automne et un peu de neige en hiver.
+    fait voler des pétales au printemps, des feuilles en automne et un
+    peu de neige en hiver.
     Au choix : NOIR ET BLANC (une nouvelle chaque mois, comme dans ces
     jeux), CALENDRIER (les vraies saisons), TOUTES LES 20 MIN (de jeu),
     SELON LA ZONE (chaque ville, chaque route a la sienne), ou une
