@@ -26,12 +26,19 @@ enum DSWeather {
     }
 }
 
-/// SAISONS: Black / White's seasons on a GBA game's field outdoors: the map's greens in the season's colours and, on fine
-/// days, petals in spring, falling leaves in autumn, a little snow in winter (drawn by the core).
+/// SAISONS: seasons on a GBA game's field outdoors: the map's greens in the season's colours and, on fine days, petals in
+/// spring, falling leaves in autumn, a little snow in winter (drawn by the core). The raw values are the core's
+/// (retro_pd_ambience), the cases in the menu's order.
 enum Seasons: Int, CaseIterable, Identifiable {
     case off = 0
     case blackWhite = 1
     case calendar = 2
+    case playTime = 7
+    case byArea = 8
+    case spring = 3
+    case summer = 4
+    case autumn = 5
+    case winter = 6
 
     static let key = "seasons"
 
@@ -40,17 +47,14 @@ enum Seasons: Int, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .off: return "Désactivées"
-        case .blackWhite: return "Comme Noir et Blanc"
-        case .calendar: return "Calendrier"
-        }
-    }
-
-    /// Black / White change season every month; the calendar's follow the real ones.
-    var detail: String {
-        switch self {
-        case .off: return "Pas de saisons"
-        case .blackWhite: return "Une nouvelle saison chaque mois"
-        case .calendar: return "Les vraies saisons"
+        case .blackWhite: return "Comme Noir et Blanc (chaque mois)"
+        case .calendar: return "Calendrier (vraies saisons)"
+        case .playTime: return "Toutes les 20 min de jeu"
+        case .byArea: return "Selon la zone"
+        case .spring: return "Printemps"
+        case .summer: return "Été"
+        case .autumn: return "Automne"
+        case .winter: return "Hiver"
         }
     }
 
