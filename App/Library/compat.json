@@ -2015,8 +2015,10 @@
    "console": "DS",
    "kind": "hack",
    "version": "v4.0.3 English 1.0.0",
-   "sha1": [],
-   "companion": false,
+   "sha1": [
+    "a54a647599d59ed0060dfc4375c289d6e041318a"
+   ],
+   "companion": true,
    "pokedaisy": true,
    "bank": "no",
    "base": {

@@ -159,7 +159,10 @@ for h in site["dsHacks"]:
         continue   # added below, with its SHA-1 and save notes
     bank = {"Pokémon Renegade Platinum": "likely", "Pokémon Blaze Black 2 Redux": "likely",
             "Pokémon Volt White 2 Redux": "likely", "Pokémon Heartfelt Gold": "likely"}.get(h["title"], "no")
-    add(title=h["title"], console="DS", kind="hack", version=h.get("version", ""), sha1=[], companion=False,
+    # Origin HeartGold rc8: the iPhone / PC companion knows it by its code (linux/dsperate/companion.cpp, ds_origin_cart).
+    origin = h["title"] == "Pokémon Origin HeartGold"
+    add(title=h["title"], console="DS", kind="hack", version=h.get("version", ""),
+        sha1=["a54a647599d59ed0060dfc4375c289d6e041318a"] if origin else [], companion=origin,
         pokedaisy=True, bank=bank, base=BASES.get(DS_BASES.get(h["title"], "")))
 add(title="Pokémon Chaos Purple", console="DS", kind="hack", version="démo (Silph Co. fix)",
     sha1=["330d9eb56e069df13c09bbcb3c748c269c94a88e"], companion=False, pokedaisy=True, bank="yes",
