@@ -65,6 +65,14 @@ Bon à savoir
     LIGHTS" ajoute la météo du jeu (pluie, neige, brouillard...), les
     couleurs du jour selon l'heure du PC et, la nuit, les fenêtres et
     les portes éclairées (jeux GBA).
+  - Météo DS et saisons (Émeraude, Rouge Feu, Vert Feuille) : mets ta
+    cartouche HeartGold ou SoulSilver (.nds) dans le dossier "roms" et
+    "MÉTÉO DS" dessine la pluie, l'orage, la neige et le sable de ces
+    jeux à la place de ceux du jeu GBA. "SAISONS" colore la végétation
+    selon la saison (NOIR ET BLANC : une nouvelle chaque mois, comme
+    dans ces jeux ; CALENDRIER : les vraies saisons) et, par beau
+    temps, fait voler des pétales au printemps, des feuilles en
+    automne et un peu de neige en hiver.
   - La banque, le Pokédex et les échanges sont sur la page web :
     https://louislovni.github.io/capsule
 

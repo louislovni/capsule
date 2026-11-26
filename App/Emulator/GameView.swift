@@ -14,6 +14,8 @@ struct GameView: View {
     @AppStorage(ScreenLook.storageKey) private var screenLook = ScreenLook.original.rawValue
     @AppStorage(ScreenLook.effectsKey) private var weatherEffects = true
     @AppStorage(BattleSprites.key) private var battleSprites = true
+    @AppStorage(DSWeather.key) private var dsWeather = true
+    @AppStorage(Seasons.key) private var seasons = Seasons.blackWhite.rawValue
     /// The console turning on: black, a white glow, then the game.
     @State private var power = 0
 
@@ -471,6 +473,27 @@ struct GameView: View {
                           systemImage: "figure.run")
                 }
                 .disabled(BattleSprites.cartURL() == nil)
+                // HeartGold / SoulSilver's rain, snow and sand, from the player's own cart in the library.
+                Toggle(isOn: Binding(get: { dsWeather }, set: { on in
+                    dsWeather = on
+                    session.setAmbience(dsWeather: on, seasons: Seasons(rawValue: seasons) ?? .blackWhite)
+                })) {
+                    Label(DSWeather.cartURL() == nil ? "Météo DS (ajoute HeartGold/SoulSilver)" : "Météo DS",
+                          systemImage: "cloud.snow")
+                }
+                .disabled(DSWeather.cartURL() == nil)
+                // Black / White's seasons: the map's colours and, on fine days, petals, leaves or snow.
+                Picker(selection: Binding(get: { seasons }, set: { value in
+                    seasons = value
+                    session.setAmbience(dsWeather: dsWeather, seasons: Seasons(rawValue: value) ?? .off)
+                })) {
+                    ForEach(Seasons.allCases) { season in
+                        Text(season.title).tag(season.rawValue)
+                    }
+                } label: {
+                    Label("Saisons", systemImage: "leaf")
+                }
+                .pickerStyle(.menu)
             }
         }
         Section {

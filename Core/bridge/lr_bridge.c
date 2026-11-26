@@ -90,6 +90,8 @@ typedef struct {
 	int (*pd_scene)(int*, int);       /* the weather / light the frontend's effects follow, NULL elsewhere */
 	int (*pd_lights)(float*, int);    /* the night's lights (doors, windows) on the field, NULL elsewhere */
 	void (*pd_battle_sprites)(const char*); /* BATTLE SPRITES' DS cart, NULL elsewhere */
+	void (*pd_weather_cart)(const char*);   /* MÉTÉO DS's HeartGold / SoulSilver cart, NULL elsewhere */
+	void (*pd_ambience)(int, int);          /* MÉTÉO DS / SAISONS on or off, NULL elsewhere */
 } RetroAPI;
 
 static RetroAPI api;
@@ -183,6 +185,8 @@ static bool load_api(const char* corePath) {
 	*(void**) &loaded.pd_scene = dlsym(h, "retro_pd_scene");
 	*(void**) &loaded.pd_lights = dlsym(h, "retro_pd_lights");
 	*(void**) &loaded.pd_battle_sprites = dlsym(h, "retro_pd_battle_sprites");
+	*(void**) &loaded.pd_weather_cart = dlsym(h, "retro_pd_weather_cart");
+	*(void**) &loaded.pd_ambience = dlsym(h, "retro_pd_ambience");
 	*(void**) &loaded.pd_dock = dlsym(h, "retro_pd_dock");
 	*(void**) &loaded.pd_dock_open = dlsym(h, "retro_pd_dock_open");
 	*(void**) &loaded.pd_dock_is_open = dlsym(h, "retro_pd_dock_is_open");
@@ -840,5 +844,17 @@ int lr_lights(const LRCore* core, float* out, int max) {
 void lr_battle_sprites(LRCore* core, const char* ndsPath) {
 	if (core && api.pd_battle_sprites) {
 		api.pd_battle_sprites(ndsPath);
+	}
+}
+
+void lr_weather_cart(LRCore* core, const char* ndsPath) {
+	if (core && api.pd_weather_cart) {
+		api.pd_weather_cart(ndsPath);
+	}
+}
+
+void lr_ambience(LRCore* core, bool dsWeather, int seasons) {
+	if (core && api.pd_ambience) {
+		api.pd_ambience(dsWeather ? 1 : 0, seasons);
 	}
 }

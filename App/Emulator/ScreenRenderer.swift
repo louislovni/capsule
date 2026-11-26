@@ -39,12 +39,14 @@ struct SceneInfo: Equatable {
     var field = false
     var caveDarkness = 0
     var tint = (r: 256, g: 256, b: 256)
+    /// MÉTÉO DS: the core drew the weather's particles (HeartGold's) this frame; the shader keeps only its colours.
+    var coreWeather = false
     /// The night's lights on screen (lr_lights): x, y, w, h in the frame's 0..1 and a kind (0 door, 1 window), 5 a light.
     var lights: [Float] = []
 
     static func == (a: SceneInfo, b: SceneInfo) -> Bool {
         a.weather == b.weather && a.mapType == b.mapType && a.battle == b.battle && a.field == b.field &&
-            a.caveDarkness == b.caveDarkness && a.tint.r == b.tint.r && a.tint.g == b.tint.g && a.tint.b == b.tint.b && a.lights == b.lights
+            a.caveDarkness == b.caveDarkness && a.coreWeather == b.coreWeather && a.tint.r == b.tint.r && a.tint.g == b.tint.g && a.tint.b == b.tint.b && a.lights == b.lights
     }
 
     init() {}
@@ -57,6 +59,7 @@ struct SceneInfo: Equatable {
         field = values[3] != 0
         caveDarkness = max(Int(values[4]), 0)
         tint = (Int(values[5]), Int(values[6]), Int(values[7]))
+        coreWeather = values.count > 8 && values[8] > 0
     }
 
     /// pret's MAP_TYPE_* under the sky (town, city, route, ocean route); unknown counts as outdoors.
@@ -211,6 +214,7 @@ final class ScreenRenderer {
                          shownWeather >= 0 ? strength : (lightsOn && (night > 0.01 || cave > 0) ? 1 : 0)),
             SIMD4<Float>(night * lightStrength, flash * strength, cave * lightStrength, scene.outdoors ? 1 : 0),
             SIMD4<Float>(grade.x, grade.y, grade.z, 0),
+            SIMD4<Float>(scene.coreWeather ? 1 : 0, 0, 0, 0),
         ]
         // The doors and windows that light up at night: a rect and its kind each (the shader's buffer 1).
         var lights = [SIMD4<Float>](repeating: .zero, count: 2 * Int(LR_LIGHTS_MAX))

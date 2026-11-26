@@ -12,6 +12,7 @@ struct ScreenUniforms {
     float4 b;
     float4 c;
     float4 d;
+    float4 e; // x: the core drew the weather's particles (MÉTÉO DS): only its colours here
 };
 
 struct ScreenOut {
@@ -144,27 +145,27 @@ static float flakes(float2 q, float time, float density, float fall, float size)
     return acc;
 }
 
-static float3 weather_fx(float3 color, float2 uv, float2 q, float time, int weather, float strength, float flash) {
+static float3 weather_fx(float3 color, float2 uv, float2 q, float time, int weather, float strength, float flash, bool coreDrawn) {
     if (strength <= 0.001) return color;
     float3 out = color;
     switch (weather) {
     case 3: case 5: case 13: { // rain, thunderstorm, downpour
         bool heavy = weather != 3;
         out *= mix(float3(1), float3(0.80, 0.84, 0.93), heavy ? 1.0 : 0.6);
-        float r = rain_layer(q, time, heavy ? 0.34 : 0.2, 0.28);
+        float r = coreDrawn ? 0.0 : rain_layer(q, time, heavy ? 0.34 : 0.2, 0.28);
         out += float3(0.75, 0.82, 0.95) * r * 0.38;
         // Splashes: brief rings low on the screen.
         float2 g = q * float2(14, 9);
         float2 id = floor(g);
         float phase = fract(time * 1.6 + hash21(id) * 7.0);
         float ring = smoothstep(0.05, 0.0, abs(length(fract(g) - 0.5) - phase * 0.35)) * (1 - phase);
-        out += float3(0.8, 0.85, 1.0) * ring * 0.18 * step(0.6, hash21(id + 9.0)) * smoothstep(0.35, 0.9, uv.y);
+        if (!coreDrawn) out += float3(0.8, 0.85, 1.0) * ring * 0.18 * step(0.6, hash21(id + 9.0)) * smoothstep(0.35, 0.9, uv.y);
         out += float3(0.9, 0.93, 1.0) * flash * 0.55;
         break;
     }
     case 4: { // snow
         out = mix(out, out * float3(0.92, 0.96, 1.05), 0.6);
-        out += float3(1) * flakes(q, time, 0.42, 0.10, 0.14) * 0.85;
+        if (!coreDrawn) out += float3(1) * flakes(q, time, 0.42, 0.10, 0.14) * 0.85;
         break;
     }
     case 6: case 9: { // fog
@@ -178,6 +179,7 @@ static float3 weather_fx(float3 color, float2 uv, float2 q, float time, int weat
         break;
     }
     case 8: { // sandstorm
+        if (coreDrawn) break;
         out = mix(out, float3(0.86, 0.68, 0.42), 0.22);
         float n = fbm(float2(q.x * 2.0 - time * 1.4, q.y * 9.0));
         out = mix(out, float3(0.93, 0.78, 0.52), smoothstep(0.45, 0.8, n) * 0.35);
@@ -266,7 +268,7 @@ fragment float4 screen_fragment(ScreenOut in [[stage_in]], texture2d<float> fram
     }
     if (strength > 0.001) {
         float2 q = float2(uv.x * tex.x / tex.y, uv.y);
-        color = weather_fx(color, uv, q, time, weather, strength * outdoors, flash);
+        color = weather_fx(color, uv, q, time, weather, strength * outdoors, flash, u.e.x > 0.5);
         // The night: darker edges, a warm light round the player (the picture's middle), warm bright spots glowing and,
         // on a clear night outdoors, fireflies.
         if (night > 0.01) {

@@ -117,7 +117,7 @@ void lr_set_language(LRCore* core, const char* code);
  * (the games' WEATHER_*: 3 rain, 4 snow, 5 storm, 6 / 9 fog, 7 ash, 8 sandstorm, 2 / 12 sun, 10 / 14 underwater, 13
  * downpour; -1 unknown), [1] the map type (-1), [2] a battle, [3] the free field on screen, [4] a cave's darkness (0 lit),
  * [5..7] the day and night tint (r, g, b; 256 = day). Returns how many were written (0: no such core). */
-#define LR_SCENE_VALUES 8
+#define LR_SCENE_VALUES 10
 int lr_scene(const LRCore* core, int32_t* out, int count);
 
 /* The night's lights on the last frame (PokeDaisy's GBA core on the field): each door and window glass as x, y, w, h in
@@ -127,6 +127,12 @@ int lr_scene(const LRCore* core, int32_t* out, int count);
 /* BATTLE SPRITES: the player's Pokémon Black / White (2) cart whose animated pictures replace a GBA battle's (Emerald),
  * or NULL to stop. Emulation thread. */
 void lr_battle_sprites(LRCore* core, const char* ndsPath);
+
+/* MÉTÉO DS: the player's HeartGold / SoulSilver cart whose weather sprites replace a GBA game's rain, snow and sand, or NULL.
+ * SAISONS: lr_ambience's seasons 0 off, 1 Black / White's, 2 the calendar's. Emulation thread. lr_scene's values 8 / 9 say
+ * the core drew the weather / a season's particles that frame. */
+void lr_weather_cart(LRCore* core, const char* ndsPath);
+void lr_ambience(LRCore* core, bool dsWeather, int seasons);
 int lr_lights(const LRCore* core, float* out, int max);
 
 bool lr_dock_available(const LRCore* core);

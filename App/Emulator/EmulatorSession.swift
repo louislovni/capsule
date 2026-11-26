@@ -240,6 +240,13 @@ final class EmulatorSession: ObservableObject {
             lr_battle_sprites(created, cart.path)
         }
         if !game.isDS {
+            // MÉTÉO DS from the player's HeartGold / SoulSilver cart, SAISONS by the phone's date.
+            if DSWeather.enabled, let cart = DSWeather.cartURL() {
+                lr_weather_cart(created, cart.path)
+            }
+            lr_ambience(created, DSWeather.enabled, Int32(Seasons.current.rawValue))
+        }
+        if !game.isDS {
             coopReady = lr_coop_available(created)
             if coopReady {
                 CoopService.shared.gameStarted(game)
@@ -415,6 +422,16 @@ final class EmulatorSession: ObservableObject {
         let path = on ? BattleSprites.cartURL()?.path : nil
         perform { core in
             lr_battle_sprites(core, path)
+        }
+    }
+
+    /// MÉTÉO DS / SAISONS changed in the menu: from the next frame.
+    func setAmbience(dsWeather: Bool, seasons: Seasons) {
+        guard !game.isDS else { return }
+        let path = dsWeather ? DSWeather.cartURL()?.path : nil
+        perform { core in
+            lr_weather_cart(core, path)
+            lr_ambience(core, dsWeather, Int32(seasons.rawValue))
         }
     }
 
@@ -659,7 +676,7 @@ final class EmulatorSession: ObservableObject {
         }
         var values = [Int32](repeating: 0, count: Int(LR_SCENE_VALUES))
         let count = lr_scene(core, &values, Int32(values.count))
-        var scene = count >= Int32(LR_SCENE_VALUES) ? SceneInfo(values: values) : SceneInfo()
+        var scene = count >= 8 ? SceneInfo(values: Array(values.prefix(Int(count)))) : SceneInfo()
         if scene.field {
             var lights = [Float](repeating: 0, count: 5 * Int(LR_LIGHTS_MAX))
             let found = Int(lr_lights(core, &lights, Int32(LR_LIGHTS_MAX)))
