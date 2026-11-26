@@ -28,6 +28,16 @@ enum DSWeather {
 
 /// POKÉMON QUI SUIT: the party's lead walking behind the player in a GBA game, as HeartGold / SoulSilver's following
 /// Pokémon, drawn from the player's own cart (the same one MÉTÉO DS reads).
+/// SON EN ACCÉLÉRÉ: in fast-forward, a Gen 3 game's music and sounds (moves, menus, cries) heard at their normal speed,
+/// from a copy of the game the core keeps playing at 1x; off = silent fast-forward, as before.
+enum FFSound {
+    static let key = "ffSound"
+
+    static var enabled: Bool {
+        UserDefaults.standard.object(forKey: key) as? Bool ?? true
+    }
+}
+
 enum Follower {
     static let key = "follower"
 

@@ -16,6 +16,7 @@ struct GameView: View {
     @AppStorage(BattleSprites.key) private var battleSprites = true
     @AppStorage(DSWeather.key) private var dsWeather = true
     @AppStorage(Follower.key) private var follower = true
+    @AppStorage(FFSound.key) private var ffSound = true
     @AppStorage(Seasons.key) private var seasons = Seasons.blackWhite.rawValue
     /// The console turning on: black, a white glow, then the game.
     @State private var power = 0
@@ -483,6 +484,13 @@ struct GameView: View {
                           systemImage: "cloud.snow")
                 }
                 .disabled(DSWeather.cartURL() == nil)
+                // Fast-forward with the music and sounds at their normal speed (Gen 3 games).
+                Toggle(isOn: Binding(get: { ffSound }, set: { on in
+                    ffSound = on
+                    session.setFFSound(on)
+                })) {
+                    Label("Son en accéléré", systemImage: "speaker.wave.2")
+                }
                 // HeartGold / SoulSilver's following Pokémon: the party's lead walks behind the player.
                 Toggle(isOn: Binding(get: { follower }, set: { on in
                     follower = on

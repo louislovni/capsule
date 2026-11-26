@@ -29,7 +29,8 @@ Touches du clavier (F1 les affiche et permet de les changer)
   F .................. menu rapide (PC, objets, ÉCHANGE...)
   Tab ................ compagnon (équipe, carte, Pokédex...)
   Q / E .............. L / R
-  Espace (maintenir) . accélérer
+  Espace (maintenir) . accélérer (dans les jeux GBA, la musique et les
+                       bruitages restent à vitesse normale)
   Échap .............. menu PC (réglages, jouer à deux, quitter)
   F1 ................. la liste des touches : A pour en changer une,
                        puis appuie sur la nouvelle touche

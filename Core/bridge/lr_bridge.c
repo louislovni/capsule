@@ -93,6 +93,8 @@ typedef struct {
 	void (*pd_weather_cart)(const char*);   /* MÉTÉO DS's HeartGold / SoulSilver cart, NULL elsewhere */
 	void (*pd_ambience)(int, int);          /* MÉTÉO DS / SAISONS on or off, NULL elsewhere */
 	void (*pd_follower)(const char*);       /* POKÉMON QUI SUIT's HeartGold / SoulSilver cart, NULL elsewhere */
+	bool (*pd_ff_sound)(bool);              /* SON EN ACCÉLÉRÉ: FF running; whether the game can have it */
+	int (*pd_ff_audio)(int16_t*, int);      /* ... one frame of real time's music and sounds */
 } RetroAPI;
 
 static RetroAPI api;
@@ -189,6 +191,8 @@ static bool load_api(const char* corePath) {
 	*(void**) &loaded.pd_weather_cart = dlsym(h, "retro_pd_weather_cart");
 	*(void**) &loaded.pd_ambience = dlsym(h, "retro_pd_ambience");
 	*(void**) &loaded.pd_follower = dlsym(h, "retro_pd_follower");
+	*(void**) &loaded.pd_ff_sound = dlsym(h, "retro_pd_ff_sound");
+	*(void**) &loaded.pd_ff_audio = dlsym(h, "retro_pd_ff_audio");
 	*(void**) &loaded.pd_dock = dlsym(h, "retro_pd_dock");
 	*(void**) &loaded.pd_dock_open = dlsym(h, "retro_pd_dock_open");
 	*(void**) &loaded.pd_dock_is_open = dlsym(h, "retro_pd_dock_is_open");
@@ -339,11 +343,18 @@ static void video_refresh(const void* data, unsigned width, unsigned height, siz
 	core->height = height;
 }
 
+static void ring_push(LRCore* core, const int16_t* data, size_t frames);
+
 static size_t audio_batch(const int16_t* data, size_t frames) {
 	LRCore* core = sCore;
 	if (!core || !data || core->discardAudio) {
 		return frames;
 	}
+	ring_push(core, data, frames);
+	return frames;
+}
+
+static void ring_push(LRCore* core, const int16_t* data, size_t frames) {
 	size_t write = atomic_load_explicit(&core->ringWrite, memory_order_relaxed);
 	size_t read = atomic_load_explicit(&core->ringRead, memory_order_acquire);
 	size_t space = RING_FRAMES - (write - read);
@@ -354,7 +365,6 @@ static size_t audio_batch(const int16_t* data, size_t frames) {
 		core->ring[at * 2 + 1] = data[i * 2 + 1];
 	}
 	atomic_store_explicit(&core->ringWrite, write + count, memory_order_release);
-	return frames;
 }
 
 static void audio_sample(int16_t left, int16_t right) {
@@ -864,5 +874,20 @@ void lr_ambience(LRCore* core, bool dsWeather, int seasons) {
 void lr_follower(LRCore* core, const char* ndsPath) {
 	if (core && api.pd_follower) {
 		api.pd_follower(ndsPath);
+	}
+}
+
+bool lr_ff_sound(LRCore* core, bool on) {
+	return core && api.pd_ff_sound && api.pd_ff_sound(on);
+}
+
+void lr_ff_audio(LRCore* core) {
+	if (!core || !api.pd_ff_audio) {
+		return;
+	}
+	int16_t frame[2048 * 2];
+	int n = api.pd_ff_audio(frame, 2048);
+	if (n > 0) {
+		ring_push(core, frame, (size_t) n);
 	}
 }

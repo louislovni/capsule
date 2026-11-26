@@ -137,6 +137,11 @@ void lr_ambience(LRCore* core, bool dsWeather, int seasons);
 /* POKÉMON QUI SUIT: the party's lead walks behind the player in a GBA game, drawn from the player's HeartGold /
  * SoulSilver cart's following Pokémon ([ndsPath]), or NULL for none. Emulation thread. */
 void lr_follower(LRCore* core, const char* ndsPath);
+/* SON EN ACCÉLÉRÉ (Gen 3 games): before each batch of FF frames, whether FF runs ([on]); true when the game can have its
+ * music and sounds at 1x through FF. Then, once per frame of real time, lr_ff_audio queues that frame's sound (the FF
+ * frames themselves run with discardAudio). Emulation thread. */
+bool lr_ff_sound(LRCore* core, bool on);
+void lr_ff_audio(LRCore* core);
 int lr_lights(const LRCore* core, float* out, int max);
 
 bool lr_dock_available(const LRCore* core);

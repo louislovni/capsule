@@ -85,6 +85,7 @@ final class EmulatorSession: ObservableObject {
     private var alive = false
     private var pausedFlag = false
     private var speedFlag = 1
+    private var ffSoundFlag = FFSound.enabled
     private var pending: [(OpaquePointer) -> Void] = []
 
     /// Where the core keeps its own files (the companion's settings).
@@ -438,6 +439,13 @@ final class EmulatorSession: ObservableObject {
         }
     }
 
+    /// SON EN ACCÉLÉRÉ switched in the menu.
+    func setFFSound(_ on: Bool) {
+        lock.lock()
+        ffSoundFlag = on
+        lock.unlock()
+    }
+
     /// POKÉMON QUI SUIT switched in the menu.
     func setFollower(_ on: Bool) {
         guard !game.isDS else { return }
@@ -475,6 +483,7 @@ final class EmulatorSession: ObservableObject {
             let keepGoing = alive
             let paused = pausedFlag
             let speed = speedFlag
+            let ffSound = ffSoundFlag
             let work = pending
             pending.removeAll()
             lock.unlock()
@@ -492,11 +501,17 @@ final class EmulatorSession: ObservableObject {
             }
 
             let coop = coopReady && CoopService.shared.isLinked
+            // Fast-forward: the fast frames are silent; with SON EN ACCÉLÉRÉ the core then gives one frame of real time's
+            // music and sounds (a Gen 3 game; false elsewhere, which stays silent).
+            let steady = lr_ff_sound(core, ffSound && speed > 1)
             for _ in 0..<speed {
                 lr_run_frame(core, speed > 1)
                 if coop {
                     coopFrame(core)
                 }
+            }
+            if steady {
+                lr_ff_audio(core)
             }
             if coopWasLinked && !coop {
                 lr_coop_stop(core) // the partner goes from the map with the link
@@ -533,7 +548,7 @@ final class EmulatorSession: ObservableObject {
             // Pace on the clock, nudged by how much audio is waiting, so sound
             // neither starves nor piles up.
             let queued = Int(lr_audio_queued(core))
-            let correction = speed > 1 ? 1.0 : (queued > audioTarget ? 1.004 : 0.996)
+            let correction = speed > 1 && !steady ? 1.0 : (queued > audioTarget ? 1.004 : 0.996)
             deadline += frameTime * correction
             let now = CACurrentMediaTime()
             if deadline > now {
