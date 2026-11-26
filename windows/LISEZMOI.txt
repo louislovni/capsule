@@ -20,13 +20,19 @@ de l'ancien compte sont mises de côté et reviennent quand il se reconnecte.
 
 Dans la liste des jeux : flèches pour choisir, Z ou Entrée pour lancer.
 
-Commandes au clavier (par défaut)
-  Flèches : croix directionnelle    Z : A    X : B
-  Q / E : L / R    Tab / F : X / Y (DS)    1 / 2 : L2 / R2
-  Entrée : Start    Retour arrière : Select
-  Espace : avance rapide    R : retour en arrière
-  F2 / F4 : sauvegarde / chargement d'état
-  Échap : le menu (sauvegardes d'état, réglages, touches)
+Touches du clavier (F1 les affiche et permet de les changer)
+  Flèches ............ se déplacer
+  Z .................. A (valider, parler)
+  X .................. B (retour, courir)
+  Entrée ............. START (menu du jeu)
+  Retour arrière ..... SELECT
+  F .................. menu rapide (PC, objets, ÉCHANGE...)
+  Tab ................ compagnon (équipe, carte, Pokédex...)
+  Q / E .............. L / R
+  Espace (maintenir) . accélérer
+  Échap .............. menu PC (réglages, jouer à deux, quitter)
+  F1 ................. la liste des touches : A pour en changer une,
+                       puis appuie sur la nouvelle touche
   Une manette (Xbox, PlayStation, Switch Pro) marche aussi.
 
 Bon à savoir
@@ -36,7 +42,6 @@ Bon à savoir
   - Les sauvegardes sont dans "saves". Si une sauvegarde a changé à la fois
     sur le PC et sur l'iPhone, la plus récente est gardée et l'autre est mise
     de côté dans "backups\cloud".
-  - Changer de compte : lance "Capsule.exe --deconnexion" depuis un terminal.
   - Jouer sans internet : "Capsule.exe --hors-ligne".
   - Les jeux compatibles : dans la liste des jeux, Tab (ou X / Y à la
     manette). Tes jeux y sont reconnus, avec ce qui marche pour chacun
