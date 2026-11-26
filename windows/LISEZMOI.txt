@@ -68,7 +68,9 @@ Bon à savoir
   - Météo DS et saisons (Émeraude, Rouge Feu, Vert Feuille) : mets ta
     cartouche HeartGold ou SoulSilver (.nds) dans le dossier "roms" et
     "MÉTÉO DS" dessine la pluie, l'orage, la neige et le sable de ces
-    jeux à la place de ceux du jeu GBA. "SAISONS" colore la végétation
+    jeux à la place de ceux du jeu GBA. "POKÉMON QUI SUIT" fait marcher
+    le premier Pokémon de ton équipe derrière toi, avec son sprite de
+    HeartGold/SoulSilver. "SAISONS" colore la végétation
     selon la saison (les combats dehors aussi) et, par beau temps,
     fait voler des pétales au printemps, des feuilles en automne et un
     peu de neige en hiver.

@@ -15,6 +15,7 @@ struct GameView: View {
     @AppStorage(ScreenLook.effectsKey) private var weatherEffects = true
     @AppStorage(BattleSprites.key) private var battleSprites = true
     @AppStorage(DSWeather.key) private var dsWeather = true
+    @AppStorage(Follower.key) private var follower = true
     @AppStorage(Seasons.key) private var seasons = Seasons.blackWhite.rawValue
     /// The console turning on: black, a white glow, then the game.
     @State private var power = 0
@@ -480,6 +481,15 @@ struct GameView: View {
                 })) {
                     Label(DSWeather.cartURL() == nil ? "Météo DS (ajoute HeartGold/SoulSilver)" : "Météo DS",
                           systemImage: "cloud.snow")
+                }
+                .disabled(DSWeather.cartURL() == nil)
+                // HeartGold / SoulSilver's following Pokémon: the party's lead walks behind the player.
+                Toggle(isOn: Binding(get: { follower }, set: { on in
+                    follower = on
+                    session.setFollower(on)
+                })) {
+                    Label(DSWeather.cartURL() == nil ? "Pokémon qui suit (ajoute HeartGold/SoulSilver)" : "Pokémon qui suit",
+                          systemImage: "pawprint")
                 }
                 .disabled(DSWeather.cartURL() == nil)
                 // Black / White's seasons: the map's colours and, on fine days, petals, leaves or snow.

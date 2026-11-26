@@ -26,6 +26,16 @@ enum DSWeather {
     }
 }
 
+/// POKÉMON QUI SUIT: the party's lead walking behind the player in a GBA game, as HeartGold / SoulSilver's following
+/// Pokémon, drawn from the player's own cart (the same one MÉTÉO DS reads).
+enum Follower {
+    static let key = "follower"
+
+    static var enabled: Bool {
+        UserDefaults.standard.object(forKey: key) as? Bool ?? true
+    }
+}
+
 /// SAISONS: seasons on a GBA game's field outdoors: the map's greens in the season's colours and, on fine days, petals in
 /// spring, falling leaves in autumn, a little snow in winter (drawn by the core). The raw values are the core's
 /// (retro_pd_ambience), the cases in the menu's order.

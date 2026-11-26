@@ -133,6 +133,10 @@ void lr_battle_sprites(LRCore* core, const char* ndsPath);
  * the core drew the weather / a season's particles that frame. */
 void lr_weather_cart(LRCore* core, const char* ndsPath);
 void lr_ambience(LRCore* core, bool dsWeather, int seasons);
+
+/* POKÉMON QUI SUIT: the party's lead walks behind the player in a GBA game, drawn from the player's HeartGold /
+ * SoulSilver cart's following Pokémon ([ndsPath]), or NULL for none. Emulation thread. */
+void lr_follower(LRCore* core, const char* ndsPath);
 int lr_lights(const LRCore* core, float* out, int max);
 
 bool lr_dock_available(const LRCore* core);

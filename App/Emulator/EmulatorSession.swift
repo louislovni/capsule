@@ -245,6 +245,9 @@ final class EmulatorSession: ObservableObject {
                 lr_weather_cart(created, cart.path)
             }
             lr_ambience(created, DSWeather.enabled, Int32(Seasons.current.rawValue))
+            if Follower.enabled, let cart = DSWeather.cartURL() {
+                lr_follower(created, cart.path)
+            }
         }
         if !game.isDS {
             coopReady = lr_coop_available(created)
@@ -432,6 +435,15 @@ final class EmulatorSession: ObservableObject {
         perform { core in
             lr_weather_cart(core, path)
             lr_ambience(core, dsWeather, Int32(seasons.rawValue))
+        }
+    }
+
+    /// POKÉMON QUI SUIT switched in the menu.
+    func setFollower(_ on: Bool) {
+        guard !game.isDS else { return }
+        let path = on ? DSWeather.cartURL()?.path : nil
+        perform { core in
+            lr_follower(core, path)
         }
     }
 
