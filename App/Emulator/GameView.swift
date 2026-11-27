@@ -18,6 +18,7 @@ struct GameView: View {
     @AppStorage(Follower.key) private var follower = true
     @AppStorage(FFSound.key) private var ffSound = true
     @AppStorage(DynamicWeather.key) private var dynamicWeather = true
+    @AppStorage(Nature.key) private var nature = true
     @AppStorage(Seasons.key) private var seasons = Seasons.blackWhite.rawValue
     /// The console turning on: black, a white glow, then the game.
     @State private var power = 0
@@ -529,6 +530,13 @@ struct GameView: View {
                 Label("Météo dynamique", systemImage: "cloud.bolt.rain")
             }
             .disabled(noCart || !dsWeather)
+            // Fireflies, shooting stars, an autumn morning's mist, the rain and thunder heard.
+            Toggle(isOn: Binding(get: { nature }, set: { on in
+                nature = on
+                session.setNature(on)
+            })) {
+                Label("Nature vivante", systemImage: "sparkles")
+            }
             // Black / White's seasons: the map's colours and, on fine days, petals, leaves or snow.
             Picker(selection: Binding(get: { seasons }, set: { value in
                 seasons = value

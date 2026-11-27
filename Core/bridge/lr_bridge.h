@@ -139,6 +139,8 @@ void lr_ambience(LRCore* core, bool dsWeather, int seasons);
 void lr_follower(LRCore* core, const char* ndsPath);
 /* MÉTÉO DYNAMIQUE: weather that comes and goes on the game's fine days (needs the weather cart, lr_weather_cart). */
 void lr_dynamic_weather(LRCore* core, bool on);
+/* NATURE VIVANTE: fireflies on summer nights, shooting stars, autumn morning mist, the rain and thunder heard. */
+void lr_nature(LRCore* core, bool on);
 /* SON EN ACCÉLÉRÉ (Gen 3 games): before each batch of FF frames, whether FF runs ([on]); true when the game can have its
  * music and sounds at 1x through FF. Then, once per frame of real time, lr_ff_audio queues that frame's sound (the FF
  * frames themselves run with discardAudio). Emulation thread. */

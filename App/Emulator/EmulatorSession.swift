@@ -248,6 +248,7 @@ final class EmulatorSession: ObservableObject {
             }
             lr_ambience(created, DSWeather.enabled, Int32(Seasons.current.rawValue))
             lr_dynamic_weather(created, DynamicWeather.enabled)
+            lr_nature(created, Nature.enabled)
             if Follower.enabled, let cart = DSWeather.cartURL() {
                 lr_follower(created, cart.path)
             }
@@ -440,6 +441,11 @@ final class EmulatorSession: ObservableObject {
             lr_ambience(core, dsWeather, Int32(seasons.rawValue))
             lr_dynamic_weather(core, dynamicWeather)
         }
+    }
+
+    /// NATURE VIVANTE switched in the menu.
+    func setNature(_ on: Bool) {
+        perform { core in lr_nature(core, on) }
     }
 
     /// SON EN ACCÉLÉRÉ switched in the menu.

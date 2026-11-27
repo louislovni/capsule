@@ -48,6 +48,16 @@ enum DynamicWeather {
     }
 }
 
+/// NATURE VIVANTE: what the world does by itself - fireflies on summer nights, a shooting star on clear nights, an
+/// autumn morning's mist, and the rain and thunder heard under MÉTÉO DYNAMIQUE. Only looks and sounds.
+enum Nature {
+    static let key = "nature"
+
+    static var enabled: Bool {
+        UserDefaults.standard.object(forKey: key) as? Bool ?? true
+    }
+}
+
 enum Follower {
     static let key = "follower"
 
