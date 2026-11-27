@@ -242,8 +242,8 @@ final class EmulatorSession: ObservableObject {
         }
         if !game.isDS {
             // MÉTÉO DS from the player's HeartGold / SoulSilver cart, SAISONS by the phone's date.
-            // MÉTÉO DYNAMIQUE draws HeartGold's weather too: the cart stays open for either.
-            if DSWeather.enabled || DynamicWeather.enabled, let cart = DSWeather.cartURL() {
+            // MÉTÉO DYNAMIQUE is drawn with the same cart, under MÉTÉO DS.
+            if DSWeather.enabled, let cart = DSWeather.cartURL() {
                 lr_weather_cart(created, cart.path)
             }
             lr_ambience(created, DSWeather.enabled, Int32(Seasons.current.rawValue))
@@ -434,7 +434,7 @@ final class EmulatorSession: ObservableObject {
     /// MÉTÉO DS / SAISONS changed in the menu: from the next frame.
     func setAmbience(dsWeather: Bool, seasons: Seasons, dynamicWeather: Bool = DynamicWeather.enabled) {
         guard !game.isDS else { return }
-        let path = dsWeather || dynamicWeather ? DSWeather.cartURL()?.path : nil
+        let path = dsWeather ? DSWeather.cartURL()?.path : nil
         perform { core in
             lr_weather_cart(core, path)
             lr_ambience(core, dsWeather, Int32(seasons.rawValue))

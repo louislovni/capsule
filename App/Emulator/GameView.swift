@@ -513,15 +513,7 @@ struct GameView: View {
             Label("Météo et lumières", systemImage: "sun.haze")
         }
         if !session.game.isDS {
-            // On the game's fine days, rain, storms or (in a winter) snow come and go, each area its own sky.
-            Toggle(isOn: Binding(get: { dynamicWeather }, set: { on in
-                dynamicWeather = on
-                session.setAmbience(dsWeather: dsWeather, seasons: Seasons(rawValue: seasons) ?? .off, dynamicWeather: on)
-            })) {
-                Label(noCart ? "Météo dynamique (ajoute HeartGold/SoulSilver)" : "Météo dynamique", systemImage: "cloud.bolt.rain")
-            }
-            .disabled(noCart)
-            // HeartGold / SoulSilver's rain, snow and sand in place of the game's own.
+            // HeartGold / SoulSilver's rain, snow and sand in place of the game's own; off, none of their weather at all.
             Toggle(isOn: Binding(get: { dsWeather }, set: { on in
                 dsWeather = on
                 session.setAmbience(dsWeather: on, seasons: Seasons(rawValue: seasons) ?? .off)
@@ -529,6 +521,14 @@ struct GameView: View {
                 Label(noCart ? "Météo DS (ajoute HeartGold/SoulSilver)" : "Météo DS", systemImage: "cloud.snow")
             }
             .disabled(noCart)
+            // Under MÉTÉO DS: on the game's fine days, rain, storms or (in a winter) snow come and go, each area its own sky.
+            Toggle(isOn: Binding(get: { dynamicWeather && dsWeather }, set: { on in
+                dynamicWeather = on
+                session.setAmbience(dsWeather: dsWeather, seasons: Seasons(rawValue: seasons) ?? .off, dynamicWeather: on)
+            })) {
+                Label("Météo dynamique", systemImage: "cloud.bolt.rain")
+            }
+            .disabled(noCart || !dsWeather)
             // Black / White's seasons: the map's colours and, on fine days, petals, leaves or snow.
             Picker(selection: Binding(get: { seasons }, set: { value in
                 seasons = value

@@ -72,7 +72,8 @@ Bon à savoir
     "MÉTÉO DS" dessine la pluie, l'orage, la neige et le sable de ces
     jeux à la place de ceux du jeu GBA. "MÉTÉO DYNAMIQUE" fait venir et
     partir la pluie, l'orage ou (en hiver) la neige par beau temps :
-    chaque zone a son ciel, qui change toutes les 12 minutes.
+    chaque zone a son ciel, qui change toutes les 12 minutes (avec
+    "MÉTÉO DS" activée : la désactiver coupe toute cette météo).
     "POKÉMON QUI SUIT" fait marcher
     le premier Pokémon de ton équipe derrière toi, avec son sprite de
     HeartGold/SoulSilver. "SAISONS" colore la végétation
