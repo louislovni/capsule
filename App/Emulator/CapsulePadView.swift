@@ -46,6 +46,8 @@ final class CapsulePadView: UIView {
     private let pills: [Pill] = [Pill(key: PadKey.l), Pill(key: PadKey.select), Pill(key: PadKey.start), Pill(key: PadKey.r)]
 
     private var activeTouches = Set<UITouch>()
+    private var layoutObserver: NSObjectProtocol?
+    private var editTouch: UITouch?
     private var currentKeys: UInt32 = 0
     private let feedback = UIImpactFeedbackGenerator(style: .light)
     private let softFeedback = UIImpactFeedbackGenerator(style: .soft)
@@ -88,6 +90,12 @@ final class CapsulePadView: UIView {
         thumb.layer.shadowOffset = .zero
         pad.addSubview(thumb)
         addSubview(pad)
+        // PERSONNALISER LES BOUTONS: a group moved or sized, the editor opened or closed.
+        layoutObserver = NotificationCenter.default.addObserver(forName: PadLayout.changed, object: nil, queue: .main) { [weak self] _ in
+            guard let self = self else { return }
+            if PadLayout.shared.editing { self.releaseAll() }
+            self.setNeedsLayout()
+        }
         pad.isAccessibilityElement = true
         pad.accessibilityLabel = "Pavé directionnel"
 
@@ -144,6 +152,19 @@ final class CapsulePadView: UIView {
         let width = bounds.width
         let height = bounds.height
         guard width > 0, height > 0 else { return }
+        // Laid out as the skin has it, then each group where the player put it (PadLayout).
+        for view in [pad] + faces.map(\.view) + pills.map(\.view) {
+            view.transform = .identity
+        }
+        defer {
+            let layout = PadLayout.shared
+            let landscape = width > height
+            layout.show(skin: "capsule", landscape: landscape)
+            layout.apply([pad], .dpad, skin: "capsule", landscape: landscape, in: bounds)
+            layout.apply(faces.map(\.view), .faces, skin: "capsule", landscape: landscape, in: bounds)
+            layout.apply([pills[1].view, pills[2].view], .menu, skin: "capsule", landscape: landscape, in: bounds)
+            layout.apply([pills[0].view, pills[3].view], .shoulders, skin: "capsule", landscape: landscape, in: bounds)
+        }
 
         // The pills along the bottom.
         let pillHeight: CGFloat = 40
@@ -236,29 +257,52 @@ final class CapsulePadView: UIView {
             || pills.contains { $0.view.frame.insetBy(dx: -4, dy: -6).contains(point) }
     }
 
+    /// The group under a point, for the editor.
+    private func group(at point: CGPoint) -> PadLayout.Group? {
+        if pad.frame.insetBy(dx: -16, dy: -16).contains(point) { return .dpad }
+        if faces.contains(where: { $0.view.frame.insetBy(dx: -8, dy: -8).contains(point) }) { return .faces }
+        if [pills[1], pills[2]].contains(where: { $0.view.frame.insetBy(dx: -4, dy: -6).contains(point) }) { return .menu }
+        if [pills[0], pills[3]].contains(where: { $0.view.frame.insetBy(dx: -4, dy: -6).contains(point) }) { return .shoulders }
+        return nil
+    }
+
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if PadLayout.shared.editing {
+            if editTouch == nil, let touch = touches.first, let g = group(at: touch.location(in: self)) {
+                editTouch = touch
+                PadLayout.shared.begin(g, at: touch.location(in: self))
+            }
+            return
+        }
         activeTouches.formUnion(touches)
         updateKeys()
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if PadLayout.shared.editing {
+            if let touch = editTouch, touches.contains(touch) { PadLayout.shared.drag(to: touch.location(in: self)) }
+            return
+        }
         updateKeys()
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if let touch = editTouch, touches.contains(touch) {
+            editTouch = nil
+            PadLayout.shared.end()
+        }
         activeTouches.subtract(touches)
         updateKeys()
     }
 
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
-        activeTouches.subtract(touches)
-        updateKeys()
+        touchesEnded(touches, with: event)
     }
 
     /// The keys a touch presses, and for the pad the dot under it.
     private func keys(at point: CGPoint) -> (UInt32, (Int, Int)?) {
         if pad.frame.insetBy(dx: -16, dy: -16).contains(point) {
-            let size = pad.bounds.width
+            let size = pad.frame.width   // as shown (PadLayout may have sized it)
             let dx = point.x - pad.frame.midX
             let dy = point.y - pad.frame.midY
             let margin = size * 0.1
@@ -281,7 +325,7 @@ final class CapsulePadView: UIView {
         var best: (Face, CGFloat)?
         for face in faces {
             let distance = hypot(point.x - face.view.center.x, point.y - face.view.center.y)
-            if distance < face.view.bounds.width / 2 + 8, distance < (best?.1 ?? .infinity) {
+            if distance < face.view.frame.width / 2 + 8, distance < (best?.1 ?? .infinity) {
                 best = (face, distance)
             }
         }

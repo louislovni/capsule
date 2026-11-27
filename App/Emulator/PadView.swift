@@ -101,6 +101,8 @@ final class PadView: UIView {
     private let dpadThumb = UIView()
     private var chevrons: [UIImageView] = []
     private var activeTouches = Set<UITouch>()
+    private var layoutObserver: NSObjectProtocol?
+    private var editTouch: UITouch?
     private var currentKeys: UInt32 = 0
     private let feedback = UIImpactFeedbackGenerator(style: .light)
 
@@ -148,6 +150,12 @@ final class PadView: UIView {
     }
 
     private func setUp() {
+        // PERSONNALISER LES BOUTONS: a group moved or sized, the editor opened or closed.
+        layoutObserver = NotificationCenter.default.addObserver(forName: PadLayout.changed, object: nil, queue: .main) { [weak self] _ in
+            guard let self = self else { return }
+            if PadLayout.shared.editing { self.releaseAll() }
+            self.setNeedsLayout()
+        }
         isMultipleTouchEnabled = true
         backgroundColor = .clear
 
@@ -227,11 +235,29 @@ final class PadView: UIView {
         let width = bounds.width
         let height = bounds.height
         guard width > 0, height > 0 else { return }
+        // Laid out as the skin has it, then each group where the player put it (PadLayout).
+        dpad.transform = .identity
+        for item in buttons {
+            item.view.transform = .identity
+            glass(for: item.view)?.transform = .identity
+        }
         defer {
+            let layout = PadLayout.shared
+            let landscape = width > height
+            let skin = lightBackdrop ? "capsule" : "classic"
+            let views: ([UInt32]) -> [UIView] = { keys in keys.compactMap { self.button($0) } }
+            layout.show(skin: skin, landscape: landscape)
+            layout.apply([dpad], .dpad, skin: skin, landscape: landscape, in: bounds)
+            layout.apply(views([PadKey.a, PadKey.b, PadKey.x, PadKey.y]), .faces, skin: skin, landscape: landscape, in: bounds)
+            layout.apply(views([PadKey.select, PadKey.start]), .menu, skin: skin, landscape: landscape, in: bounds)
+            layout.apply(views([PadKey.l, PadKey.r]), .shoulders, skin: skin, landscape: landscape, in: bounds)
+            layout.apply(Self.shortcuts.compactMap { shortcut($0.0) }, .shortcuts, skin: skin, landscape: landscape, in: bounds)
             for item in buttons {
                 guard let pane = glass(for: item.view) else { continue }
+                pane.transform = .identity
                 pane.bounds = item.view.bounds
                 pane.center = item.view.center
+                pane.transform = item.view.transform
                 pane.layer.cornerRadius = item.view.bounds.height / 2
             }
             layoutDpad()
@@ -436,23 +462,51 @@ final class PadView: UIView {
         return buttons.contains { !$0.view.isHidden && $0.view.frame.insetBy(dx: -12, dy: -12).contains(point) }
     }
 
+    /// The group under a point, for the editor.
+    private func group(at point: CGPoint) -> PadLayout.Group? {
+        if dpad.frame.insetBy(dx: -18, dy: -18).contains(point) { return .dpad }
+        for item in buttons where !item.view.isHidden && item.view.frame.insetBy(dx: -12, dy: -12).contains(point) {
+            if item.isShortcut { return .shortcuts }
+            switch item.key {
+            case PadKey.l, PadKey.r: return .shoulders
+            case PadKey.select, PadKey.start: return .menu
+            default: return .faces
+            }
+        }
+        return nil
+    }
+
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if PadLayout.shared.editing {
+            if editTouch == nil, let touch = touches.first, let g = group(at: touch.location(in: self)) {
+                editTouch = touch
+                PadLayout.shared.begin(g, at: touch.location(in: self))
+            }
+            return
+        }
         activeTouches.formUnion(touches)
         updateKeys()
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if PadLayout.shared.editing {
+            if let touch = editTouch, touches.contains(touch) { PadLayout.shared.drag(to: touch.location(in: self)) }
+            return
+        }
         updateKeys()
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if let touch = editTouch, touches.contains(touch) {
+            editTouch = nil
+            PadLayout.shared.end()
+        }
         activeTouches.subtract(touches)
         updateKeys()
     }
 
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
-        activeTouches.subtract(touches)
-        updateKeys()
+        touchesEnded(touches, with: event)
     }
 
     private func keys(at point: CGPoint) -> UInt32 {

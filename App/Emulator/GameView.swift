@@ -4,6 +4,7 @@ import SwiftUI
 struct GameView: View {
     @StateObject private var session: EmulatorSession
     @ObservedObject private var gamepad = GamepadInput.shared
+    @ObservedObject private var padLayout = PadLayout.shared
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
 
@@ -57,6 +58,16 @@ struct GameView: View {
             .onChange(of: skinName) { _ in updatePictureArea(geometry) }
         }
         .background(Color.black.ignoresSafeArea())
+        .overlay(alignment: .top) {
+            // PERSONNALISER LES BOUTONS: the game waits while the controls are moved.
+            if padLayout.editing {
+                PadLayoutEditor(isDS: session.game.isDS)
+                    .padding(.top, 24)
+            }
+        }
+        .onChange(of: padLayout.editing) { editing in
+            session.setPaused(editing || userPaused)
+        }
         .preferredColorScheme(.dark)
         .overlay {
             ZStack {
@@ -502,6 +513,12 @@ struct GameView: View {
                 Label("Apparence de la manette", systemImage: "gamecontroller")
             }
             .pickerStyle(.menu)
+            // Move and size the on-screen buttons (each skin, each way of holding the phone, its own).
+            Button {
+                padLayout.editing = true
+            } label: {
+                Label("Personnaliser les boutons", systemImage: "slider.horizontal.3")
+            }
         }
     }
 
