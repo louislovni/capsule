@@ -522,7 +522,7 @@ struct GameView: View {
             })) {
                 Label("Météo dynamique", systemImage: "cloud.bolt.rain")
             }
-            // The rain and thunder heard.
+            // NATURE VIVANTE as on the GBA games: fireflies, stars, mist, sunrise and sunset, steps, birds, crickets, wind, the rain.
             Toggle(isOn: Binding(get: { nature }, set: { on in
                 nature = on
                 session.setNature(on)

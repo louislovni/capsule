@@ -77,7 +77,8 @@ Bon à savoir
     ciel qui s'assombrit et des éclairs. Elle marche aussi sur les jeux
     DS HeartGold, SoulSilver et Platine (et leurs hacks) : dehors, quand
     le jeu n'a pas sa propre météo (Platine a besoin de la cartouche
-    HeartGold ou SoulSilver dans "roms"). "NATURE VIVANTE" ajoute le son
+    HeartGold ou SoulSilver dans "roms"). "NATURE VIVANTE" y marche
+    aussi. "NATURE VIVANTE" ajoute le son
     de la pluie et du tonnerre, le vent dans la neige, les oiseaux le
     matin, les grillons les nuits d'été et d'automne, des lucioles les
     nuits d'été, des étoiles filantes les nuits claires, la brume des
