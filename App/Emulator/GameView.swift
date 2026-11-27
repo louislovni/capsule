@@ -513,7 +513,23 @@ struct GameView: View {
         Toggle(isOn: $weatherEffects) {
             Label("Météo et lumières", systemImage: "sun.haze")
         }
-        if !session.game.isDS {
+        if session.game.isDS {
+            // HeartGold / SoulSilver / Platinum: on the game's fine days outdoors, rain, storms or (in a winter) snow.
+            Toggle(isOn: Binding(get: { dynamicWeather && dsWeather }, set: { on in
+                dynamicWeather = on
+                if on { dsWeather = true }
+                session.setAmbience(dsWeather: dsWeather, seasons: Seasons(rawValue: seasons) ?? .off, dynamicWeather: on)
+            })) {
+                Label("Météo dynamique", systemImage: "cloud.bolt.rain")
+            }
+            // The rain and thunder heard.
+            Toggle(isOn: Binding(get: { nature }, set: { on in
+                nature = on
+                session.setNature(on)
+            })) {
+                Label("Nature vivante", systemImage: "sparkles")
+            }
+        } else {
             // HeartGold / SoulSilver's rain, snow and sand in place of the game's own; off, none of their weather at all.
             Toggle(isOn: Binding(get: { dsWeather }, set: { on in
                 dsWeather = on

@@ -253,6 +253,16 @@ final class EmulatorSession: ObservableObject {
                 lr_follower(created, cart.path)
             }
         }
+        if game.isDS {
+            // MÉTÉO DYNAMIQUE on HeartGold / SoulSilver / Platinum: the particles from the game itself when it's
+            // HeartGold / SoulSilver (or a hack of one), else from the player's HeartGold / SoulSilver cart.
+            if DSWeather.enabled, let cart = DSWeather.cartURL() {
+                lr_weather_cart(created, cart.path)
+            }
+            lr_ambience(created, DSWeather.enabled, 0)
+            lr_dynamic_weather(created, DynamicWeather.enabled)
+            lr_nature(created, Nature.enabled)
+        }
         if !game.isDS {
             coopReady = lr_coop_available(created)
             if coopReady {
@@ -434,7 +444,6 @@ final class EmulatorSession: ObservableObject {
 
     /// MÉTÉO DS / SAISONS changed in the menu: from the next frame.
     func setAmbience(dsWeather: Bool, seasons: Seasons, dynamicWeather: Bool = DynamicWeather.enabled) {
-        guard !game.isDS else { return }
         let path = dsWeather ? DSWeather.cartURL()?.path : nil
         perform { core in
             lr_weather_cart(core, path)
