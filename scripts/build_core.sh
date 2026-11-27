@@ -9,7 +9,7 @@
 #                                   Needs mingw-w64 and Go; GOOGLE_DESKTOP_CLIENT_ID / _SECRET for the sign-in.
 set -eu
 
-POKEDAISY_COMMIT=76b5f7e7c3fe3292c5c235bd8e8718ec16d47ba7
+POKEDAISY_COMMIT=33e1c9b638426ec4f16502d216a1b30b3b0bba9b
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TARGET="${1:-host}"
 SRC="$ROOT/Vendor/pokedaisy"

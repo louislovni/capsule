@@ -1316,6 +1316,24 @@
    }
   },
   {
+   "title": "Pokémon Éclat Pourpre",
+   "console": "GBA",
+   "kind": "hack",
+   "version": "V2.0.0",
+   "sha1": [
+    "ba1136e01c10ec29afdceb91276548c1c1c04fe7"
+   ],
+   "companion": true,
+   "pokedaisy": false,
+   "bank": "no",
+   "unverified": true,
+   "base": {
+    "code": "BPRF",
+    "rev": 0,
+    "title": "Pokémon Version Rouge Feu (France)"
+   }
+  },
+  {
    "title": "Super Mariomon",
    "console": "GBA",
    "kind": "hack",

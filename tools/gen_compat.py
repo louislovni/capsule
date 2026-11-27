@@ -103,6 +103,10 @@ for sha, cfg, kind, title in re.findall(r'\{"([0-9a-f]{40})", &(PD_CONFIG_\w+), 
     entry["sha1"].append(sha)
     entry["pokedaisy"] = entry["pokedaisy"] or sha in pd_hacks
 games += hacks.values()
+# Éclat Pourpre: built on the French FireRed (pd_game.c's eclat_build, its tables read from the ROM as it loads).
+add(title="Pokémon Éclat Pourpre", console="GBA", kind="hack", version="V2.0.0",
+    sha1=["ba1136e01c10ec29afdceb91276548c1c1c04fe7"], companion=True, pokedaisy=False, bank="no", unverified=True,
+    base=dict(code="BPRF", rev=0, title="Pokémon Version Rouge Feu (France)"))
 # Hacks only PokeDaisy's (Android) companion knows.
 ios_gba = {sha for g in hacks.values() for sha in g["sha1"]}
 android_only = {}
