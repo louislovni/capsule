@@ -38,6 +38,16 @@ enum FFSound {
     }
 }
 
+/// MÉTÉO DYNAMIQUE: on the game's fine days outdoors, rain, storms or (in a season's winter) snow come and go by
+/// themselves, each area its own sky for each 12 minutes; drawn with HeartGold / SoulSilver's weather from the player's cart.
+enum DynamicWeather {
+    static let key = "dynamicWeather"
+
+    static var enabled: Bool {
+        UserDefaults.standard.object(forKey: key) as? Bool ?? true
+    }
+}
+
 enum Follower {
     static let key = "follower"
 

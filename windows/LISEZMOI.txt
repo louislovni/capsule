@@ -62,14 +62,18 @@ Bon à savoir
     jeu est sauvegardé. Marche aussi avec l'app Android (menu
     rapide > ÉCHANGE).
   - Rendu et météo : dans le menu (Échap), "LOOK" change le rendu de
-    l'image (ORIGINAL, SMOOTH HD lissé, CRT, REMASTER) et "WEATHER AND
-    LIGHTS" ajoute la météo du jeu (pluie, neige, brouillard...), les
+    l'image (ORIGINAL, SMOOTH HD lissé, CRT, REMASTER). La page
+    "AMBIANCE" regroupe le reste : "WEATHER AND LIGHTS" ajoute la météo
+    du jeu (pluie, neige, brouillard...), les
     couleurs du jour selon l'heure du PC et, la nuit, les fenêtres et
     les portes éclairées (jeux GBA).
   - Météo DS et saisons (Émeraude, Rouge Feu, Vert Feuille) : mets ta
     cartouche HeartGold ou SoulSilver (.nds) dans le dossier "roms" et
     "MÉTÉO DS" dessine la pluie, l'orage, la neige et le sable de ces
-    jeux à la place de ceux du jeu GBA. "POKÉMON QUI SUIT" fait marcher
+    jeux à la place de ceux du jeu GBA. "MÉTÉO DYNAMIQUE" fait venir et
+    partir la pluie, l'orage ou (en hiver) la neige par beau temps :
+    chaque zone a son ciel, qui change toutes les 12 minutes.
+    "POKÉMON QUI SUIT" fait marcher
     le premier Pokémon de ton équipe derrière toi, avec son sprite de
     HeartGold/SoulSilver. "SAISONS" colore la végétation
     selon la saison (les combats dehors aussi) et, par beau temps,

@@ -93,6 +93,7 @@ typedef struct {
 	void (*pd_weather_cart)(const char*);   /* MÉTÉO DS's HeartGold / SoulSilver cart, NULL elsewhere */
 	void (*pd_ambience)(int, int);          /* MÉTÉO DS / SAISONS on or off, NULL elsewhere */
 	void (*pd_follower)(const char*);       /* POKÉMON QUI SUIT's HeartGold / SoulSilver cart, NULL elsewhere */
+	void (*pd_dynamic_weather)(int);        /* MÉTÉO DYNAMIQUE */
 	bool (*pd_ff_sound)(bool);              /* SON EN ACCÉLÉRÉ: FF running; whether the game can have it */
 	int (*pd_ff_audio)(int16_t*, int);      /* ... one frame of real time's music and sounds */
 } RetroAPI;
@@ -191,6 +192,7 @@ static bool load_api(const char* corePath) {
 	*(void**) &loaded.pd_weather_cart = dlsym(h, "retro_pd_weather_cart");
 	*(void**) &loaded.pd_ambience = dlsym(h, "retro_pd_ambience");
 	*(void**) &loaded.pd_follower = dlsym(h, "retro_pd_follower");
+	*(void**) &loaded.pd_dynamic_weather = dlsym(h, "retro_pd_dynamic_weather");
 	*(void**) &loaded.pd_ff_sound = dlsym(h, "retro_pd_ff_sound");
 	*(void**) &loaded.pd_ff_audio = dlsym(h, "retro_pd_ff_audio");
 	*(void**) &loaded.pd_dock = dlsym(h, "retro_pd_dock");
@@ -868,6 +870,12 @@ void lr_weather_cart(LRCore* core, const char* ndsPath) {
 void lr_ambience(LRCore* core, bool dsWeather, int seasons) {
 	if (core && api.pd_ambience) {
 		api.pd_ambience(dsWeather ? 1 : 0, seasons);
+	}
+}
+
+void lr_dynamic_weather(LRCore* core, bool on) {
+	if (core && api.pd_dynamic_weather) {
+		api.pd_dynamic_weather(on ? 1 : 0);
 	}
 }
 

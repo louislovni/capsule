@@ -17,6 +17,7 @@ struct GameView: View {
     @AppStorage(DSWeather.key) private var dsWeather = true
     @AppStorage(Follower.key) private var follower = true
     @AppStorage(FFSound.key) private var ffSound = true
+    @AppStorage(DynamicWeather.key) private var dynamicWeather = true
     @AppStorage(Seasons.key) private var seasons = Seasons.blackWhite.rawValue
     /// The console turning on: black, a white glow, then the game.
     @State private var power = 0
@@ -456,7 +457,7 @@ struct GameView: View {
             Text("Ce qui n'est pas sauvegardé dans le jeu sera perdu.")
         }
         Section {
-            // The picture's look (Metal shaders), and the weather and lights over the field.
+            // The picture's look (Metal shaders).
             Picker(selection: $screenLook) {
                 ForEach(ScreenLook.allCases) { look in
                     Text(look.title).tag(look.rawValue)
@@ -465,9 +466,6 @@ struct GameView: View {
                 Label("Rendu de l'image", systemImage: "sparkles.tv")
             }
             .pickerStyle(.menu)
-            Toggle(isOn: $weatherEffects) {
-                Label("Météo et lumières", systemImage: "cloud.sun.rain")
-            }
             if !session.game.isDS {
                 // Black / White's animated battle pictures, from the player's own cart in the library.
                 Toggle(isOn: Binding(get: { battleSprites }, set: { on in
@@ -478,15 +476,6 @@ struct GameView: View {
                           systemImage: "figure.run")
                 }
                 .disabled(BattleSprites.cartURL() == nil)
-                // HeartGold / SoulSilver's rain, snow and sand, from the player's own cart in the library.
-                Toggle(isOn: Binding(get: { dsWeather }, set: { on in
-                    dsWeather = on
-                    session.setAmbience(dsWeather: on, seasons: Seasons(rawValue: seasons) ?? .blackWhite)
-                })) {
-                    Label(DSWeather.cartURL() == nil ? "Météo DS (ajoute HeartGold/SoulSilver)" : "Météo DS",
-                          systemImage: "cloud.snow")
-                }
-                .disabled(DSWeather.cartURL() == nil)
                 // Fast-forward with the music and sounds at their normal speed (Gen 3 games).
                 Toggle(isOn: Binding(get: { ffSound }, set: { on in
                     ffSound = on
@@ -494,27 +483,12 @@ struct GameView: View {
                 })) {
                     Label("Son en accéléré", systemImage: "speaker.wave.2")
                 }
-                // HeartGold / SoulSilver's following Pokémon: the party's lead walks behind the player.
-                Toggle(isOn: Binding(get: { follower }, set: { on in
-                    follower = on
-                    session.setFollower(on)
-                })) {
-                    Label(DSWeather.cartURL() == nil ? "Pokémon qui suit (ajoute HeartGold/SoulSilver)" : "Pokémon qui suit",
-                          systemImage: "pawprint")
-                }
-                .disabled(DSWeather.cartURL() == nil)
-                // Black / White's seasons: the map's colours and, on fine days, petals, leaves or snow.
-                Picker(selection: Binding(get: { seasons }, set: { value in
-                    seasons = value
-                    session.setAmbience(dsWeather: dsWeather, seasons: Seasons(rawValue: value) ?? .off)
-                })) {
-                    ForEach(Seasons.allCases) { season in
-                        Text(season.title).tag(season.rawValue)
-                    }
-                } label: {
-                    Label("Saisons", systemImage: "leaf")
-                }
-                .pickerStyle(.menu)
+            }
+            // AMBIANCE: everything about the world's look and life in one place.
+            Menu {
+                ambienceMenu
+            } label: {
+                Label("Ambiance", systemImage: "cloud.sun.rain")
             }
         }
         Section {
@@ -527,6 +501,54 @@ struct GameView: View {
                 Label("Apparence de la manette", systemImage: "gamecontroller")
             }
             .pickerStyle(.menu)
+        }
+    }
+
+    /// AMBIANCE's page: the weather and lights over the picture, HeartGold's weather (the game's own, or coming and going
+    /// by itself), Black / White's seasons and the following Pokémon.
+    @ViewBuilder
+    private var ambienceMenu: some View {
+        let noCart = DSWeather.cartURL() == nil
+        Toggle(isOn: $weatherEffects) {
+            Label("Météo et lumières", systemImage: "sun.haze")
+        }
+        if !session.game.isDS {
+            // On the game's fine days, rain, storms or (in a winter) snow come and go, each area its own sky.
+            Toggle(isOn: Binding(get: { dynamicWeather }, set: { on in
+                dynamicWeather = on
+                session.setAmbience(dsWeather: dsWeather, seasons: Seasons(rawValue: seasons) ?? .off, dynamicWeather: on)
+            })) {
+                Label(noCart ? "Météo dynamique (ajoute HeartGold/SoulSilver)" : "Météo dynamique", systemImage: "cloud.bolt.rain")
+            }
+            .disabled(noCart)
+            // HeartGold / SoulSilver's rain, snow and sand in place of the game's own.
+            Toggle(isOn: Binding(get: { dsWeather }, set: { on in
+                dsWeather = on
+                session.setAmbience(dsWeather: on, seasons: Seasons(rawValue: seasons) ?? .off)
+            })) {
+                Label(noCart ? "Météo DS (ajoute HeartGold/SoulSilver)" : "Météo DS", systemImage: "cloud.snow")
+            }
+            .disabled(noCart)
+            // Black / White's seasons: the map's colours and, on fine days, petals, leaves or snow.
+            Picker(selection: Binding(get: { seasons }, set: { value in
+                seasons = value
+                session.setAmbience(dsWeather: dsWeather, seasons: Seasons(rawValue: value) ?? .off)
+            })) {
+                ForEach(Seasons.allCases) { season in
+                    Text(season.title).tag(season.rawValue)
+                }
+            } label: {
+                Label("Saisons", systemImage: "leaf")
+            }
+            .pickerStyle(.menu)
+            // HeartGold / SoulSilver's following Pokémon: the party's lead walks behind the player.
+            Toggle(isOn: Binding(get: { follower }, set: { on in
+                follower = on
+                session.setFollower(on)
+            })) {
+                Label(noCart ? "Pokémon qui suit (ajoute HeartGold/SoulSilver)" : "Pokémon qui suit", systemImage: "pawprint")
+            }
+            .disabled(noCart)
         }
     }
 
