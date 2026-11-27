@@ -476,13 +476,13 @@ struct GameView: View {
                           systemImage: "figure.run")
                 }
                 .disabled(BattleSprites.cartURL() == nil)
-                // Fast-forward with the music and sounds at their normal speed (Gen 3 games).
-                Toggle(isOn: Binding(get: { ffSound }, set: { on in
-                    ffSound = on
-                    session.setFFSound(on)
-                })) {
-                    Label("Son en accéléré", systemImage: "speaker.wave.2")
-                }
+            }
+            // Fast-forward with the music (and on GBA the sounds) at their normal speed.
+            Toggle(isOn: Binding(get: { ffSound }, set: { on in
+                ffSound = on
+                session.setFFSound(on)
+            })) {
+                Label("Son en accéléré", systemImage: "speaker.wave.2")
             }
             // AMBIANCE: everything about the world's look and life in one place.
             Menu {
