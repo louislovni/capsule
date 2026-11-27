@@ -47,9 +47,11 @@ Bon à savoir
   - Les jeux compatibles : dans la liste des jeux, Tab (ou X / Y à la
     manette). Tes jeux y sont reconnus, avec ce qui marche pour chacun
     et la ROM d'origine d'un hack. A : les détails d'un jeu.
-  - Jouer à deux (Pokémon Émeraude) : en jeu, ouvre le menu puis
+  - Jouer à deux (Pokémon Émeraude, Rouge Feu, Vert Feuille, le même jeu
+    des deux côtés) : en jeu, ouvre le menu puis
     "JOUER A DEUX" et "ASSOCIER UN JOUEUR PROCHE", sur le même Wi-Fi qu'un
-    PC, un iPhone ou un Android. Vous vous voyez sur la carte. Windows peut
+    PC, un iPhone ou un Android (Android : Émeraude seulement). Vous vous
+    voyez sur la carte. Les combats et échanges qui suivent : Émeraude. Windows peut
     demander d'autoriser le réseau : accepte pour les réseaux privés.
     Combat à deux : quand un combat sauvage ou contre un dresseur commence
     près de ton partenaire (8 pas au plus, même carte), il est invité à

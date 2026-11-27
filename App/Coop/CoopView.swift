@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// "Jouer à deux": pick your Emerald game, pair it with a player nearby (both on the same Wi-Fi), then play: each sees
+/// "Jouer à deux": pick your Emerald (or FireRed / LeafGreen: seeing each other only) game, pair it with a player nearby (both on the same Wi-Fi), then play: each sees
 /// the other's hero on the map. PokeDaisy's co-op, so it also pairs with its Android app.
 struct CoopView: View {
     let games: [Game]
@@ -19,7 +19,7 @@ struct CoopView: View {
                     Label("Un combat qui commence près de l'autre (8 pas au plus) peut se faire à deux : il est invité à le rejoindre", systemImage: "bolt.horizontal")
                     Label("Champions et dresseurs de l'histoire : tenez-vous tous les deux devant lui, puis chacun lui parle", systemImage: "trophy")
                     Label("Échanges : menu rapide > ÉCHANGE, aussi avec Android", systemImage: "arrow.left.arrow.right")
-                    Label("Pokémon Émeraude, la même version des deux côtés (française ou anglaise)", systemImage: "gamecontroller")
+                    Label("Pokémon Émeraude, Rouge Feu ou Vert Feuille, le même jeu des deux côtés (français ou anglais)", systemImage: "gamecontroller")
                     Label("Sur le même Wi-Fi pour l'instant", systemImage: "wifi")
                 }
                 .font(.footnote)
@@ -30,10 +30,10 @@ struct CoopView: View {
                 if !checked {
                     HStack(spacing: 8) {
                         ProgressView().controlSize(.small)
-                        Text("Recherche d'Émeraude dans tes jeux…").foregroundStyle(.secondary)
+                        Text("Recherche d'Émeraude, Rouge Feu ou Vert Feuille dans tes jeux…").foregroundStyle(.secondary)
                     }
                 } else if candidates.isEmpty {
-                    Text("Aucun Pokémon Émeraude compatible dans tes jeux (la cartouche d'origine, en français ou en anglais).")
+                    Text("Aucun Pokémon Émeraude, Rouge Feu ou Vert Feuille compatible dans tes jeux (la cartouche d'origine, en français ou en anglais).")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(candidates) { game in
@@ -60,7 +60,7 @@ struct CoopView: View {
             if let current = coop.pairs.first(where: { $0.current }), picked != nil {
                 Section("Ton partenaire") {
                     Label(current.partner, systemImage: "person.fill.checkmark")
-                    Text("Lancez Émeraude chacun de votre côté, sur le même Wi-Fi : vous vous verrez sur la carte.")
+                    Text("Lancez le jeu chacun de votre côté, sur le même Wi-Fi : vous vous verrez sur la carte. Les combats et les échanges à deux sont pour Émeraude.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                     Button("Oublier ce partenaire", role: .destructive) {
@@ -108,7 +108,7 @@ struct CoopView: View {
         Section("Associer avec un joueur proche") {
             switch coop.pairStep {
             case Int32(COOP_PAIR_INVITING):
-                Text("Sur l'autre appareil, ouvre aussi « Jouer à deux » avec Émeraude. Il apparaît ici : touche-le pour l'inviter, ou attends qu'il te choisisse.")
+                Text("Sur l'autre appareil, ouvre aussi « Jouer à deux » avec le même jeu. Il apparaît ici : touche-le pour l'inviter, ou attends qu'il te choisisse.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                 if coop.nearby.isEmpty {
@@ -155,7 +155,7 @@ struct CoopView: View {
     private var failText: String {
         switch coop.pairFail {
         case Int32(COOP_FAIL_VERSION): return "L'autre appareil a une version de la coop différente : mets à jour les deux apps."
-        case Int32(COOP_FAIL_DIFFERENT_ROM): return "L'autre joueur n'a pas la même version d'Émeraude."
+        case Int32(COOP_FAIL_DIFFERENT_ROM): return "L'autre joueur n'a pas le même jeu (ou pas la même version)."
         case Int32(COOP_FAIL_SAME_SAVE): return "C'est la même sauvegarde des deux côtés : chacun doit avoir sa propre partie."
         case Int32(COOP_FAIL_SAVE_ALREADY_PAIRED): return "Cette partie a déjà un partenaire."
         case Int32(COOP_FAIL_DENIED): return "L'association a été refusée."
