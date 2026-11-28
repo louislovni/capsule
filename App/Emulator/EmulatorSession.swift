@@ -237,7 +237,7 @@ final class EmulatorSession: ObservableObject {
             // Docked from the start: the HUD's taps and the companion button open the panel, not the menus over the game.
             lr_dock(created, dockSize.width, dockSize.height)
         }
-        if !game.isDS, BattleSprites.enabled, let cart = BattleSprites.cartURL() {
+        if BattleSprites.enabled, let cart = BattleSprites.cartURL() {
             lr_battle_sprites(created, cart.path)
         }
         if !game.isDS {
@@ -435,7 +435,6 @@ final class EmulatorSession: ObservableObject {
 
     /// BATTLE SPRITES switched in the menu: the DS cart's pictures from now, or the game's own.
     func setBattleSprites(_ on: Bool) {
-        guard !game.isDS else { return }
         let path = on ? BattleSprites.cartURL()?.path : nil
         perform { core in
             lr_battle_sprites(core, path)

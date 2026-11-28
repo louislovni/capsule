@@ -478,8 +478,9 @@ struct GameView: View {
                 Label("Rendu de l'image", systemImage: "sparkles.tv")
             }
             .pickerStyle(.menu)
-            if !session.game.isDS {
-                // Black / White's animated battle pictures, from the player's own cart in the library.
+            do {
+                // Black / White's animated battle pictures, from the player's own cart in the library (a GBA game's
+                // battles, and a Gen 4 DS game's).
                 Toggle(isOn: Binding(get: { battleSprites }, set: { on in
                     battleSprites = on
                     session.setBattleSprites(on)

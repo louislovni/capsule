@@ -63,6 +63,12 @@ Bon à savoir
     partenaire choisit le sien (ou refuse), tu confirmes, et chaque
     jeu est sauvegardé. Marche aussi avec l'app Android (menu
     rapide > ÉCHANGE).
+  - Sprites animés : "BATTLE SPRITES" dans le menu (Échap). Avec ta
+    cartouche Pokémon Noir ou Blanc (1 ou 2) à côté du jeu ou dans
+    "roms", les Pokémon des combats bougent comme dans Noir et Blanc :
+    sur Émeraude, Rouge Feu, Vert Feuille, et aussi sur HeartGold,
+    SoulSilver (et leurs hacks) et Platine. Ceux qu'elle n'a pas
+    gardent leur image d'origine.
   - Rendu et météo : dans le menu (Échap), "LOOK" change le rendu de
     l'image (ORIGINAL, SMOOTH HD lissé, CRT, REMASTER). La page
     "AMBIANCE" regroupe le reste : "WEATHER AND LIGHTS" ajoute la météo
