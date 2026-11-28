@@ -1285,7 +1285,8 @@
    "kind": "hack",
    "version": "v2.1.1.1-FR",
    "sha1": [
-    "0ce2a880aa097f1dce4e1db8ee513d0e82d15859"
+    "0ce2a880aa097f1dce4e1db8ee513d0e82d15859",
+    "b37ae6afc77fedb9a8df747f10e0f261ae9e0172"
    ],
    "companion": true,
    "pokedaisy": true,
